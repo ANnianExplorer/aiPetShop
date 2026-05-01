@@ -12,6 +12,10 @@ const router = createRouter({
   },
   routes: [
     {
+      path: '/',
+      redirect: '/login'
+    },
+    {
       path: '/login',
       name: 'login',
       component: () => import('@/views/auth/Login.vue')
@@ -27,125 +31,122 @@ const router = createRouter({
       component: () => import('@/views/auth/ResetPassword.vue')
     },
     {
-      path: '/',
-      redirect: '/login'
-    },
-    {
       path: '/app',
       component: MainLayout,
+      redirect: '/home',
       children: [
         {
-          path: '',
+          path: '/home',
           name: 'home',
           component: () => import('@/views/home/Home.vue')
         },
         {
-          path: 'community',
+          path: '/community',
           name: 'community',
           component: () => import('@/views/community/Community.vue')
         },
         {
-          path: 'wellness',
+          path: '/wellness',
           name: 'wellness',
           component: () => import('@/views/wellness/Wellness.vue')
         },
         {
-          path: 'profile',
+          path: '/profile',
           name: 'profile',
           component: () => import('@/views/profile/Profile.vue')
         },
         {
-          path: 'life-log',
+          path: '/life-log',
           name: 'lifeLog',
           component: () => import('@/views/lifelog/LifeLog.vue')
         },
         {
-          path: 'post/:id',
+          path: '/post/:id',
           name: 'postDetail',
           component: () => import('@/views/community/PostDetail.vue')
         },
         {
-          path: 'log/:id',
+          path: '/log/:id',
           name: 'logDetail',
           component: () => import('@/views/lifelog/LifeLogDetail.vue')
         },
         {
-          path: 'schedules',
+          path: '/schedules',
           name: 'scheduleList',
           component: () => import('@/views/schedule/ScheduleList.vue')
         },
         {
-          path: 'add-reminder',
+          path: '/add-reminder',
           name: 'addReminder',
           component: () => import('@/views/schedule/AddReminder.vue')
         },
         {
-          path: 'notifications',
+          path: '/notifications',
           name: 'notifications',
           component: () => import('@/views/schedule/Notifications.vue')
         },
         {
-          path: 'new-topic',
+          path: '/new-topic',
           name: 'newTopic',
           component: () => import('@/views/community/NewTopic.vue')
         },
         {
-          path: 'topic/:id',
+          path: '/topic/:id',
           name: 'topicDetail',
           component: () => import('@/views/community/TopicDetail.vue')
         },
         {
-          path: 'topics-list',
+          path: '/topics-list',
           name: 'topicsList',
           component: () => import('@/views/community/TopicsList.vue')
         },
         {
-          path: 'add-plan',
+          path: '/add-plan',
           name: 'addPlan',
           component: () => import('@/views/wellness/AddPlan.vue')
         },
         {
-          path: 'weekly-health-detail',
+          path: '/weekly-health-detail',
           name: 'weeklyHealthDetail',
           component: () => import('@/views/wellness/WeeklyHealthDetail.vue')
         },
         {
-          path: 'record-health-data',
+          path: '/record-health-data',
           name: 'recordHealthData',
           component: () => import('@/views/wellness/RecordHealthData.vue')
         },
         {
-          path: 'add-pet',
+          path: '/add-pet',
           name: 'addPet',
           component: () => import('@/views/pet/AddPet.vue')
         },
         {
-          path: 'pet-detail/:id',
+          path: '/pet-detail/:id',
           name: 'petDetail',
           component: () => import('@/views/pet/PetDetail.vue')
         },
         {
-          path: 'edit-profile',
+          path: '/edit-profile',
           name: 'editProfile',
           component: () => import('@/views/profile/EditProfile.vue')
         },
         {
-          path: 'account-security',
+          path: '/account-security',
           name: 'accountSecurity',
           component: () => import('@/views/profile/AccountSecurity.vue')
         },
         {
-          path: 'general-settings',
+          path: '/general-settings',
           name: 'generalSettings',
           component: () => import('@/views/profile/GeneralSettings.vue')
         },
         {
-          path: 'help-feedback',
+          path: '/help-feedback',
           name: 'helpFeedback',
           component: () => import('@/views/profile/HelpFeedback.vue')
         },
         {
-          path: 'user/:id',
+          path: '/user/:id',
           name: 'userProfile',
           component: () => import('@/views/community/UserProfile.vue')
         }
