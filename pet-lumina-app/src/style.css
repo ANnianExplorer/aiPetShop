@@ -1,0 +1,42 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom utilities */
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
+@layer components {
+  .glass-panel {
+    background: rgba(255, 255, 255, 0.45);
+    backdrop-filter: blur(40px);
+    -webkit-backdrop-filter: blur(40px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+  }
+  .bg-pattern {
+    background-color: #f7faf5;
+    background-image: radial-gradient(#4b6455 0.5px, transparent 0.5px);
+    background-size: 24px 24px;
+    opacity: 0.15;
+  }
+}
+
+html, body {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+
+html::-webkit-scrollbar,
+body::-webkit-scrollbar {
+  display: none;
+}
