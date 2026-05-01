@@ -1,5 +1,4 @@
 node_modules/
-dist/
 ai-pet-app/
 .DS_Store
 *.local
