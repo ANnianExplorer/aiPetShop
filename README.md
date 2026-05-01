@@ -25,11 +25,11 @@
 
 | 登录页 | 首页 | 生活记录 |
 |:---:|:---:|:---:|
-| <img src="../image/登录页.png" width="240" /> | <img src="../image/首页.png" width="240" /> | <img src="../image/生活记录页面.png" width="240" /> |
+| <img src="./image/登录页.png" width="240" /> | <img src="./image/首页.png" width="240" /> | <img src="./image/生活记录页面.png" width="240" /> |
 
 | 宠物社区 | 饮食健康 | 个人中心 |
 |:---:|:---:|:---:|
-| <img src="../image/宠物社区页面.png" width="240" /> | <img src="../image/饮食健康页面.png" width="240" /> | <img src="../image/个人中心页面.png" width="240" /> |
+| <img src="./image/宠物社区页面.png" width="240" /> | <img src="./image/饮食健康页面.png" width="240" /> | <img src="./image/个人中心页面.png" width="240" /> |
 
 </div>
 
