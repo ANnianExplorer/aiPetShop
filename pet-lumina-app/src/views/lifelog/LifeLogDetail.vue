@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import ShareModal from '@/components/common/ShareModal.vue'
 import type { LogEntry } from '@/types'
 
 const route = useRoute()
@@ -44,6 +45,7 @@ const mockLogs: Record<string, LogEntry> = {
 const log = computed(() => mockLogs[logId.value] || null)
 
 const isLiked = ref(false)
+const showShareModal = ref(false)
 
 const toggleLike = () => {
   isLiked.value = !isLiked.value
@@ -51,6 +53,10 @@ const toggleLike = () => {
 
 const goBack = () => {
   router.back()
+}
+
+const openShare = () => {
+  showShareModal.value = true
 }
 
 const getTypeIcon = (type: string) => {
@@ -85,7 +91,7 @@ const getTypeColor = (type: string) => {
             <span class="material-symbols-outlined text-emerald-700">arrow_back</span>
           </button>
           <span class="font-title-sm text-on-surface">记录详情</span>
-          <button class="active:scale-95 transition-transform p-2 rounded-full hover:bg-zinc-100">
+          <button @click="openShare" class="active:scale-95 transition-transform p-2 rounded-full hover:bg-zinc-100">
             <span class="material-symbols-outlined text-emerald-700">more_vert</span>
           </button>
         </div>
@@ -116,7 +122,7 @@ const getTypeColor = (type: string) => {
             <span class="material-symbols-outlined">{{ isLiked ? 'favorite' : 'favorite_border' }}</span>
             <span class="font-label-bold">{{ isLiked ? 1 : 0 }}</span>
           </button>
-          <button class="flex items-center gap-2 px-4 py-2 rounded-full text-on-surface-variant hover:bg-surface-container transition-colors">
+          <button @click="openShare" class="flex items-center gap-2 px-4 py-2 rounded-full text-on-surface-variant hover:bg-surface-container transition-colors">
             <span class="material-symbols-outlined">share</span>
             <span class="font-label-bold">分享</span>
           </button>
@@ -129,5 +135,12 @@ const getTypeColor = (type: string) => {
       <p class="mt-4 font-title-md text-on-surface-variant">记录不存在</p>
       <button @click="goBack" class="mt-4 px-6 py-2 bg-primary text-on-primary rounded-full font-label-bold">返回</button>
     </div>
+
+    <Teleport to="body">
+      <ShareModal 
+        v-model:visible="showShareModal" 
+        :post="log ? { title: log.title, image: log.images[0] || '', author: '我的宠物记录' } : null" 
+      />
+    </Teleport>
   </div>
 </template>

@@ -172,11 +172,12 @@ const openComment = () => {
       <button @click="goBack" class="mt-4 px-6 py-2 bg-primary text-on-primary rounded-full font-label-bold">返回</button>
     </div>
 
-    <ShareModal 
-      :visible="showShareModal" 
-      :post="post ? { title: post.content.slice(0, 30) + '...', image: post.images[0] || '', author: post.author.name } : null" 
-      @close="showShareModal = false" 
-    />
+    <Teleport to="body">
+      <ShareModal 
+        v-model:visible="showShareModal" 
+        :post="post ? { title: post.content.slice(0, 30) + '...', image: post.images[0] || '', author: post.author.name } : null" 
+      />
+    </Teleport>
 
     <CommentModal 
       :visible="showCommentModal" 

@@ -108,9 +108,10 @@ const openShare = (post: Post) => {
     </article>
   </section>
 
-  <ShareModal 
-    :visible="showShareModal" 
-    :post="currentSharePost" 
-    @close="showShareModal = false" 
-  />
+  <Teleport to="body">
+    <ShareModal 
+      v-model:visible="showShareModal" 
+      :post="currentSharePost" 
+    />
+  </Teleport>
 </template>

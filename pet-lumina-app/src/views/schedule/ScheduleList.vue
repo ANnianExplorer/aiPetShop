@@ -99,7 +99,7 @@ const goBack = () => {
 }
 
 const addNewReminder = () => {
-  router.push('/add-reminder')
+  router.push({ name: 'addReminder' })
 }
 </script>
 

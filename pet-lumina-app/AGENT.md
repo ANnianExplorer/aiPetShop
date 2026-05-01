@@ -93,6 +93,27 @@ src/
 - [x] 提示组件 (`Toast.vue`)：实现全局提示消息展示
 - [x] Toast 组合式函数 (`useToast.ts`)：提供全局 Toast 调用方法
 
+### Phase 8: 功能修复与目录重组 (完成)
+- [x] 修复话题详情页相关帖子点击跳转 (`TopicDetail.vue`)：添加 `goToPostDetail` 方法
+- [x] 修复表情选择器空表情渲染问题 (`EmojiPicker.vue`)：使用 `.filter(e => e.trim() !== '')` 过滤空字符串
+- [x] 创建用户详情页 (`UserProfile.vue`)：支持查看用户信息、帖子列表、关注/取关功能
+- [x] 帖子详情页添加发帖人头像点击跳转 (`PostDetail.vue`)：点击头像跳转到用户主页
+- [x] 帖子详情页添加返回上一页功能 (`PostDetail.vue`)：使用 `router.back()`
+- [x] views 目录按功能页面分级重组：
+  - `auth/` - 认证相关页面 (Login, SignUp, ResetPassword)
+  - `community/` - 社区相关页面 (Community, PostDetail, TopicDetail, TopicsList, NewTopic, UserProfile)
+  - `home/` - 首页 (Home)
+  - `lifelog/` - 生活记录相关页面 (LifeLog, LifeLogDetail)
+  - `pet/` - 宠物相关页面 (AddPet, PetDetail)
+  - `profile/` - 个人中心相关页面 (Profile, EditProfile, AccountSecurity, GeneralSettings, HelpFeedback)
+  - `schedule/` - 日程提醒相关页面 (ScheduleList, AddReminder, Notifications)
+  - `wellness/` - 健康管理相关页面 (Wellness, WeeklyHealthDetail, RecordHealthData, AddPlan)
+- [x] 更新路由配置 (`router/index.ts`)：同步所有路由路径引用到新目录结构
+- [x] 修复路由跳转一致性 (`ScheduleList.vue`)：将路径跳转改为命名路由跳转
+- [x] 记录详情页添加分享弹窗 (`LifeLogDetail.vue`)：导入 ShareModal 组件，添加分享按钮点击事件
+- [x] 修复 ShareModal 关闭逻辑 (`ShareModal.vue`)：将 `emit('close')` 改为 `emit('update:visible', false)` 支持 `v-model:visible`
+- [x] 统一所有 ShareModal 使用方式 (`PostDetail.vue`, `PostFeed.vue`)：使用 `v-model:visible` 替代 `:visible` + `@close`，并添加 `Teleport`
+
 ### 架构与开发心得
 1. **数据下沉**：我们在 `views` 层统一获取 Store 状态或请求接口（目前用 Mock 数据），通过 Props 传递给 `components`，实现了完美的单向数据流。
 2. **样式解耦**：使用 Tailwind CSS 工具类时，充分复用了 `glass-card`, `no-scrollbar` 等在 `style.css` 中定义的工具，保证了代码优雅度。

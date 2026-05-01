@@ -6,7 +6,7 @@ const { showToast } = useToast()
 
 const props = defineProps<{
   visible: boolean
-  post: {
+  post?: {
     title: string
     image: string
     author: string
@@ -14,27 +14,31 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  close: []
+  'update:visible': [value: boolean]
 }>()
+
+const close = () => {
+  emit('update:visible', false)
+}
 
 const shareToWechat = () => {
   showToast('已分享到微信', 'success')
-  emit('close')
+  close()
 }
 
 const shareToQQ = () => {
   showToast('已分享到QQ', 'success')
-  emit('close')
+  close()
 }
 
 const shareToWeibo = () => {
   showToast('已分享到微博', 'success')
-  emit('close')
+  close()
 }
 
 const copyLink = () => {
   showToast('链接已复制', 'success')
-  emit('close')
+  close()
 }
 </script>
 
@@ -42,13 +46,13 @@ const copyLink = () => {
   <Teleport to="body">
     <Transition name="modal">
       <div v-if="visible" class="fixed inset-0 z-50 flex items-end justify-center">
-        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="emit('close')"></div>
+        <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="close()"></div>
         
         <div class="relative w-full max-w-lg bg-surface-container-low rounded-t-3xl overflow-hidden animate-slide-up">
           <div class="p-6 pb-4">
             <div class="flex justify-between items-center mb-4">
               <h3 class="font-title-sm text-title-sm text-on-surface">分享到</h3>
-              <button @click="emit('close')" class="p-2 rounded-full hover:bg-surface-container-high transition-colors">
+              <button @click="close()" class="p-2 rounded-full hover:bg-surface-container-high transition-colors">
                 <span class="material-symbols-outlined text-on-surface-variant">close</span>
               </button>
             </div>
