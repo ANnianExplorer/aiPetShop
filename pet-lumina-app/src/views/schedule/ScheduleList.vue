@@ -11,6 +11,7 @@ const activeTab = ref('全部')
 const reminders = ref<Reminder[]>([
   {
     id: 'r1',
+    petId: 'p1',
     title: '年度疫苗接种',
     time: '下午 2:30',
     location: '宠物医院',
@@ -19,6 +20,7 @@ const reminders = ref<Reminder[]>([
   },
   {
     id: 'r2',
+    petId: 'p1',
     title: '定期体内驱虫',
     time: '今天之内完成',
     location: '在家',
@@ -27,6 +29,7 @@ const reminders = ref<Reminder[]>([
   },
   {
     id: 'r3',
+    petId: 'p1',
     title: '户外散步训练',
     time: '早上 8:00',
     location: '小区公园',
@@ -35,6 +38,7 @@ const reminders = ref<Reminder[]>([
   },
   {
     id: 'r4',
+    petId: 'p2',
     title: '洗澡美容',
     time: '明天 下午 3:00',
     location: '宠物美容店',
@@ -43,6 +47,7 @@ const reminders = ref<Reminder[]>([
   },
   {
     id: 'r5',
+    petId: 'p1',
     title: '体检预约',
     time: '下周一 上午 10:00',
     location: '宠物医院',
@@ -51,6 +56,7 @@ const reminders = ref<Reminder[]>([
   },
   {
     id: 'r6',
+    petId: 'p2',
     title: '更换猫砂',
     time: '每三天',
     location: '在家',

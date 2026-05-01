@@ -2,10 +2,12 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
+import { useUserStore } from '@/stores/user'
 import type { Reminder } from '@/types'
 
 const router = useRouter()
 const { showToast } = useToast()
+const userStore = useUserStore()
 
 const form = ref({
   title: '',
@@ -42,6 +44,7 @@ const submitForm = () => {
   
   const newReminder: Reminder = {
     id: `r${Date.now()}`,
+    petId: userStore.currentPet?.id || 'p1',
     title: form.value.title,
     time: form.value.time || form.value.date || '待定',
     location: form.value.location || '待定',

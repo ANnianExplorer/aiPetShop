@@ -28,6 +28,7 @@ const goToNotifications = () => {
 const reminders = ref<Reminder[]>([
   {
     id: 'r1',
+    petId: 'p1',
     title: '年度疫苗接种',
     time: '下午 2:30',
     location: '宠物医院',
@@ -36,6 +37,7 @@ const reminders = ref<Reminder[]>([
   },
   {
     id: 'r2',
+    petId: 'p1',
     title: '定期体内驱虫',
     time: '今天之内完成',
     location: '在家',
