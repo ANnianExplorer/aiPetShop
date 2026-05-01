@@ -48,3 +48,13 @@ cd pet-lumina-app && npm run preview
 - 构建输出目录：`pet-lumina-app/dist`（已在仓库中）
 - CI workflow: `.github/workflows/deploy.yml`
 - 访问地址：`https://ANnianExplorer.github.io/aiPetShop/`
+
+## HBuilder 打包 APK
+修改 `vite.config.ts` 将构建输出改为 HBuilder 可用目录：
+```ts
+build: {
+  outDir: '../ai-pet-app',
+  emptyOutDir: false
+}
+```
+打包后用 HBuilder 打开 `ai-pet-app/` 目录选择"5+App"类型即可云打包生成 APK。
