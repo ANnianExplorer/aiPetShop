@@ -6,7 +6,7 @@ const router = useRouter()
 const showPassword = ref(false)
 
 const handleLogin = () => {
-  router.push('/')
+  router.push('/app')
 }
 
 const goToSignUp = () => {

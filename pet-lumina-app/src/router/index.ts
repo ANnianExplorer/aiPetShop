@@ -1,8 +1,8 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHashHistory } from 'vue-router'
 import MainLayout from '@/layout/MainLayout.vue'
 
 const router = createRouter({
-  history: createWebHistory(import.meta.env.BASE_URL),
+  history: createWebHashHistory(),
   scrollBehavior(_to, _from, savedPosition) {
     if (savedPosition) {
       return savedPosition
@@ -28,6 +28,10 @@ const router = createRouter({
     },
     {
       path: '/',
+      redirect: '/login'
+    },
+    {
+      path: '/app',
       component: MainLayout,
       children: [
         {

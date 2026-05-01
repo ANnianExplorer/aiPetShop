@@ -26,7 +26,7 @@ watch(
     <!-- 全局底部导航 -->
     <nav class="fixed bottom-0 left-0 right-0 w-full z-50 pb-safe bg-white/80 dark:bg-zinc-900/80 backdrop-blur-2xl border-t border-zinc-100/30 dark:border-zinc-800/30 shadow-[0_-4px_20px_rgba(0,0,0,0.03)]">
       <div class="flex justify-around items-center h-20 px-2 max-w-screen-xl mx-auto">
-        <div @click="router.push('/')" :class="['flex flex-col items-center justify-center cursor-pointer transition-all duration-150 ease-out', active === 'home' ? 'text-emerald-700 scale-110' : 'text-zinc-400 opacity-80 hover:text-emerald-500 active:scale-90']">
+        <div @click="router.push('/app')" :class="['flex flex-col items-center justify-center cursor-pointer transition-all duration-150 ease-out', active === 'home' ? 'text-emerald-700 scale-110' : 'text-zinc-400 opacity-80 hover:text-emerald-500 active:scale-90']">
           <span class="material-symbols-outlined mb-1" :style="active === 'home' ? 'font-variation-settings: \'FILL\' 1;' : ''">home</span>
           <span class="font-['Plus_Jakarta_Sans'] text-[10px] font-semibold tracking-wide">首页</span>
         </div>

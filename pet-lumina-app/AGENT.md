@@ -114,6 +114,25 @@ src/
 - [x] 修复 ShareModal 关闭逻辑 (`ShareModal.vue`)：将 `emit('close')` 改为 `emit('update:visible', false)` 支持 `v-model:visible`
 - [x] 统一所有 ShareModal 使用方式 (`PostDetail.vue`, `PostFeed.vue`)：使用 `v-model:visible` 替代 `:visible` + `@close`，并添加 `Teleport`
 
+### Phase 9: HBuilder APK 打包适配 (完成)
+- [x] 配置 Vite 构建输出到 HBuilder 项目目录 (`vite.config.ts` / `vite.config.js`)：
+  - `base: './'` - 资源路径改为相对路径，适配本地文件加载
+  - `outDir: '../ai-pet-app'` - 构建产物直接输出到 `ai-pet-app` 目录
+  - `emptyOutDir: false` - 保留 `manifest.json` 等配置文件不被清空
+- [x] 路由模式改为 Hash 模式 (`router/index.ts`)：将 `createWebHistory` 改为 `createWebHashHistory`，解决 5+App `file://` 协议下白屏问题
+- [x] 调整路由结构：
+  - `/` 重定向到 `/login`（默认打开登录页）
+  - 主应用路由改为 `/app` 前缀（避免与根路由冲突）
+- [x] 更新所有路由跳转引用：
+  - `Login.vue` - 登录后跳转到 `/app`
+  - `MainLayout.vue` - 底部导航首页按钮跳转到 `/app`
+  - `QuickActions.vue` - "更多"按钮路径改为 `/app`
+- [x] 创建 `manifest.json` 配置文件 (`ai-pet-app/manifest.json`)：
+  - 应用标识：`com.petlumina.app`
+  - 应用名称：宠物 Lumina
+  - 配置必要权限（摄像头、位置、存储等）
+  - 配置 Android 打包参数
+
 ### 架构与开发心得
 1. **数据下沉**：我们在 `views` 层统一获取 Store 状态或请求接口（目前用 Mock 数据），通过 Props 传递给 `components`，实现了完美的单向数据流。
 2. **样式解耦**：使用 Tailwind CSS 工具类时，充分复用了 `glass-card`, `no-scrollbar` 等在 `style.css` 中定义的工具，保证了代码优雅度。
