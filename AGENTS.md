@@ -43,3 +43,8 @@ cd pet-lumina-app && npm run preview
 ## Notes
 - Backend directory is currently empty (placeholder for future API)
 - All data is mocked in the Pinia store - no actual API calls implemented yet
+
+## GitHub Pages
+- 构建输出目录：`pet-lumina-app/dist`（已在仓库中）
+- CI workflow: `.github/workflows/deploy.yml`
+- 访问地址：`https://ANnianExplorer.github.io/aiPetShop/`
