@@ -1,12 +1,55 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { showToast } from 'vant'
+import { useUserStore } from '@/stores/user'
+import { authApi } from '@/api/auth'
 
 const router = useRouter()
+const userStore = useUserStore()
 const showPassword = ref(false)
+const phone = ref('')
+const code = ref('')
+const password = ref('')
+const loading = ref(false)
+const codeLoading = ref(false)
+const countdown = ref(0)
 
-const handleSignUp = () => {
-  router.push({ name: 'login' })
+const handleSignUp = async () => {
+  if (!phone.value || !code.value || !password.value) {
+    showToast('请填写完整信息')
+    return
+  }
+  loading.value = true
+  try {
+    await userStore.register(phone.value, code.value, password.value)
+    router.push('/home')
+  } catch (e) {
+    // error handled by interceptor
+  } finally {
+    loading.value = false
+  }
+}
+
+const sendCode = async () => {
+  if (!phone.value) {
+    showToast('请先输入手机号')
+    return
+  }
+  codeLoading.value = true
+  try {
+    await authApi.sendCode(phone.value)
+    showToast('验证码已发送')
+    countdown.value = 60
+    const timer = setInterval(() => {
+      countdown.value--
+      if (countdown.value <= 0) clearInterval(timer)
+    }, 1000)
+  } catch (e) {
+    // error handled by interceptor
+  } finally {
+    codeLoading.value = false
+  }
 }
 
 const goToLogin = () => {
@@ -50,10 +93,11 @@ const goToLogin = () => {
             <div class="absolute inset-y-0 left-md flex items-center pointer-events-none text-primary">
               <span class="material-symbols-outlined">person</span>
             </div>
-            <input 
-              type="text" 
-              class="w-full h-12 pl-12 pr-md bg-white/40 border-none rounded-xl font-body-md text-body-md placeholder-outline focus:ring-2 focus:ring-primary/20 transition-all" 
-              placeholder="手机号或邮箱" 
+            <input
+              v-model="phone"
+              type="text"
+              class="w-full h-12 pl-12 pr-md bg-white/40 border-none rounded-xl font-body-md text-body-md placeholder-outline focus:ring-2 focus:ring-primary/20 transition-all"
+              placeholder="手机号"
             />
           </div>
 
@@ -63,17 +107,20 @@ const goToLogin = () => {
               <div class="absolute inset-y-0 left-md flex items-center pointer-events-none text-primary">
                 <span class="material-symbols-outlined">verified_user</span>
               </div>
-              <input 
-                type="text" 
-                class="w-full h-12 pl-12 pr-md bg-white/40 border-none rounded-xl font-body-md text-body-md placeholder-outline focus:ring-2 focus:ring-primary/20 transition-all" 
-                placeholder="验证码" 
+              <input
+                v-model="code"
+                type="text"
+                class="w-full h-12 pl-12 pr-md bg-white/40 border-none rounded-xl font-body-md text-body-md placeholder-outline focus:ring-2 focus:ring-primary/20 transition-all"
+                placeholder="验证码"
               />
             </div>
-            <button 
-              type="button" 
-              class="px-md h-12 bg-primary-container/30 text-on-primary-container font-label-bold text-label-bold rounded-xl whitespace-nowrap active:scale-95 transition-transform"
+            <button
+              type="button"
+              :disabled="codeLoading || countdown > 0"
+              class="px-md h-12 bg-primary-container/30 text-on-primary-container font-label-bold text-label-bold rounded-xl whitespace-nowrap active:scale-95 transition-transform disabled:opacity-60"
+              @click="sendCode"
             >
-              获取验证码
+              {{ countdown > 0 ? `${countdown}s` : '获取验证码' }}
             </button>
           </div>
 
@@ -82,10 +129,11 @@ const goToLogin = () => {
             <div class="absolute inset-y-0 left-md flex items-center pointer-events-none text-primary">
               <span class="material-symbols-outlined">lock</span>
             </div>
-            <input 
-              :type="showPassword ? 'text' : 'password'" 
-              class="w-full h-12 pl-12 pr-12 bg-white/40 border-none rounded-xl font-body-md text-body-md placeholder-outline focus:ring-2 focus:ring-primary/20 transition-all" 
-              placeholder="设置密码" 
+            <input
+              v-model="password"
+              :type="showPassword ? 'text' : 'password'"
+              class="w-full h-12 pl-12 pr-12 bg-white/40 border-none rounded-xl font-body-md text-body-md placeholder-outline focus:ring-2 focus:ring-primary/20 transition-all"
+              placeholder="设置密码"
             />
             <button 
               type="button" 
@@ -97,11 +145,12 @@ const goToLogin = () => {
           </div>
 
           <!-- Register Button -->
-          <button 
-            type="submit" 
-            class="w-full h-12 bg-primary text-on-primary font-title-sm text-title-sm rounded-full shadow-lg shadow-primary/20 active:scale-95 transition-all duration-200"
+          <button
+            type="submit"
+            :disabled="loading"
+            class="w-full h-12 bg-primary text-on-primary font-title-sm text-title-sm rounded-full shadow-lg shadow-primary/20 active:scale-95 transition-all duration-200 disabled:opacity-60"
           >
-            立即注册
+            {{ loading ? '注册中...' : '立即注册' }}
           </button>
         </form>
 

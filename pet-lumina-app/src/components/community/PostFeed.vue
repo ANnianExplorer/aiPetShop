@@ -15,19 +15,20 @@ const props = defineProps<{
 const showShareModal = ref(false)
 const currentSharePost = ref<{ title: string; image: string; author: string } | null>(null)
 
-const navigateToPost = (postId: string) => {
+const navigateToPost = (postId: number) => {
   router.push({ name: 'postDetail', params: { id: postId } })
 }
 
 const toggleLike = (post: Post) => {
-  post.isLiked = !post.isLiked
-  post.likes += post.isLiked ? 1 : -1
-  showToast(post.isLiked ? '已点赞' : '已取消点赞', 'success')
+  const wasLiked = post.isLiked === 1
+  post.isLiked = wasLiked ? 0 : 1
+  post.likes += wasLiked ? -1 : 1
+  showToast(wasLiked ? '已取消点赞' : '已点赞', 'success')
 }
 
 const toggleBookmark = (post: Post) => {
-  post.isBookmarked = !post.isBookmarked
-  showToast(post.isBookmarked ? '已收藏' : '已取消收藏', 'success')
+  post.isFavorited = post.isFavorited ? 0 : 1
+  showToast(post.isFavorited === 1 ? '已收藏' : '已取消收藏', 'success')
 }
 
 const openComment = (post: Post) => {
@@ -37,8 +38,8 @@ const openComment = (post: Post) => {
 const openShare = (post: Post) => {
   currentSharePost.value = {
     title: post.content.slice(0, 30) + (post.content.length > 30 ? '...' : ''),
-    image: post.images[0] || '',
-    author: post.author.name
+    image: post.imageList[0] || '',
+    author: post.user?.nickname || ''
   }
   showShareModal.value = true
 }
@@ -54,10 +55,10 @@ const openShare = (post: Post) => {
       <div @click="navigateToPost(post.id)" class="block">
         <div class="p-md flex items-center justify-between">
           <div class="flex items-center gap-sm">
-            <img class="w-8 h-8 rounded-full border border-surface-variant object-cover" :src="post.author.avatar" />
+            <img class="w-8 h-8 rounded-full border border-surface-variant object-cover" :src="post.user?.avatar" />
             <div>
-              <p class="font-label-bold text-label-bold text-on-surface">{{ post.author.name }}</p>
-              <p class="text-[10px] text-outline">{{ post.createdAt }} · 坐标 {{ post.author.location || '未知' }}</p>
+              <p class="font-label-bold text-label-bold text-on-surface">{{ post.user?.nickname }}</p>
+              <p class="text-[10px] text-outline">{{ post.createTime }} · 坐标 {{ post.user?.location || '未知' }}</p>
             </div>
           </div>
           <button @click.stop class="text-outline hover:text-primary transition-colors">
@@ -65,8 +66,8 @@ const openShare = (post: Post) => {
           </button>
         </div>
 
-        <div class="aspect-[4/5] w-full overflow-hidden" v-if="post.images.length > 0">
-          <img class="w-full h-full object-cover" :src="post.images[0]" />
+        <div class="aspect-[4/5] w-full overflow-hidden" v-if="post.imageList.length > 0">
+          <img class="w-full h-full object-cover" :src="post.imageList[0]" />
         </div>
 
         <div class="p-md space-y-sm">
@@ -75,7 +76,7 @@ const openShare = (post: Post) => {
           </p>
           <div class="flex gap-sm">
             <span 
-              v-for="tag in post.tags" 
+              v-for="tag in post.tagList" 
               :key="tag"
               class="text-secondary font-label-bold text-[11px]"
             >
@@ -87,8 +88,8 @@ const openShare = (post: Post) => {
 
       <div class="flex items-center justify-between px-md pb-md pt-2 border-t border-surface-variant/30">
         <div class="flex items-center gap-md">
-          <button @click.stop="toggleLike(post)" class="flex items-center gap-xs transition-colors active:scale-90" :class="post.isLiked ? 'text-rose-500' : 'text-outline hover:text-rose-500'">
-            <span class="material-symbols-outlined text-[20px]" :class="post.isLiked ? 'fill-current' : ''">favorite</span>
+          <button @click.stop="toggleLike(post)" class="flex items-center gap-xs transition-colors active:scale-90" :class="post.isLiked === 1 ? 'text-rose-500' : 'text-outline hover:text-rose-500'">
+            <span class="material-symbols-outlined text-[20px]" :class="post.isLiked === 1 ? 'fill-current' : ''">favorite</span>
             <span class="text-caption-sm font-label-bold">{{ post.likes }}</span>
           </button>
           <button @click.stop="openComment(post)" class="flex items-center gap-xs text-outline hover:text-emerald-600 transition-colors active:scale-90">
@@ -97,8 +98,8 @@ const openShare = (post: Post) => {
           </button>
         </div>
         <div class="flex items-center gap-3">
-          <button @click.stop="toggleBookmark(post)" class="transition-colors active:scale-90" :class="post.isBookmarked ? 'text-amber-500' : 'text-outline hover:text-amber-500'">
-            <span class="material-symbols-outlined text-[20px]" :class="post.isBookmarked ? 'fill-current' : ''">bookmark</span>
+          <button @click.stop="toggleBookmark(post)" class="transition-colors active:scale-90" :class="post.isFavorited === 1 ? 'text-amber-500' : 'text-outline hover:text-amber-500'">
+            <span class="material-symbols-outlined text-[20px]" :class="post.isFavorited === 1 ? 'fill-current' : ''">bookmark</span>
           </button>
           <button @click.stop="openShare(post)" class="text-outline hover:text-primary transition-colors active:scale-90">
             <span class="material-symbols-outlined text-[20px]">share</span>

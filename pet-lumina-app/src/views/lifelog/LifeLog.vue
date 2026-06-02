@@ -1,8 +1,9 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useUserStore } from '@/stores/user'
+import { logApi } from '@/api/log'
 import LogCard from '@/components/lifelog/LogCard.vue'
 import type { LogEntry } from '@/types'
 
@@ -22,15 +23,15 @@ const filteredLogs = computed(() => {
   let result = logs.value
   
   if (activeCategory.value !== '全部') {
-    result = result.filter(l => l.tags.some(t => t.includes(activeCategory.value)))
+    result = result.filter(l => l.tagList.some(t => t.includes(activeCategory.value)))
   }
-  
+
   if (searchQuery.value.trim()) {
     const query = searchQuery.value.trim().toLowerCase()
-    result = result.filter(l => 
-      l.title.toLowerCase().includes(query) || 
-      l.description.toLowerCase().includes(query) ||
-      l.tags.some(t => t.toLowerCase().includes(query))
+    result = result.filter(l =>
+      l.title.toLowerCase().includes(query) ||
+      l.content.toLowerCase().includes(query) ||
+      l.tagList.some(t => t.toLowerCase().includes(query))
     )
   }
   
@@ -41,48 +42,14 @@ const goToNewTopic = () => {
   router.push({ name: 'newTopic' })
 }
 
-const logs = ref<LogEntry[]>([
-  {
-    id: 'l1',
-    petId: 'pet1',
-    type: 'feeding',
-    title: '午后阳光下的惬意时光',
-    description: '今天天气特别好，小宝贝在阳台上晒了一整个下午的太阳。看着它慵懒的样子，感觉所有的疲惫都被治愈了。',
-    images: ['https://images.unsplash.com/photo-1574158622682-e40e69881006?w=400&h=300&fit=crop'],
-    tags: ['猫咪', '日常'],
-    createdAt: '2小时前'
-  },
-  {
-    id: 'l2',
-    petId: 'pet1',
-    type: 'walking',
-    title: '今天在草地上跑疯了！',
-    description: '周末带小伍去了附近的公园，它跑得特别开心，还和其他狗狗玩了一会儿。运动量完全达标！',
-    images: ['https://images.unsplash.com/photo-1552053831-71594a27632d?w=400&h=300&fit=crop'],
-    tags: ['狗狗', '户外'],
-    createdAt: '昨天 16:20'
-  },
-  {
-    id: 'l3',
-    petId: 'pet1',
-    type: 'medical',
-    title: '年度体检报告：非常健康',
-    description: '今天带小宝贝去做了年度体检，结果显示一切正常。体重、牙齿、毛发状态都很好。继续保持！',
-    images: ['https://images.unsplash.com/photo-1628009368231-7bb7cfcb0def?w=400&h=300&fit=crop'],
-    tags: ['体检', '健康'],
-    createdAt: '3天前'
-  },
-  {
-    id: 'l4',
-    petId: 'pet1',
-    type: 'walking',
-    title: '今日份城市漫步',
-    description: '傍晚时分带着小宝贝在小区附近散步，秋天的风景真美。它特别喜欢闻路边的花草。',
-    images: ['https://images.unsplash.com/photo-1601758228041-f3b2795255f1?w=400&h=300&fit=crop'],
-    tags: ['散步', '户外'],
-    createdAt: '5天前'
-  }
-])
+const logs = ref<LogEntry[]>([])
+
+const fetchLogs = async () => {
+  const res = await logApi.listPage({ pageSize: 20 }) as any
+  logs.value = res?.records || []
+}
+
+onMounted(fetchLogs)
 </script>
 
 <template>

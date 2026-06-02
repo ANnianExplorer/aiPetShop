@@ -5,8 +5,8 @@ export default defineConfig({
     plugins: [vue()],
     base: './',
     build: {
-        outDir: '../ai-pet-app',
-        emptyOutDir: false
+        outDir: 'dist',
+        emptyOutDir: true
     },
     resolve: {
         alias: {

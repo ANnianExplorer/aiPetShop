@@ -12,7 +12,7 @@ const goToAddPet = () => {
   router.push({ name: 'addPet' })
 }
 
-const goToPetDetail = (petId: string) => {
+const goToPetDetail = (petId: number) => {
   router.push({ name: 'petDetail', params: { id: petId } })
 }
 </script>

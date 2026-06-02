@@ -1,48 +1,25 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import ShareModal from '@/components/common/ShareModal.vue'
 import type { LogEntry } from '@/types'
+import { logApi } from '@/api/log'
 
 const route = useRoute()
 const router = useRouter()
 
-const logId = computed(() => route.params.id as string)
+const logId = computed(() => Number(route.params.id))
 
-const mockLogs: Record<string, LogEntry> = {
-  l1: {
-    id: 'l1',
-    petId: 'pet1',
-    type: 'feeding',
-    title: '今日喂食记录',
-    description: '今天早上给小宝贝喂了200g幼犬粮，它吃得特别香。最近换了新的狗粮品牌，看起来适口性不错。中午又补充了一些湿粮，增加了水分摄入。',
-    images: ['https://lh3.googleusercontent.com/aida-public/AB6AXuDrw2xQOCoPKtUH1OHjgSnmNFxCJnMRutQeJB4FzpZBVWDruxoWbpx-NfVJ1MSUFrd3sSi1rqMIrGXI0UPTfuyeWpg5j4Zf0D1URIsRXrEvPwZoWmHOqL2-IXbaJIP8KPu7dGtRYbb8512i_dK7sK28zVE2MaxkulF6GWyAXS9iM7lvKq8X8YzFtjdkFodZLMArgxBqVTjyriECa4S4RpzE-9mjcN3uQY68gNuJTAiTxVYdCFQv3XxKLzKQmCtRMPyd70tx3kOEZNX5'],
-    createdAt: '2024-01-15 08:30',
-    tags: ['喂食', '日常']
-  },
-  l2: {
-    id: 'l2',
-    petId: 'pet1',
-    type: 'walking',
-    title: '下午散步',
-    description: '今天天气特别好，带着小伍去了公园散步。走了大概30分钟，它跑得特别开心，还和其他狗狗玩了一会儿。运动量达标！',
-    images: ['https://lh3.googleusercontent.com/aida-public/AB6AXuBs-mer2w5mG_5FfxDENusNGC1qE4M9pLnE1DMn-I8VFbdU68rNVdewLa5uCedWh2Kmk7Y9XiN6_mzO_Bn2ryN-ZaXrAvmzUZC5AjL6nU2FWQR0if3nkG8JDPd-brQeg5Rp6HfoRO4c-HuNTGXVk5WxAHVIkWnPG3Y7yLv8hSYY8tqi4yRlAZdyKA09Iwsh3rBxMQQFA1qznWKGZ5cv7vbNtKW6Uv5yck06C0enOAoCc_FtQUPMGp8zwbvlhhOCaMa5eOTVJ7gS0qU9'],
-    createdAt: '2024-01-15 15:00',
-    tags: ['散步', '运动']
-  },
-  l3: {
-    id: 'l3',
-    petId: 'pet1',
-    type: 'grooming',
-    title: '洗澡美容',
-    description: '今天给小宝贝洗了个澡，用了新的沐浴露，味道特别好闻。洗完之后毛发特别蓬松柔软，还修剪了指甲和耳朵周围的毛。',
-    images: ['https://lh3.googleusercontent.com/aida-public/AB6AXuAPI7qGNIc36vLuccVKeqdqWOF1dpR1EvY7fgbyC-6_8fwQc5zuQJfGx8SLl_cQ7VndnqYjrmOSRC2_AUjsbzQzHrvxP6c26hNheHVGLKaCpoNUJmvVBzFmEiV2kB8HQVPYvip2bA04u0f6VkobU_HxVBTuKJeyB2n54Y6ACaV0hbDTjgXzwsxYdil0nCaAJx1kLjtkF5IJkRTGb627QFGi86L4Ftt25Dbd5zz-Jb1ecDPEZoOx3oqpZ0c-xqJ4vUXeKuflvMRtuC4m'],
-    createdAt: '2024-01-14 10:00',
-    tags: ['美容', '清洁']
+const log = ref<LogEntry | null>(null)
+
+onMounted(async () => {
+  try {
+    log.value = await logApi.getById(logId.value) as any
+  } catch (e) {
+    console.error('Failed to fetch log:', e)
+    log.value = null
   }
-}
-
-const log = computed(() => mockLogs[logId.value] || null)
+})
 
 const isLiked = ref(false)
 const showShareModal = ref(false)
@@ -101,18 +78,18 @@ const getTypeColor = (type: string) => {
           </div>
           <div>
             <h2 class="font-headline-sm text-headline-sm text-on-surface">{{ log.title }}</h2>
-            <p class="text-xs text-on-surface-variant">{{ log.createdAt }}</p>
+            <p class="text-xs text-on-surface-variant">{{ log.createTime }}</p>
           </div>
         </div>
 
-        <div v-if="log.images.length > 0" class="rounded-xl overflow-hidden">
-          <img class="w-full h-auto object-cover" :src="log.images[0]" />
+        <div v-if="log.imageList && log.imageList.length > 0" class="rounded-xl overflow-hidden">
+          <img class="w-full h-auto object-cover" :src="log.imageList[0]" />
         </div>
 
-        <p class="font-body-md text-body-md text-on-surface leading-relaxed">{{ log.description }}</p>
+        <p class="font-body-md text-body-md text-on-surface leading-relaxed">{{ log.content }}</p>
 
         <div class="flex gap-sm flex-wrap">
-          <span v-for="tag in log.tags" :key="tag" class="px-3 py-1 bg-primary-container text-primary rounded-full text-xs font-label-bold">
+          <span v-for="tag in log.tagList" :key="tag" class="px-3 py-1 bg-primary-container text-primary rounded-full text-xs font-label-bold">
             #{{ tag }}
           </span>
         </div>
@@ -139,7 +116,7 @@ const getTypeColor = (type: string) => {
     <Teleport to="body">
       <ShareModal 
         v-model:visible="showShareModal" 
-        :post="log ? { title: log.title, image: log.images[0] || '', author: '我的宠物记录' } : null" 
+        :post="log ? { title: log.title, image: (log.imageList && log.imageList[0]) || '', author: '我的宠物记录' } : null" 
       />
     </Teleport>
   </div>

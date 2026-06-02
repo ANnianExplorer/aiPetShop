@@ -1,10 +1,16 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { storeToRefs } from 'pinia'
 import { useToast } from '@/composables/useToast'
+import { healthApi } from '@/api/health'
+import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
 const { showToast } = useToast()
+const userStore = useUserStore()
+const { currentPet } = storeToRefs(userStore)
+const submitting = ref(false)
 
 const healthData = ref({
   heartRate: '',
@@ -158,23 +164,41 @@ const generateSuggestions = () => {
   return suggestions
 }
 
-const handleSubmit = () => {
+const handleSubmit = async () => {
   const filledFields = Object.values(healthData.value).filter(v => v !== '').length
   if (filledFields === 0) {
     showToast('请至少填写一项健康数据', 'error')
     return
   }
-  
+
   const score = Math.round((metCount.value.met / metCount.value.total) * 100) || 0
-  
+
   analysisResult.value = {
     score,
     metCount: metCount.value.met,
     totalCount: metCount.value.total,
     suggestions: generateSuggestions()
   }
-  
-  showToast('健康数据分析完成', 'success')
+
+  try {
+    submitting.value = true
+    await healthApi.addRecord({
+      petId: currentPet.value!.id,
+      heartRate: healthData.value.heartRate ? Number(healthData.value.heartRate) : undefined,
+      sleepHours: healthData.value.sleepHours ? Number(healthData.value.sleepHours) : undefined,
+      steps: healthData.value.steps ? Number(healthData.value.steps) : undefined,
+      calories: healthData.value.calories ? Number(healthData.value.calories) : undefined,
+      exercise: healthData.value.exercise ? Number(healthData.value.exercise) : undefined,
+      weight: healthData.value.weight ? Number(healthData.value.weight) : undefined,
+      waterIntake: healthData.value.waterIntake ? Number(healthData.value.waterIntake) : undefined,
+      mood: healthData.value.mood || undefined
+    })
+    showToast('健康数据保存成功', 'success')
+  } catch (e) {
+    showToast('保存失败，请重试', 'error')
+  } finally {
+    submitting.value = false
+  }
 }
 
 const handleReset = () => {
@@ -295,11 +319,12 @@ const goBack = () => {
         </div>
       </section>
 
-      <button 
-        @click="handleSubmit" 
-        class="w-full py-3.5 bg-primary text-on-primary rounded-xl font-label-bold text-label-bold active:scale-95 transition-transform shadow-md mb-lg"
+      <button
+        @click="handleSubmit"
+        :disabled="submitting"
+        class="w-full py-3.5 bg-primary text-on-primary rounded-xl font-label-bold text-label-bold active:scale-95 transition-transform shadow-md mb-lg disabled:opacity-60"
       >
-        提交分析
+        {{ submitting ? '保存中...' : '提交分析' }}
       </button>
 
       <section v-if="analysisResult" class="glass-card p-6 rounded-2xl border border-white/50 bg-white/60">

@@ -1,12 +1,30 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { showToast } from 'vant'
+import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
+const userStore = useUserStore()
 const showPassword = ref(false)
+const phone = ref('')
+const password = ref('')
+const loading = ref(false)
 
-const handleLogin = () => {
-  router.push('/app')
+const handleLogin = async () => {
+  if (!phone.value || !password.value) {
+    showToast('请输入手机号和密码')
+    return
+  }
+  loading.value = true
+  try {
+    await userStore.login(phone.value, password.value)
+    router.push('/home')
+  } catch (e) {
+    // error toast handled by interceptor
+  } finally {
+    loading.value = false
+  }
 }
 
 const goToSignUp = () => {
@@ -54,10 +72,11 @@ const goToResetPassword = () => {
             <div class="absolute inset-y-0 left-md flex items-center pointer-events-none text-primary">
               <span class="material-symbols-outlined">person</span>
             </div>
-            <input 
-              type="text" 
-              class="w-full h-12 pl-12 pr-md bg-white/40 border-none rounded-xl font-body-md text-body-md placeholder-outline focus:ring-2 focus:ring-primary/20 transition-all" 
-              placeholder="手机号或邮箱" 
+            <input
+              v-model="phone"
+              type="text"
+              class="w-full h-12 pl-12 pr-md bg-white/40 border-none rounded-xl font-body-md text-body-md placeholder-outline focus:ring-2 focus:ring-primary/20 transition-all"
+              placeholder="手机号"
             />
           </div>
 
@@ -66,10 +85,11 @@ const goToResetPassword = () => {
             <div class="absolute inset-y-0 left-md flex items-center pointer-events-none text-primary">
               <span class="material-symbols-outlined">lock</span>
             </div>
-            <input 
-              :type="showPassword ? 'text' : 'password'" 
-              class="w-full h-12 pl-12 pr-12 bg-white/40 border-none rounded-xl font-body-md text-body-md placeholder-outline focus:ring-2 focus:ring-primary/20 transition-all" 
-              placeholder="输入密码" 
+            <input
+              v-model="password"
+              :type="showPassword ? 'text' : 'password'"
+              class="w-full h-12 pl-12 pr-12 bg-white/40 border-none rounded-xl font-body-md text-body-md placeholder-outline focus:ring-2 focus:ring-primary/20 transition-all"
+              placeholder="输入密码"
             />
             <button 
               type="button" 
@@ -92,11 +112,12 @@ const goToResetPassword = () => {
           </div>
 
           <!-- Login Button -->
-          <button 
-            type="submit" 
-            class="w-full h-12 bg-primary text-on-primary font-title-sm text-title-sm rounded-full shadow-lg shadow-primary/20 active:scale-95 transition-all duration-200"
+          <button
+            type="submit"
+            :disabled="loading"
+            class="w-full h-12 bg-primary text-on-primary font-title-sm text-title-sm rounded-full shadow-lg shadow-primary/20 active:scale-95 transition-all duration-200 disabled:opacity-60"
           >
-            立即登录
+            {{ loading ? '登录中...' : '立即登录' }}
           </button>
         </form>
 

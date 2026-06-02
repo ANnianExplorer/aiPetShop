@@ -3,11 +3,13 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { useUserStore } from '@/stores/user'
+import { reminderApi } from '@/api/reminder'
 import type { Reminder } from '@/types'
 
 const router = useRouter()
 const { showToast } = useToast()
 const userStore = useUserStore()
+const loading = ref(false)
 
 const form = ref({
   title: '',
@@ -36,26 +38,32 @@ const goBack = () => {
   router.back()
 }
 
-const submitForm = () => {
+const submitForm = async () => {
   if (!form.value.title) {
     showToast('请输入提醒标题', 'warning')
     return
   }
-  
-  const newReminder: Reminder = {
-    id: `r${Date.now()}`,
-    petId: userStore.currentPet?.id || 'p1',
-    title: form.value.title,
-    time: form.value.time || form.value.date || '待定',
-    location: form.value.location || '待定',
-    type: form.value.type,
-    isCompleted: false
+
+  loading.value = true
+  try {
+    await reminderApi.add({
+      petId: userStore.currentPet?.id,
+      title: form.value.title,
+      type: form.value.type,
+      remindTime: form.value.date && form.value.time ? `${form.value.date} ${form.value.time}` : undefined,
+      location: form.value.location || undefined,
+      repeatType: form.value.repeat as Reminder['repeatType'],
+      notes: form.value.notes || undefined
+    })
+    showToast('提醒创建成功！', 'success')
+    setTimeout(() => {
+      router.back()
+    }, 800)
+  } catch (error) {
+    showToast('创建提醒失败，请重试', 'error')
+  } finally {
+    loading.value = false
   }
-  
-  showToast('提醒创建成功！', 'success')
-  setTimeout(() => {
-    router.back()
-  }, 800)
 }
 </script>
 
@@ -67,8 +75,8 @@ const submitForm = () => {
           <span class="material-symbols-outlined text-emerald-700">arrow_back</span>
         </button>
         <span class="font-title-sm text-on-surface">新增提醒</span>
-        <button @click="submitForm" class="active:scale-95 transition-transform px-4 py-2 bg-primary text-white rounded-full font-label-bold text-label-bold">
-          保存
+        <button @click="submitForm" :disabled="loading" class="active:scale-95 transition-transform px-4 py-2 bg-primary text-white rounded-full font-label-bold text-label-bold disabled:opacity-50">
+          {{ loading ? '保存中...' : '保存' }}
         </button>
       </div>
       <section class="space-y-md">

@@ -1,17 +1,68 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { showToast } from 'vant'
+import { authApi } from '@/api/auth'
 
 const router = useRouter()
 const showNewPassword = ref(false)
 const showConfirmPassword = ref(false)
+const phone = ref('')
+const code = ref('')
+const newPassword = ref('')
+const confirmPassword = ref('')
+const loading = ref(false)
+const codeLoading = ref(false)
+const countdown = ref(0)
 
 const goBack = () => {
   router.back()
 }
 
-const handleReset = () => {
-  router.push({ name: 'login' })
+const sendCode = async () => {
+  if (!phone.value) {
+    showToast('请先输入手机号')
+    return
+  }
+  codeLoading.value = true
+  try {
+    await authApi.sendCode(phone.value)
+    showToast('验证码已发送')
+    countdown.value = 60
+    const timer = setInterval(() => {
+      countdown.value--
+      if (countdown.value <= 0) clearInterval(timer)
+    }, 1000)
+  } catch (e) {
+    // handled
+  } finally {
+    codeLoading.value = false
+  }
+}
+
+const handleReset = async () => {
+  if (!phone.value || !code.value || !newPassword.value) {
+    showToast('请填写完整信息')
+    return
+  }
+  if (newPassword.value !== confirmPassword.value) {
+    showToast('两次密码输入不一致')
+    return
+  }
+  if (newPassword.value.length < 6) {
+    showToast('密码长度不能少于6位')
+    return
+  }
+  loading.value = true
+  try {
+    await authApi.resetPassword({ phone: phone.value, code: code.value, password: newPassword.value })
+    showToast('密码重置成功')
+    router.push({ name: 'login' })
+  } catch (e) {
+    // handled
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 
@@ -49,11 +100,36 @@ const handleReset = () => {
             <label class="block font-label-bold text-on-surface-variant ml-xs">注册邮箱 / 手机号</label>
             <div class="relative flex items-center">
               <span class="material-symbols-outlined absolute left-4 text-outline">alternate_email</span>
-              <input 
-                type="text" 
-                class="w-full pl-12 pr-4 py-4 bg-white/40 border border-outline-variant/30 rounded-2xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all font-body-md placeholder:text-outline/50" 
-                placeholder="example@pawzen.com" 
+              <input
+                v-model="phone"
+                type="text"
+                class="w-full pl-12 pr-4 py-4 bg-white/40 border border-outline-variant/30 rounded-2xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all font-body-md placeholder:text-outline/50"
+                placeholder="请输入手机号"
               />
+            </div>
+          </div>
+
+          <!-- Verification Code -->
+          <div class="space-y-xs">
+            <label class="block font-label-bold text-on-surface-variant ml-xs">验证码</label>
+            <div class="flex gap-sm">
+              <div class="relative flex-1 flex items-center">
+                <span class="material-symbols-outlined absolute left-4 text-outline">verified_user</span>
+                <input
+                  v-model="code"
+                  type="text"
+                  class="w-full pl-12 pr-4 py-4 bg-white/40 border border-outline-variant/30 rounded-2xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all font-body-md placeholder:text-outline/50"
+                  placeholder="请输入验证码"
+                />
+              </div>
+              <button
+                type="button"
+                :disabled="codeLoading || countdown > 0"
+                class="px-md py-4 bg-primary-container/30 text-on-primary-container font-label-bold rounded-2xl whitespace-nowrap active:scale-95 transition-transform disabled:opacity-60"
+                @click="sendCode"
+              >
+                {{ countdown > 0 ? `${countdown}s` : '获取验证码' }}
+              </button>
             </div>
           </div>
 
@@ -62,10 +138,11 @@ const handleReset = () => {
             <label class="block font-label-bold text-on-surface-variant ml-xs">新密码</label>
             <div class="relative flex items-center">
               <span class="material-symbols-outlined absolute left-4 text-outline">key</span>
-              <input 
-                :type="showNewPassword ? 'text' : 'password'" 
-                class="w-full pl-12 pr-12 py-4 bg-white/40 border border-outline-variant/30 rounded-2xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all font-body-md placeholder:text-outline/50" 
-                placeholder="请输入 8 位以上字符" 
+              <input
+                v-model="newPassword"
+                :type="showNewPassword ? 'text' : 'password'"
+                class="w-full pl-12 pr-12 py-4 bg-white/40 border border-outline-variant/30 rounded-2xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all font-body-md placeholder:text-outline/50"
+                placeholder="请输入 6 位以上字符"
               />
               <button 
                 type="button" 
@@ -82,10 +159,11 @@ const handleReset = () => {
             <label class="block font-label-bold text-on-surface-variant ml-xs">确认新密码</label>
             <div class="relative flex items-center">
               <span class="material-symbols-outlined absolute left-4 text-outline">verified_user</span>
-              <input 
-                :type="showConfirmPassword ? 'text' : 'password'" 
-                class="w-full pl-12 pr-12 py-4 bg-white/40 border border-outline-variant/30 rounded-2xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all font-body-md placeholder:text-outline/50" 
-                placeholder="请再次输入新密码" 
+              <input
+                v-model="confirmPassword"
+                :type="showConfirmPassword ? 'text' : 'password'"
+                class="w-full pl-12 pr-12 py-4 bg-white/40 border border-outline-variant/30 rounded-2xl focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all font-body-md placeholder:text-outline/50"
+                placeholder="请再次输入新密码"
               />
               <button 
                 type="button" 
@@ -106,11 +184,12 @@ const handleReset = () => {
           </div>
 
           <!-- Primary Action Button -->
-          <button 
-            type="submit" 
-            class="w-full mt-lg py-4 bg-primary text-on-primary font-title-sm rounded-full shadow-lg shadow-primary/20 hover:opacity-90 active:scale-95 transition-all duration-200 flex items-center justify-center gap-2"
+          <button
+            type="submit"
+            :disabled="loading"
+            class="w-full mt-lg py-4 bg-primary text-on-primary font-title-sm rounded-full shadow-lg shadow-primary/20 hover:opacity-90 active:scale-95 transition-all duration-200 flex items-center justify-center gap-2 disabled:opacity-60"
           >
-            <span>重置密码</span>
+            <span>{{ loading ? '重置中...' : '重置密码' }}</span>
             <span class="material-symbols-outlined text-[20px]">arrow_forward</span>
           </button>
         </form>

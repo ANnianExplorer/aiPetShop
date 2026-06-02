@@ -2,14 +2,14 @@
 import { ref, computed } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useUserStore } from '@/stores/user'
-import type { Reminder } from '@/types'
+import type { HealthPlan } from '@/types'
 
 const props = defineProps<{
-  tasks: Reminder[]
+  tasks: HealthPlan[]
 }>()
 
 const emit = defineEmits<{
-  update: [tasks: Reminder[]]
+  update: [tasks: HealthPlan[]]
 }>()
 
 const userStore = useUserStore()
@@ -17,17 +17,17 @@ const { getPetById } = storeToRefs(userStore)
 
 const showStandards = ref(false)
 
-const toggleTask = (task: Reminder) => {
-  task.isCompleted = !task.isCompleted
+const toggleTask = (task: HealthPlan) => {
+  task.isActive = task.isActive === 1 ? 0 : 1
   emit('update', props.tasks)
 }
 
-const getPetName = (petId: string) => {
+const getPetName = (petId: number) => {
   const pet = getPetById.value(petId)
   return pet?.name || ''
 }
 
-const getPetAvatar = (petId: string) => {
+const getPetAvatar = (petId: number) => {
   const pet = getPetById.value(petId)
   return pet?.avatar || ''
 }
@@ -96,15 +96,15 @@ const getStandardLabel = (standard: string) => {
         v-for="task in tasks" 
         :key="task.id"
         class="flex items-center justify-between p-4 bg-white/50 border border-surface-variant rounded-xl group hover:border-primary/30 transition-all cursor-pointer active:scale-[0.98]"
-        :class="{ 'opacity-60': task.isCompleted }"
+        :class="{ 'opacity-60': task.isActive }"
       >
         <div class="flex items-center gap-4">
           <div class="w-12 h-12 flex items-center justify-center rounded-xl" :class="getIconConfig(task.type).bg">
-            <span class="material-symbols-outlined" :class="getIconConfig(task.type).text">{{ task.isCompleted ? 'check_circle' : getIconConfig(task.type).icon }}</span>
+            <span class="material-symbols-outlined" :class="getIconConfig(task.type).text">{{ task.isActive ? 'check_circle' : getIconConfig(task.type).icon }}</span>
           </div>
           <div>
             <div class="flex items-center gap-2">
-              <p class="font-title-sm text-[16px]" :class="{ 'line-through': task.isCompleted }">{{ task.title }}</p>
+              <p class="font-title-sm text-[16px]" :class="{ 'line-through': task.isActive }">{{ task.title }}</p>
               <div class="flex items-center gap-1 bg-surface-container rounded-full px-2 py-0.5">
                 <div class="w-4 h-4 rounded-full overflow-hidden">
                   <img class="w-full h-full object-cover" :src="getPetAvatar(task.petId)" />
@@ -112,7 +112,7 @@ const getStandardLabel = (standard: string) => {
                 <span class="text-xs text-tertiary">{{ getPetName(task.petId) }}</span>
               </div>
             </div>
-            <p class="text-tertiary font-caption-sm text-caption-sm">{{ task.time }} · {{ task.location }}</p>
+            <p class="text-tertiary font-caption-sm text-caption-sm">{{ task.time || '待定' }}{{ task.notes ? ' · ' + task.notes : '' }}</p>
             <div v-if="showStandards && task.standard" class="flex items-center gap-1 mt-1">
               <span class="material-symbols-outlined text-xs" :class="getStandardColor(task.standard).split(' ')[1]">
                 {{ getStandardIcon(task.standard) }}
@@ -126,11 +126,11 @@ const getStandardLabel = (standard: string) => {
         <button 
           @click.stop="toggleTask(task)"
           class="w-8 h-8 rounded-full border-2 transition-colors flex items-center justify-center"
-          :class="task.isCompleted ? 'bg-primary border-primary' : 'border-primary/20 group-hover:border-primary'"
+          :class="task.isActive ? 'bg-primary border-primary' : 'border-primary/20 group-hover:border-primary'"
         >
           <span 
             class="material-symbols-outlined transition-transform"
-            :class="task.isCompleted ? 'text-on-primary scale-100' : 'text-primary scale-0 group-hover:scale-100'"
+            :class="task.isActive ? 'text-on-primary scale-100' : 'text-primary scale-0 group-hover:scale-100'"
           >
             check
           </span>

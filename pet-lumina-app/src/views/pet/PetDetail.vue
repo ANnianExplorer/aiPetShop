@@ -11,15 +11,15 @@ const { showToast } = useToast()
 const userStore = useUserStore()
 const { pets, getPetById } = storeToRefs(userStore)
 
-const petId = route.params.id as string
-const pet = computed(() => getPetById.value(petId))
+const petId = computed(() => Number(route.params.id))
+const pet = computed(() => getPetById.value(petId.value))
 
 const isEditing = ref(false)
 const editForm = ref({
   name: '',
   breed: '',
   age: '',
-  weight: '',
+  notes: '',
   avatar: ''
 })
 
@@ -35,7 +35,7 @@ const startEdit = () => {
     name: pet.value.name,
     breed: pet.value.breed,
     age: pet.value.age,
-    weight: String(pet.value.todaySteps > 0 ? (pet.value.todaySteps / 1000).toFixed(1) : '0'),
+    notes: pet.value.notes || '',
     avatar: pet.value.avatar
   }
   isEditing.value = true
@@ -67,11 +67,11 @@ const saveEdit = () => {
     showToast('请填写完整信息', 'error')
     return
   }
-  userStore.updatePet(petId, {
+  userStore.updatePet(petId.value, {
     name: editForm.value.name,
     breed: editForm.value.breed,
     age: editForm.value.age,
-    avatar: editForm.value.avatar
+    notes: editForm.value.notes
   })
   showToast('保存成功', 'success')
   isEditing.value = false
@@ -159,7 +159,7 @@ const healthLevel = computed(() => {
               <p class="text-sm font-label-bold text-on-surface">今日已喂食 {{ pet.feedingCount }} 次</p>
               <p class="text-xs text-tertiary">计划 {{ pet.feedingTotal }} 次</p>
             </div>
-            <span class="text-sm font-label-bold text-primary">{{ Math.round(pet.feedingCount / pet.feedingTotal * 100) }}%</span>
+            <span class="text-sm font-label-bold text-primary">{{ pet.feedingTotal > 0 ? Math.round(pet.feedingCount / pet.feedingTotal * 100) : 0 }}%</span>
           </div>
         </div>
       </section>

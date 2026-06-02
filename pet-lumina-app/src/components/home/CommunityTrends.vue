@@ -12,7 +12,7 @@ const goToCommunity = () => {
   router.push({ name: 'community' })
 }
 
-const goToPost = (postId: string) => {
+const goToPost = (postId: number) => {
   router.push({ name: 'postDetail', params: { id: postId } })
 }
 </script>
@@ -31,14 +31,14 @@ const goToPost = (postId: string) => {
         class="group rounded-3xl overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow cursor-pointer active:scale-[0.98]"
       >
         <div class="h-48 overflow-hidden">
-          <img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" :src="post.images[0]" />
+          <img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" :src="post.imageList[0]" />
         </div>
         <div class="p-md">
           <div class="flex items-center gap-2 mb-2">
             <div class="w-6 h-6 rounded-full bg-surface-variant overflow-hidden">
-              <img class="w-full h-full object-cover" :src="post.author.avatar" />
+              <img class="w-full h-full object-cover" :src="post.user?.avatar" />
             </div>
-            <span class="font-label-bold text-caption-sm opacity-60">由 {{ post.author.name }} 分享</span>
+            <span class="font-label-bold text-caption-sm opacity-60">由 {{ post.user?.nickname }} 分享</span>
           </div>
           <h4 class="font-title-sm text-title-sm mb-1">{{ post.content.split('，')[0] }}</h4>
           <p class="font-body-md text-sm text-on-surface-variant line-clamp-2">{{ post.content }}</p>

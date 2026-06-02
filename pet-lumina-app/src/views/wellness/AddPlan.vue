@@ -1,10 +1,16 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
+import { storeToRefs } from 'pinia'
 import { useToast } from '@/composables/useToast'
+import { healthApi } from '@/api/health'
+import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
 const { showToast } = useToast()
+const userStore = useUserStore()
+const { currentPet } = storeToRefs(userStore)
+const submitting = ref(false)
 
 const planType = ref('')
 const planTitle = ref('')
@@ -49,15 +55,32 @@ const goBack = () => {
   router.back()
 }
 
-const handleSubmit = () => {
+const handleSubmit = async () => {
   if (!planType.value || !planTitle.value || !planTime.value) {
     showToast('请填写完整信息', 'error')
     return
   }
-  showToast('计划创建成功', 'success')
-  setTimeout(() => {
-    router.back()
-  }, 1000)
+  try {
+    submitting.value = true
+    await healthApi.addPlan({
+      petId: currentPet.value!.id,
+      type: planType.value,
+      title: planTitle.value,
+      time: planTime.value,
+      frequency: planFrequency.value,
+      standard: planStandard.value || undefined,
+      standardValue: planStandardValue.value ? Number(planStandardValue.value) : undefined,
+      notes: planDescription.value || undefined
+    })
+    showToast('计划创建成功', 'success')
+    setTimeout(() => {
+      router.back()
+    }, 1000)
+  } catch (e) {
+    showToast('创建失败，请重试', 'error')
+  } finally {
+    submitting.value = false
+  }
 }
 </script>
 
@@ -160,11 +183,12 @@ const handleSubmit = () => {
         </div>
       </section>
 
-      <button 
-        @click="handleSubmit" 
-        class="w-full py-3.5 bg-primary text-on-primary rounded-xl font-label-bold text-label-bold active:scale-95 transition-transform shadow-md"
+      <button
+        @click="handleSubmit"
+        :disabled="submitting"
+        class="w-full py-3.5 bg-primary text-on-primary rounded-xl font-label-bold text-label-bold active:scale-95 transition-transform shadow-md disabled:opacity-60"
       >
-        保存计划
+        {{ submitting ? '保存中...' : '保存计划' }}
       </button>
     </main>
   </div>

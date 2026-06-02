@@ -47,7 +47,7 @@ const handleFileChange = (event: Event) => {
       class="hidden" 
       @change="handleFileChange" 
     />
-    <h1 class="mt-4 font-display-lg text-display-lg text-on-surface">{{ user.name }}</h1>
+    <h1 class="mt-4 font-display-lg text-display-lg text-on-surface">{{ user.nickname }}</h1>
     <p class="mt-2 font-body-md text-caption-sm text-outline max-w-xs">热爱自然的摄影师，也是两只调皮猫咪的"全职管家"。致力于分享最有温度的养宠生活。</p>
     
     <!-- Stats Chips -->

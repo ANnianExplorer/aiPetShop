@@ -9,7 +9,7 @@ const props = defineProps<{
 }>()
 
 const toggleReminder = (reminder: Reminder) => {
-  reminder.isCompleted = !reminder.isCompleted
+  reminder.isCompleted = reminder.isCompleted ? 0 : 1
 }
 
 const viewAllSchedules = () => {
@@ -29,20 +29,20 @@ const viewAllSchedules = () => {
         :key="reminder.id"
         @click="toggleReminder(reminder)"
         class="glass-card bg-white/70 p-container-padding rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-white/40 flex items-center gap-4 cursor-pointer transition-all duration-200 active:scale-[0.98] hover:shadow-md"
-        :class="{ 'opacity-60': reminder.isCompleted }"
+        :class="{ 'opacity-60': reminder.isCompleted === 1 }"
       >
         <div 
           class="w-12 h-12 rounded-full flex items-center justify-center transition-all"
           :class="reminder.type === 'medical' ? 'bg-primary-fixed text-primary' : 'bg-secondary-fixed text-secondary'"
         >
-          <span class="material-symbols-outlined">{{ reminder.isCompleted ? 'check_circle' : (reminder.type === 'medical' ? 'medical_services' : 'water_drop') }}</span>
+          <span class="material-symbols-outlined">{{ reminder.isCompleted === 1 ? 'check_circle' : (reminder.type === 'medical' ? 'medical_services' : 'water_drop') }}</span>
         </div>
         <div class="flex-1">
-          <h3 class="font-title-sm text-title-sm" :class="{ 'line-through': reminder.isCompleted }">{{ reminder.title }}</h3>
-          <p class="font-caption-sm text-caption-sm text-on-surface-variant">{{ reminder.time }} · {{ reminder.location }}</p>
+          <h3 class="font-title-sm text-title-sm" :class="{ 'line-through': reminder.isCompleted === 1 }">{{ reminder.title }}</h3>
+          <p class="font-caption-sm text-caption-sm text-on-surface-variant">{{ reminder.remindTime }} · {{ reminder.location }}</p>
         </div>
-        <div class="w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all" :class="reminder.isCompleted ? 'bg-primary border-primary' : 'border-surface-variant'">
-          <span v-if="reminder.isCompleted" class="material-symbols-outlined text-white text-sm">check</span>
+        <div class="w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all" :class="reminder.isCompleted === 1 ? 'bg-primary border-primary' : 'border-surface-variant'">
+          <span v-if="reminder.isCompleted === 1" class="material-symbols-outlined text-white text-sm">check</span>
         </div>
       </div>
     </div>

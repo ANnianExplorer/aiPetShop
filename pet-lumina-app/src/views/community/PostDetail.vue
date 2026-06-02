@@ -1,110 +1,116 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
+import { postApi } from '@/api/post'
+import { commentApi } from '@/api/comment'
 import ShareModal from '@/components/common/ShareModal.vue'
 import CommentModal from '@/components/common/CommentModal.vue'
-import type { Post } from '@/types'
+import type { Post, Comment } from '@/types'
 
 const route = useRoute()
 const router = useRouter()
 const { showToast } = useToast()
 
-const postId = computed(() => route.params.id as string)
+const postId = computed(() => Number(route.params.id))
 
-const mockPosts: Record<string, Post> = {
-  p1: {
-    id: 'p1',
-    author: {
-      id: 'u3',
-      name: '林间猫影',
-      avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&h=100&fit=crop',
-      location: '北京'
-    },
-    content: '今天的阳光太好了，家里的主子已经在阳台晒了一整个下午。看着它慵懒的样子，感觉所有的疲惫都被治愈了。大家平时都给主子喂什么零食？我家猫特别喜欢吃冻干鸡肉，但是不知道吃多了好不好。最近也在考虑给它换一种猫粮，有没有推荐的品牌？',
-    images: [
-      'https://images.unsplash.com/photo-1574158622682-e40e69881006?w=600&h=400&fit=crop',
-      'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=600&h=400&fit=crop'
-    ],
-    tags: ['猫咪日常', '晒晒宠物'],
-    createdAt: '2小时前',
-    likes: 1200,
-    comments: 86,
-    category: '猫咪',
-    isLiked: false,
-    isBookmarked: false
-  },
-  p2: {
-    id: 'p2',
-    author: {
-      id: 'u4',
-      name: '德牧小伍',
-      avatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop',
-      location: '上海'
-    },
-    content: '周末的飞盘训练，小伍表现得越来越稳了。这种高强度运动后的拉伸非常重要！今天训练了将近两个小时，小伍的接盘成功率已经达到了80%以上。分享一下我们的训练心得：首先要从近距离开始，慢慢增加距离；其次要注意狗狗的体力，适时休息；最后，训练结束后的奖励必不可少！',
-    images: [
-      'https://images.unsplash.com/photo-1552053831-71594a27632d?w=600&h=400&fit=crop'
-    ],
-    tags: ['训犬心得', '狗狗运动'],
-    createdAt: '5小时前',
-    likes: 954,
-    comments: 42,
-    category: '狗狗',
-    isLiked: false,
-    isBookmarked: false
-  }
-}
+const post = ref<Post | null>(null)
+const comments = ref<Comment[]>([])
+const loading = ref(true)
 
-const post = computed(() => mockPosts[postId.value] || null)
-
-const isLiked = ref(false)
-const isBookmarked = ref(false)
 const showShareModal = ref(false)
 const showCommentModal = ref(false)
 const likeAnimating = ref(false)
 const bookmarkAnimating = ref(false)
 
-const comments = ref([
-  { id: 'c1', author: '爱猫人士', avatar: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop', content: '太可爱了！我家猫也特别喜欢晒太阳', createdAt: '1小时前', likes: 12 },
-  { id: 'c2', author: '宠物营养师', avatar: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop', content: '冻干鸡肉是很好的零食，但要注意控制量哦', createdAt: '30分钟前', likes: 8 }
-])
+const displayComments = computed(() =>
+  comments.value.map(c => ({
+    id: String(c.id),
+    author: c.user?.nickname ?? '匿名用户',
+    avatar: c.user?.avatar ?? '',
+    content: c.content,
+    createdAt: c.createTime,
+    likes: c.likes
+  }))
+)
 
-const toggleLike = () => {
+const fetchPost = async () => {
+  try {
+    const res = await postApi.getById(postId.value) as any
+    post.value = res
+  } catch (e) {
+    console.error('Failed to fetch post:', e)
+  }
+}
+
+const fetchComments = async () => {
+  try {
+    const res = await commentApi.listPage({ postId: postId.value, pageSize: 50 }) as any
+    comments.value = res?.records || []
+  } catch (e) {
+    console.error('Failed to fetch comments:', e)
+  }
+}
+
+onMounted(async () => {
+  loading.value = true
+  await Promise.all([fetchPost(), fetchComments()])
+  loading.value = false
+})
+
+const toggleLike = async () => {
+  if (!post.value) return
   likeAnimating.value = true
-  isLiked.value = !isLiked.value
-  showToast(isLiked.value ? '已点赞' : '已取消点赞', 'success')
-  setTimeout(() => {
-    likeAnimating.value = false
-  }, 300)
+  try {
+    await postApi.toggleLike(postId.value)
+    const wasLiked = post.value.isLiked === 1
+    post.value.isLiked = wasLiked ? 0 : 1
+    post.value.likes += wasLiked ? -1 : 1
+    showToast(wasLiked ? '已取消点赞' : '已点赞', 'success')
+  } catch (e) {
+    console.error('Failed to toggle like:', e)
+  } finally {
+    setTimeout(() => {
+      likeAnimating.value = false
+    }, 300)
+  }
 }
 
-const toggleBookmark = () => {
+const toggleFavorite = async () => {
+  if (!post.value) return
   bookmarkAnimating.value = true
-  isBookmarked.value = !isBookmarked.value
-  showToast(isBookmarked.value ? '已收藏' : '已取消收藏', 'success')
-  setTimeout(() => {
-    bookmarkAnimating.value = false
-  }, 300)
+  try {
+    await postApi.toggleFavorite(postId.value)
+    const wasFavorited = post.value.isFavorited === 1
+    post.value.isFavorited = wasFavorited ? 0 : 1
+    showToast(wasFavorited ? '已取消收藏' : '已收藏', 'success')
+  } catch (e) {
+    console.error('Failed to toggle favorite:', e)
+  } finally {
+    setTimeout(() => {
+      bookmarkAnimating.value = false
+    }, 300)
+  }
 }
 
-const handleCommentSubmit = (content: string) => {
-  comments.value.unshift({
-    id: `c${Date.now()}`,
-    author: '我',
-    avatar: 'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=100&h=100&fit=crop',
-    content,
-    createdAt: '刚刚',
-    likes: 0
-  })
+const handleCommentSubmit = async (content: string) => {
+  try {
+    await commentApi.add({ postId: postId.value, content })
+    await fetchComments()
+    showToast('评论成功', 'success')
+  } catch (e) {
+    console.error('Failed to add comment:', e)
+  }
 }
 
 const goBack = () => {
   router.back()
 }
 
-const goToUserProfile = (userId: string) => {
-  router.push({ name: 'userProfile', params: { id: userId } })
+const goToUserProfile = (userId?: number) => {
+  if (userId != null) {
+    router.push({ name: 'userProfile', params: { id: String(userId) } })
+  }
 }
 
 const openShare = () => {
@@ -131,36 +137,36 @@ const openComment = () => {
         </div>
 
         <div class="flex items-center gap-sm">
-          <img @click="goToUserProfile(post.author.id)" class="w-10 h-10 rounded-full border-2 border-primary object-cover cursor-pointer active:scale-95 transition-transform" :src="post.author.avatar" />
-          <div @click="goToUserProfile(post.author.id)" class="cursor-pointer">
-            <p class="font-label-bold text-label-bold text-on-surface">{{ post.author.name }}</p>
-            <p class="text-xs text-on-surface-variant">{{ post.createdAt }} · {{ post.author.location }}</p>
+          <img @click="goToUserProfile(post.user?.id)" class="w-10 h-10 rounded-full border-2 border-primary object-cover cursor-pointer active:scale-95 transition-transform" :src="post.user?.avatar" />
+          <div @click="goToUserProfile(post.user?.id)" class="cursor-pointer">
+            <p class="font-label-bold text-label-bold text-on-surface">{{ post.user?.nickname }}</p>
+            <p class="text-xs text-on-surface-variant">{{ post.createTime }}</p>
           </div>
         </div>
 
-        <div v-if="post.images.length > 0" class="rounded-xl overflow-hidden">
-          <img class="w-full h-auto object-cover" :src="post.images[0]" />
+        <div v-if="post.imageList && post.imageList.length > 0" class="rounded-xl overflow-hidden">
+          <img class="w-full h-auto object-cover" :src="post.imageList[0]" />
         </div>
 
         <p class="font-body-md text-body-md text-on-surface leading-relaxed">{{ post.content }}</p>
 
         <div class="flex gap-sm flex-wrap">
-          <span v-for="tag in post.tags" :key="tag" class="px-3 py-1 bg-primary-container text-primary rounded-full text-xs font-label-bold">
+          <span v-for="tag in post.tagList" :key="tag" class="px-3 py-1 bg-primary-container text-primary rounded-full text-xs font-label-bold">
             #{{ tag }}
           </span>
         </div>
 
         <div class="flex items-center justify-between py-md border-t border-b border-surface-variant/30">
-          <button @click="toggleLike" class="flex items-center gap-2 px-4 py-2 rounded-full transition-all active:scale-90" :class="[isLiked ? 'text-rose-500' : 'text-on-surface-variant hover:bg-surface-container', likeAnimating ? 'scale-125' : '']">
-            <span class="material-symbols-outlined transition-all" :class="[isLiked ? 'fill-current text-rose-500' : '', likeAnimating ? 'scale-125' : '']">{{ isLiked ? 'favorite' : 'favorite_border' }}</span>
-            <span class="font-label-bold">{{ post.likes + (isLiked ? 1 : 0) }}</span>
+          <button @click="toggleLike" class="flex items-center gap-2 px-4 py-2 rounded-full transition-all active:scale-90" :class="[(post.isLiked === 1) ? 'text-rose-500' : 'text-on-surface-variant hover:bg-surface-container', likeAnimating ? 'scale-125' : '']">
+            <span class="material-symbols-outlined transition-all" :class="[(post.isLiked === 1) ? 'fill-current text-rose-500' : '', likeAnimating ? 'scale-125' : '']">{{ (post.isLiked === 1) ? 'favorite' : 'favorite_border' }}</span>
+            <span class="font-label-bold">{{ post.likes }}</span>
           </button>
           <button @click="openComment" class="flex items-center gap-2 px-4 py-2 rounded-full text-on-surface-variant hover:bg-surface-container transition-colors active:scale-90">
             <span class="material-symbols-outlined">mode_comment</span>
             <span class="font-label-bold">{{ comments.length }}</span>
           </button>
-          <button @click="toggleBookmark" class="flex items-center gap-2 px-4 py-2 rounded-full transition-all active:scale-90" :class="[isBookmarked ? 'text-amber-500' : 'text-on-surface-variant hover:bg-surface-container', bookmarkAnimating ? 'scale-125' : '']">
-            <span class="material-symbols-outlined transition-all" :class="[isBookmarked ? 'fill-current text-amber-500' : '', bookmarkAnimating ? 'scale-125' : '']">{{ isBookmarked ? 'bookmark' : 'bookmark_border' }}</span>
+          <button @click="toggleFavorite" class="flex items-center gap-2 px-4 py-2 rounded-full transition-all active:scale-90" :class="[(post.isFavorited === 1) ? 'text-amber-500' : 'text-on-surface-variant hover:bg-surface-container', bookmarkAnimating ? 'scale-125' : '']">
+            <span class="material-symbols-outlined transition-all" :class="[(post.isFavorited === 1) ? 'fill-current text-amber-500' : '', bookmarkAnimating ? 'scale-125' : '']">{{ (post.isFavorited === 1) ? 'bookmark' : 'bookmark_border' }}</span>
           </button>
         </div>
       </div>
@@ -173,17 +179,17 @@ const openComment = () => {
     </div>
 
     <Teleport to="body">
-      <ShareModal 
-        v-model:visible="showShareModal" 
-        :post="post ? { title: post.content.slice(0, 30) + '...', image: post.images[0] || '', author: post.author.name } : null" 
+      <ShareModal
+        v-model:visible="showShareModal"
+        :post="post ? { title: post.content.slice(0, 30) + '...', image: post.imageList[0] || '', author: post.user?.nickname ?? '' } : null"
       />
     </Teleport>
 
-    <CommentModal 
-      :visible="showCommentModal" 
-      :comments="comments" 
-      @close="showCommentModal = false" 
-      @submit="handleCommentSubmit" 
+    <CommentModal
+      :visible="showCommentModal"
+      :comments="displayComments"
+      @close="showCommentModal = false"
+      @submit="handleCommentSubmit"
     />
   </div>
 </template>

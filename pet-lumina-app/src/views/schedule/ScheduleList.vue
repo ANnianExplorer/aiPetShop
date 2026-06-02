@@ -1,85 +1,49 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import type { Reminder } from '@/types'
+import { reminderApi } from '@/api/reminder'
 
 const router = useRouter()
 
 const filterTabs = ['全部', '今日', '本周', '已完成']
 const activeTab = ref('全部')
 
-const reminders = ref<Reminder[]>([
-  {
-    id: 'r1',
-    petId: 'p1',
-    title: '年度疫苗接种',
-    time: '下午 2:30',
-    location: '宠物医院',
-    type: 'medical',
-    isCompleted: false
-  },
-  {
-    id: 'r2',
-    petId: 'p1',
-    title: '定期体内驱虫',
-    time: '今天之内完成',
-    location: '在家',
-    type: 'daily',
-    isCompleted: false
-  },
-  {
-    id: 'r3',
-    petId: 'p1',
-    title: '户外散步训练',
-    time: '早上 8:00',
-    location: '小区公园',
-    type: 'activity',
-    isCompleted: true
-  },
-  {
-    id: 'r4',
-    petId: 'p2',
-    title: '洗澡美容',
-    time: '明天 下午 3:00',
-    location: '宠物美容店',
-    type: 'daily',
-    isCompleted: false
-  },
-  {
-    id: 'r5',
-    petId: 'p1',
-    title: '体检预约',
-    time: '下周一 上午 10:00',
-    location: '宠物医院',
-    type: 'medical',
-    isCompleted: false
-  },
-  {
-    id: 'r6',
-    petId: 'p2',
-    title: '更换猫砂',
-    time: '每三天',
-    location: '在家',
-    type: 'daily',
-    isCompleted: true
+const reminders = ref<Reminder[]>([])
+
+const fetchReminders = async () => {
+  try {
+    const res = await reminderApi.listPage({ pageSize: 50 }) as any
+    reminders.value = res?.records ?? []
+  } catch (e) {
+    console.error('Failed to fetch reminders:', e)
   }
-])
+}
+
+onMounted(() => {
+  fetchReminders()
+})
 
 const filteredReminders = computed(() => {
   switch (activeTab.value) {
     case '今日':
-      return reminders.value.filter(r => r.time.includes('今天') || r.time.includes('上午') || r.time.includes('下午') || r.time.includes('早上'))
+      return reminders.value.filter(r => r.remindTime.includes('今天') || r.remindTime.includes('上午') || r.remindTime.includes('下午') || r.remindTime.includes('早上'))
     case '本周':
-      return reminders.value.filter(r => !r.isCompleted)
+      return reminders.value.filter(r => r.isCompleted === 0)
     case '已完成':
-      return reminders.value.filter(r => r.isCompleted)
+      return reminders.value.filter(r => r.isCompleted === 1)
     default:
       return reminders.value
   }
 })
 
-const toggleReminder = (reminder: Reminder) => {
-  reminder.isCompleted = !reminder.isCompleted
+const toggleReminder = async (reminder: Reminder) => {
+  try {
+    await reminderApi.toggleComplete(reminder.id)
+    reminder.isCompleted = reminder.isCompleted === 1 ? 0 : 1
+  } catch (e) {
+    console.error('Failed to toggle reminder:', e)
+  }
 }
 
 const getTypeIcon = (type: string) => {
@@ -140,21 +104,21 @@ const addNewReminder = () => {
             :key="reminder.id"
             @click="toggleReminder(reminder)"
             class="glass-card bg-white/70 p-container-padding rounded-xl shadow-sm border border-white/40 flex items-center gap-4 cursor-pointer transition-all duration-200 active:scale-[0.98] hover:shadow-md"
-            :class="{ 'opacity-60': reminder.isCompleted }"
+            :class="{ 'opacity-60': reminder.isCompleted === 1 }"
           >
             <div 
               class="w-12 h-12 rounded-full flex items-center justify-center transition-all flex-shrink-0"
               :class="getTypeColor(reminder.type)"
             >
-              <span class="material-symbols-outlined">{{ reminder.isCompleted ? 'check_circle' : getTypeIcon(reminder.type) }}</span>
+              <span class="material-symbols-outlined">{{ reminder.isCompleted === 1 ? 'check_circle' : getTypeIcon(reminder.type) }}</span>
             </div>
             <div class="flex-1">
-              <h3 class="font-title-sm text-title-sm" :class="{ 'line-through': reminder.isCompleted }">{{ reminder.title }}</h3>
-              <p class="font-caption-sm text-caption-sm text-on-surface-variant mt-1">{{ reminder.time }}</p>
+              <h3 class="font-title-sm text-title-sm" :class="{ 'line-through': reminder.isCompleted === 1 }">{{ reminder.title }}</h3>
+              <p class="font-caption-sm text-caption-sm text-on-surface-variant mt-1">{{ reminder.remindTime }}</p>
               <p class="font-caption-sm text-caption-sm text-on-surface-variant opacity-70">{{ reminder.location }}</p>
             </div>
-            <div class="w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all flex-shrink-0" :class="reminder.isCompleted ? 'bg-primary border-primary' : 'border-surface-variant'">
-              <span v-if="reminder.isCompleted" class="material-symbols-outlined text-white text-sm">check</span>
+            <div class="w-6 h-6 rounded-full border-2 flex items-center justify-center transition-all flex-shrink-0" :class="reminder.isCompleted === 1 ? 'bg-primary border-primary' : 'border-surface-variant'">
+              <span v-if="reminder.isCompleted === 1" class="material-symbols-outlined text-white text-sm">check</span>
             </div>
           </div>
         </div>

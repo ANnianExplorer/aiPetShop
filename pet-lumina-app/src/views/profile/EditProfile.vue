@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { storeToRefs } from 'pinia'
 import { useUserStore } from '@/stores/user'
+import { userApi } from '@/api/user'
 
 const router = useRouter()
 const { showToast } = useToast()
@@ -14,21 +15,30 @@ const goBack = () => {
   router.back()
 }
 
-const userName = ref(currentUser.value?.name || '')
-const userBio = ref('热爱自然的摄影师，也是两只调皮猫咪的"全职管家"。致力于分享最有温度的养宠生活。')
+const userName = ref(currentUser.value?.nickname || '')
+const userBio = ref(currentUser.value?.bio || '')
+const loading = ref(false)
 
-const handleSubmit = () => {
+const handleSubmit = async () => {
   if (!userName.value.trim()) {
     showToast('请输入用户名', 'error')
     return
   }
-  userStore.$patch({
-    currentUser: {
-      ...currentUser.value,
-      name: userName.value
-    }
-  })
-  showToast('保存成功', 'success')
+  loading.value = true
+  try {
+    await userApi.update({ nickname: userName.value, bio: userBio.value })
+    userStore.$patch({
+      currentUser: {
+        ...currentUser.value,
+        nickname: userName.value
+      }
+    })
+    showToast('保存成功', 'success')
+  } catch (error) {
+    showToast('保存失败，请重试', 'error')
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 
@@ -64,11 +74,12 @@ const handleSubmit = () => {
         </div>
       </section>
 
-      <button 
-        @click="handleSubmit" 
-        class="w-full py-3.5 bg-primary text-on-primary rounded-xl font-label-bold text-label-bold active:scale-95 transition-transform shadow-md"
+      <button
+        @click="handleSubmit"
+        :disabled="loading"
+        class="w-full py-3.5 bg-primary text-on-primary rounded-xl font-label-bold text-label-bold active:scale-95 transition-transform shadow-md disabled:opacity-50"
       >
-        保存
+        {{ loading ? '保存中...' : '保存' }}
       </button>
     </main>
   </div>

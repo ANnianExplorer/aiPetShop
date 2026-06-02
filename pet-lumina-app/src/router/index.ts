@@ -1,6 +1,9 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import MainLayout from '@/layout/MainLayout.vue'
 
+// 公开路径（不需要登录）
+const publicPaths = ['/login', '/sign-up', '/reset-password']
+
 const router = createRouter({
   history: createWebHashHistory(),
   scrollBehavior(_to, _from, savedPosition) {
@@ -153,6 +156,22 @@ const router = createRouter({
       ]
     }
   ]
+})
+
+// 路由守卫
+router.beforeEach((to, _from, next) => {
+  const token = localStorage.getItem('satoken')
+  const isPublicPath = publicPaths.includes(to.path)
+
+  if (!token && !isPublicPath) {
+    // 未登录且访问非公开页面 → 跳转登录
+    next('/login')
+  } else if (token && isPublicPath) {
+    // 已登录且访问公开页面 → 跳转首页
+    next('/home')
+  } else {
+    next()
+  }
 })
 
 export default router

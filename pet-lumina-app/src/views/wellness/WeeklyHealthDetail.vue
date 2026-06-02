@@ -1,22 +1,33 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { storeToRefs } from 'pinia'
+import { healthApi } from '@/api/health'
+import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
+const userStore = useUserStore()
+const { currentPet } = storeToRefs(userStore)
+const loading = ref(false)
 
 const goBack = () => {
   router.back()
 }
 
-const weeklyData = ref([
-  { day: '周一', heartRate: 72, sleep: 8.5, steps: 5200, calories: 320, exercise: 25 },
-  { day: '周二', heartRate: 78, sleep: 9.2, steps: 6800, calories: 410, exercise: 40 },
-  { day: '周三', heartRate: 75, sleep: 7.8, steps: 4500, calories: 280, exercise: 20 },
-  { day: '周四', heartRate: 82, sleep: 9.5, steps: 8200, calories: 520, exercise: 55 },
-  { day: '周五', heartRate: 80, sleep: 9.0, steps: 7500, calories: 480, exercise: 50 },
-  { day: '周六', heartRate: 76, sleep: 10.2, steps: 9000, calories: 580, exercise: 65 },
-  { day: '周日', heartRate: 74, sleep: 9.8, steps: 7800, calories: 450, exercise: 45 }
-])
+const weeklyData = ref<any[]>([])
+
+onMounted(async () => {
+  if (!currentPet.value) return
+  try {
+    loading.value = true
+    const data = await healthApi.weekly(currentPet.value.id) as any
+    weeklyData.value = Array.isArray(data) ? data : []
+  } catch (e) {
+    weeklyData.value = []
+  } finally {
+    loading.value = false
+  }
+})
 
 const targets = {
   heartRate: { min: 60, max: 100, unit: 'bpm' },

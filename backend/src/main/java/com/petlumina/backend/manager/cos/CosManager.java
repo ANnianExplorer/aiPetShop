@@ -1,0 +1,70 @@
+package com.petlumina.backend.manager.cos;
+
+import com.qcloud.cos.COSClient;
+import com.qcloud.cos.ClientConfig;
+import com.qcloud.cos.auth.BasicCOSCredentials;
+import com.qcloud.cos.auth.COSCredentials;
+import com.qcloud.cos.model.PutObjectRequest;
+import com.qcloud.cos.region.Region;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+import javax.annotation.PostConstruct;
+import java.io.InputStream;
+
+/**
+ * 腾讯云 COS 管理器
+ */
+@Slf4j
+@Component
+public class CosManager {
+
+    @Value("${cos.secretId}")
+    private String secretId;
+
+    @Value("${cos.secretKey}")
+    private String secretKey;
+
+    @Value("${cos.bucket}")
+    private String bucket;
+
+    @Value("${cos.region}")
+    private String region;
+
+    private COSClient cosClient;
+
+    @PostConstruct
+    public void init() {
+        if (secretId == null || secretId.startsWith("your_")) {
+            log.warn("COS 凭证未配置，文件上传功能不可用");
+            return;
+        }
+        COSCredentials credentials = new BasicCOSCredentials(secretId, secretKey);
+        ClientConfig clientConfig = new ClientConfig(new Region(region));
+        cosClient = new COSClient(credentials, clientConfig);
+        log.info("COS 客户端初始化成功, bucket={}, region={}", bucket, region);
+    }
+
+    /**
+     * 上传文件
+     */
+    public String upload(String key, InputStream inputStream) {
+        if (cosClient == null) {
+            throw new RuntimeException("COS 客户端未初始化，请检查配置");
+        }
+        PutObjectRequest request = new PutObjectRequest(bucket, key, inputStream, null);
+        cosClient.putObject(request);
+        return String.format("https://%s.cos.%s.myqcloud.com/%s", bucket, region, key);
+    }
+
+    /**
+     * 删除文件
+     */
+    public void delete(String key) {
+        if (cosClient == null) {
+            throw new RuntimeException("COS 客户端未初始化，请检查配置");
+        }
+        cosClient.deleteObject(bucket, key);
+    }
+}

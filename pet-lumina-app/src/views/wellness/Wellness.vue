@@ -10,7 +10,7 @@ import WeeklyIndicators from '@/components/wellness/WeeklyIndicators.vue'
 
 const router = useRouter()
 const userStore = useUserStore()
-const { currentPet, pets, tasks, getTasksByPetId, getHealthDataByPetId } = storeToRefs(userStore)
+const { currentPet, pets, getHealthPlansByPetId, getHealthDataByPetId } = storeToRefs(userStore)
 
 const showPetSelector = ref(false)
 
@@ -18,9 +18,9 @@ const goToNotifications = () => {
   router.push({ name: 'notifications' })
 }
 
-const currentTasks = computed(() => {
+const currentPlans = computed(() => {
   if (!currentPet.value) return []
-  return getTasksByPetId.value(currentPet.value.id)
+  return getHealthPlansByPetId.value(currentPet.value.id)
 })
 
 const currentHealthData = computed(() => {
@@ -28,7 +28,19 @@ const currentHealthData = computed(() => {
   return getHealthDataByPetId.value(currentPet.value.id)
 })
 
-const switchPet = (petId: string) => {
+const weeklyAvgHeartRate = computed(() => {
+  const data = currentHealthData.value?.weeklyData
+  if (!data || !Array.isArray(data) || data.length === 0) return 0
+  return Math.round(data.reduce((sum, d) => sum + (d.heartRate || 0), 0) / data.length)
+})
+
+const weeklyAvgSleep = computed(() => {
+  const data = currentHealthData.value?.weeklyData
+  if (!data || !Array.isArray(data) || data.length === 0) return 0
+  return Math.round((data.reduce((sum, d) => sum + (d.sleepHours || 0), 0) / data.length) * 10) / 10
+})
+
+const switchPet = (petId: number) => {
   userStore.switchCurrentPet(petId)
   showPetSelector.value = false
 }
@@ -99,20 +111,19 @@ const switchPet = (petId: string) => {
         :weight="currentHealthData.weight" 
         :weightChange="currentHealthData.weightChange" 
       />
-      <DailyTasks :tasks="currentTasks" />
-      <YesterdayIndicators 
-        v-if="currentHealthData"
-        :heartRate="currentHealthData.yesterdayData.heartRate"
-        :sleepHours="currentHealthData.yesterdayData.sleepHours"
-        :steps="currentHealthData.yesterdayData.steps"
-        :calories="currentHealthData.yesterdayData.calories"
-        :exercise="currentHealthData.yesterdayData.exercise"
-        :metRate="currentHealthData.yesterdayData.metRate"
+      <DailyTasks :tasks="currentPlans" />
+      <YesterdayIndicators
+        v-if="currentHealthData?.yesterdayData"
+        :heartRate="currentHealthData.yesterdayData.heartRate ?? 0"
+        :sleepHours="currentHealthData.yesterdayData.sleepHours ?? 0"
+        :steps="currentHealthData.yesterdayData.steps ?? 0"
+        :calories="currentHealthData.yesterdayData.calories ?? 0"
+        :exercise="currentHealthData.yesterdayData.exercise ?? 0"
       />
-      <WeeklyIndicators 
-        v-if="currentHealthData"
-        :heartRate="currentHealthData.weeklyData.heartRate" 
-        :sleepHours="currentHealthData.weeklyData.sleepHours" 
+      <WeeklyIndicators
+        v-if="currentHealthData?.weeklyData"
+        :heartRate="weeklyAvgHeartRate"
+        :sleepHours="weeklyAvgSleep"
       />
     </main>
 

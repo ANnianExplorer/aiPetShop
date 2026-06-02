@@ -2,8 +2,8 @@
 import { computed } from 'vue'
 
 const props = defineProps<{
-  weight: number
-  weightChange: string
+  weight?: number
+  weightChange?: string
 }>()
 
 const activityData = computed(() => [

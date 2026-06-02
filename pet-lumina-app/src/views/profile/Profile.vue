@@ -15,7 +15,8 @@ const goToNotifications = () => {
   router.push({ name: 'notifications' })
 }
 
-const handleLogout = () => {
+const handleLogout = async () => {
+  await userStore.logout()
   router.push('/login')
 }
 </script>

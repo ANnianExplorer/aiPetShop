@@ -1,60 +1,46 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { notificationApi } from '@/api/notification'
+import type { Notification } from '@/types'
 
 const router = useRouter()
 
-const notifications = ref([
-  {
-    id: 'n1',
-    title: '疫苗接种提醒',
-    message: '您的宠物年度疫苗接种将在明天下午2:30进行，请准时到达宠物医院。',
-    time: '10分钟前',
-    type: 'reminder',
-    isRead: false
-  },
-  {
-    id: 'n2',
-    title: '社区互动',
-    message: '林间猫影 点赞了您的帖子',
-    time: '1小时前',
-    type: 'social',
-    isRead: false
-  },
-  {
-    id: 'n3',
-    title: '健康报告',
-    message: '您宠物的周健康报告已生成，健康评分95分，状态优秀！',
-    time: '3小时前',
-    type: 'health',
-    isRead: true
-  },
-  {
-    id: 'n4',
-    title: '系统通知',
-    message: 'PetLumina 已更新至最新版本，新增多项实用功能。',
-    time: '昨天',
-    type: 'system',
-    isRead: true
-  },
-  {
-    id: 'n5',
-    title: '社区互动',
-    message: '德牧小伍 评论了您的帖子："太可爱了！"',
-    time: '昨天',
-    type: 'social',
-    isRead: true
+const notifications = ref<Notification[]>([])
+const unreadCount = ref(0)
+
+const fetchNotifications = async () => {
+  try {
+    const res = await notificationApi.listPage({ pageSize: 20 }) as any
+    notifications.value = res?.records || []
+  } catch (e) {
+    console.error('Failed to fetch notifications:', e)
   }
-])
-
-const unreadCount = notifications.value.filter(n => !n.isRead).length
-
-const markAsRead = (notification: typeof notifications.value[0]) => {
-  notification.isRead = true
 }
 
-const markAllAsRead = () => {
-  notifications.value.forEach(n => n.isRead = true)
+const fetchUnreadCount = async () => {
+  try {
+    unreadCount.value = await notificationApi.unreadCount() as any
+  } catch (e) {
+    console.error('Failed to fetch unread count:', e)
+  }
+}
+
+onMounted(() => {
+  fetchNotifications()
+  fetchUnreadCount()
+})
+
+const markAsRead = async (notification: Notification) => {
+  await notificationApi.markAsRead(notification.id)
+  notification.isRead = 1
+  unreadCount.value = Math.max(0, unreadCount.value - 1)
+}
+
+const markAllAsRead = async () => {
+  await notificationApi.markAllAsRead()
+  notifications.value.forEach(n => (n.isRead = 1))
+  unreadCount.value = 0
 }
 
 const getTypeIcon = (type: string) => {
@@ -105,18 +91,18 @@ const goBack = () => {
             :key="notification.id"
             @click="markAsRead(notification)"
             class="glass-card bg-white/70 p-container-padding rounded-xl shadow-sm border border-white/40 flex items-start gap-4 cursor-pointer transition-all duration-200 active:scale-[0.98] hover:shadow-md"
-            :class="{ 'opacity-70': notification.isRead }"
+            :class="{ 'opacity-70': notification.isRead === 1 }"
           >
             <div class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" :class="getTypeColor(notification.type)">
               <span class="material-symbols-outlined text-xl">{{ getTypeIcon(notification.type) }}</span>
             </div>
             <div class="flex-1">
               <div class="flex items-center justify-between">
-                <h3 class="font-title-sm text-title-sm" :class="{ 'font-bold': !notification.isRead }">{{ notification.title }}</h3>
-                <span v-if="!notification.isRead" class="w-2 h-2 bg-primary rounded-full flex-shrink-0"></span>
+                <h3 class="font-title-sm text-title-sm" :class="{ 'font-bold': notification.isRead === 0 }">{{ notification.title }}</h3>
+                <span v-if="notification.isRead === 0" class="w-2 h-2 bg-primary rounded-full flex-shrink-0"></span>
               </div>
-              <p class="font-body-sm text-body-sm text-on-surface-variant mt-1">{{ notification.message }}</p>
-              <p class="font-caption-sm text-caption-sm text-on-surface-variant opacity-60 mt-2">{{ notification.time }}</p>
+              <p class="font-body-sm text-body-sm text-on-surface-variant mt-1">{{ notification.content }}</p>
+              <p class="font-caption-sm text-caption-sm text-on-surface-variant opacity-60 mt-2">{{ notification.createTime }}</p>
             </div>
           </div>
         </div>

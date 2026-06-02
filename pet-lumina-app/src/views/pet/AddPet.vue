@@ -2,9 +2,12 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
+import { useUserStore } from '@/stores/user'
 
 const router = useRouter()
 const { showToast } = useToast()
+const userStore = useUserStore()
+const submitting = ref(false)
 
 const petName = ref('')
 const petType = ref('')
@@ -46,15 +49,29 @@ const goBack = () => {
   router.back()
 }
 
-const handleSubmit = () => {
+const handleSubmit = async () => {
   if (!petName.value || !petType.value || !petBreed.value) {
     showToast('请填写完整信息', 'error')
     return
   }
-  showToast('宠物添加成功', 'success')
-  setTimeout(() => {
-    router.back()
-  }, 1000)
+  submitting.value = true
+  try {
+    await userStore.addPet({
+      name: petName.value,
+      type: petType.value,
+      breed: petBreed.value,
+      age: petAge.value || undefined,
+      notes: petDescription.value || undefined,
+    })
+    showToast('宠物添加成功', 'success')
+    setTimeout(() => {
+      router.back()
+    }, 800)
+  } catch (e) {
+    showToast('添加失败，请重试', 'error')
+  } finally {
+    submitting.value = false
+  }
 }
 </script>
 
@@ -144,11 +161,12 @@ const handleSubmit = () => {
         </div>
       </section>
 
-      <button 
-        @click="handleSubmit" 
-        class="w-full py-3.5 bg-primary text-on-primary rounded-xl font-label-bold text-label-bold active:scale-95 transition-transform shadow-md"
+      <button
+        @click="handleSubmit"
+        :disabled="submitting"
+        class="w-full py-3.5 bg-primary text-on-primary rounded-xl font-label-bold text-label-bold active:scale-95 transition-transform shadow-md disabled:opacity-50"
       >
-        保存
+        {{ submitting ? '保存中...' : '保存' }}
       </button>
     </main>
   </div>

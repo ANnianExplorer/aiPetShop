@@ -3,3 +3,5 @@ ai-pet-app/
 .DS_Store
 *.local
 *.log
+.idea/
+.claude/

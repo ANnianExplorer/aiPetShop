@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
+import { postApi } from '@/api/post'
 
 const router = useRouter()
 const { showToast } = useToast()
@@ -14,6 +15,7 @@ const form = ref({
   tagInput: ''
 })
 
+const loading = ref(false)
 const tagOptions = ['猫咪', '狗狗', '日常', '健康', '户外', '美食', '训练', '医疗']
 
 const goBack = () => {
@@ -30,16 +32,27 @@ const removeTag = (tag: string) => {
   form.value.tags = form.value.tags.filter(t => t !== tag)
 }
 
-const submitForm = () => {
+const submitForm = async () => {
   if (!form.value.title) {
     showToast('请输入标题', 'warning')
     return
   }
-  
-  showToast('发布成功！', 'success')
-  setTimeout(() => {
-    router.back()
-  }, 800)
+
+  loading.value = true
+  try {
+    await postApi.add({
+      content: form.value.description || form.value.title,
+      tags: form.value.tags.length > 0 ? form.value.tags.join(',') : undefined
+    })
+    showToast('发布成功！', 'success')
+    setTimeout(() => {
+      router.back()
+    }, 800)
+  } catch (error) {
+    showToast('发布失败，请重试', 'error')
+  } finally {
+    loading.value = false
+  }
 }
 </script>
 
@@ -51,8 +64,8 @@ const submitForm = () => {
           <span class="material-symbols-outlined text-emerald-700">arrow_back</span>
         </button>
         <span class="font-title-sm text-on-surface">发布记录</span>
-        <button @click="submitForm" class="active:scale-95 transition-transform px-4 py-2 bg-primary text-white rounded-full font-label-bold text-label-bold">
-          发布
+        <button @click="submitForm" :disabled="loading" class="active:scale-95 transition-transform px-4 py-2 bg-primary text-white rounded-full font-label-bold text-label-bold disabled:opacity-50">
+          {{ loading ? '发布中...' : '发布' }}
         </button>
       </div>
 

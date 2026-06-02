@@ -1,48 +1,21 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { topicApi } from '@/api/topic'
 import type { Topic } from '@/types'
 
 const router = useRouter()
 
-const topics = ref<Topic[]>([
-  {
-    id: 'tp1',
-    title: '冬季宠物保暖指南',
-    image: 'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=400&h=300&fit=crop',
-    category: '指南'
-  },
-  {
-    id: 'tp2',
-    title: '春季宠物聚会报名中',
-    image: 'https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=400&h=300&fit=crop',
-    category: '社交'
-  },
-  {
-    id: 'tp3',
-    title: '新手养猫必备清单',
-    image: 'https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=400&h=300&fit=crop',
-    category: '指南'
-  },
-  {
-    id: 'tp4',
-    title: '宠物摄影大赛',
-    image: 'https://images.unsplash.com/photo-1530281700549-e82e7bf110d6?w=400&h=300&fit=crop',
-    category: '活动'
-  },
-  {
-    id: 'tp5',
-    title: '宠物健康饮食分享',
-    image: 'https://images.unsplash.com/photo-1589924691995-400dc9ecc119?w=400&h=300&fit=crop',
-    category: '健康'
-  },
-  {
-    id: 'tp6',
-    title: '训犬技巧交流',
-    image: 'https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=400&h=300&fit=crop',
-    category: '训练'
+const topics = ref<Topic[]>([])
+
+onMounted(async () => {
+  try {
+    const res = await topicApi.listPage({ pageSize: 20 }) as any
+    topics.value = res?.records || []
+  } catch (error) {
+    console.error('Failed to fetch topics:', error)
   }
-])
+})
 
 const goBack = () => {
   router.back()

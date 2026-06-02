@@ -9,7 +9,7 @@ defineProps<{
   steps: number
   calories: number
   exercise: number
-  metRate: number
+  metRate?: number
 }>()
 
 const goToDetail = () => {
@@ -55,8 +55,8 @@ const getStatusIcon = (status: string) => {
     <div class="flex justify-between items-center mb-6">
       <div class="flex items-center gap-2">
         <h3 class="text-on-surface font-title-sm text-title-sm">昨日健康指标</h3>
-        <span class="text-xs px-2 py-0.5 rounded-full" :class="metRate >= 70 ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'">
-          达标率 {{ metRate }}%
+        <span class="text-xs px-2 py-0.5 rounded-full" :class="(metRate ?? 0) >= 70 ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'">
+          达标率 {{ metRate ?? 0 }}%
         </span>
       </div>
       <button @click="goToDetail" class="text-primary font-label-bold text-label-bold flex items-center">
