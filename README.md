@@ -1,25 +1,37 @@
 <div align="center">
 
-# PetLumina - 宠物生活管理 App
+# PetLumina - 宠物生活管理平台
 
 <p align="center">
   <img src="https://img.shields.io/badge/Vue-3.5-4FC08D.svg" alt="Vue 3" />
+  <img src="https://img.shields.io/badge/Spring_Boot-2.7-6DB33F.svg" alt="Spring Boot" />
   <img src="https://img.shields.io/badge/Vite-6.0-646CFF.svg" alt="Vite" />
-  <img src="https://img.shields.io/badge/TypeScript-5.6-blue.svg" alt="TypeScript" />
-  <img src="https://img.shields.io/badge/TailwindCSS-3.4-38B2AC.svg" alt="Tailwind CSS" />
-  <img src="https://img.shields.io/badge/Pinia-2.3-yellowgreen.svg" alt="Pinia" />
-  <img src="https://img.shields.io/badge/Vant-4.9-07c160.svg" alt="Vant" />
+  <img src="https://img.shields.io/badge/TypeScript-5.7-blue.svg" alt="TypeScript" />
+  <img src="https://img.shields.io/badge/TailwindCSS-4.3-38B2AC.svg" alt="Tailwind CSS" />
+  <img src="https://img.shields.io/badge/Element_Plus-2.8-409EFF.svg" alt="Element Plus" />
+  <img src="https://img.shields.io/badge/MyBatis--Plus-3.5-red.svg" alt="MyBatis-Plus" />
+  <img src="https://img.shields.io/badge/Sa--Token-1.39-orange.svg" alt="Sa-Token" />
 </p>
 
-[English](#) | [简体中文](README.md)
-
-**面向宠物主人的智能生活管理与社区互动移动 Web App**
+**三端架构：移动端 App + Web 管理后台 + 后端服务**
 
 <br />
 
 </div>
 
+## 项目概述
+
+PetLumina 是一个面向宠物主人的智能生活管理与社区互动平台，包含：
+
+| 端 | 路径 | 技术栈 | 说明 |
+|---|---|---|---|
+| **移动端** | `pet-lumina-app/` | Vue 3 + Vant 4 + Tailwind CSS | 宠物主人使用的移动 Web App |
+| **管理后台** | `pet-lumina-web/` | Vue 3 + Element Plus + ECharts + Tailwind CSS | 管理员使用的 Web 后台 |
+| **后端服务** | `backend/` | Spring Boot 2.7 + MyBatis-Plus + Sa-Token + Redis | RESTful API 服务 |
+
 ## 页面预览
+
+### 移动端
 
 <div align="center">
 
@@ -33,7 +45,9 @@
 
 </div>
 
-## 核心亮点
+## 核心功能
+
+### 移动端 (pet-lumina-app)
 
 | 模块 | 能力说明 |
 | --- | --- |
@@ -45,105 +59,194 @@
 | **个人中心** | 用户资料编辑、宠物档案管理、账号安全、通用设置 |
 | **认证系统** | 登录、注册、密码重置、验证码校验 |
 
-## 快速体验
+### 管理后台 (pet-lumina-web)
 
-| 命令 | 说明 |
+| 模块 | 能力说明 |
 | --- | --- |
-| `npm run dev` | 启动开发服务器 (默认 http://localhost:5173) |
-| `npm run build` | 类型检查 + 生产构建 |
-| `npm run preview` | 预览生产构建 |
+| **数据概览** | 用户/宠物/帖子统计、活跃趋势折线图、宠物类型分布饼图、热门帖子/话题 |
+| **用户管理** | 搜索筛选、角色/状态过滤、查看详情(宠物+帖子)、禁用/启用 |
+| **宠物管理** | 全局宠物列表、搜索筛选、删除 |
+| **帖子管理** | 帖子列表、图片缩略图、类别筛选、删除 |
+| **评论管理** | 评论列表、搜索、删除 |
+| **生活记录** | 记录列表、类型筛选、删除 |
+| **话题管理** | 话题 CRUD、类别筛选、新建/编辑对话框 |
+| **健康数据** | 健康记录列表、心情筛选、详情抽屉(趋势图+历史表) |
+| **通知管理** | 通知列表、已读/未读状态 |
 
-## 项目源码
+### 后端 API (backend)
 
-| 项目模块 | 路径 | 说明 |
+| 模块 | 接口数 | 说明 |
 | --- | --- | --- |
-| **前端应用** | `pet-lumina-app/` | Vue 3 + Vite + TypeScript 移动 Web App |
-| **HBuilder 项目** | `ai-pet-app/` | 5+App 打包配置，用于生成 Android APK |
+| **认证** | 6 | 登录/注册/验证码/密码重置/登出/当前用户 |
+| **用户** | 6 | 资料查询/更新/头像/密码/分页列表 |
+| **宠物** | 6 | CRUD + 用户宠物列表 |
+| **帖子** | 7 | CRUD + 点赞/收藏 |
+| **评论** | 3 | 添加/删除/分页列表 |
+| **话题** | 7 | CRUD + 关注/帖子列表 |
+| **关注** | 3 | 关注/粉丝/关注列表 |
+| **健康** | 8 | 数据录入/计划/周报/Dashboard |
+| **提醒** | 6 | CRUD + 完成状态切换 |
+| **通知** | 4 | 列表/未读数/标记已读 |
+| **生活记录** | 5 | CRUD + 分页列表 |
+| **文件** | 2 | 通用上传/图片上传 |
+| **管理端** | 14 | 用户/宠物/帖子/评论/话题/记录/健康数据管理 + Dashboard统计 |
+
+## 快速开始
+
+### 环境要求
+
+- Node.js 18+
+- Java 8+
+- MySQL 8.0+
+- Redis 6.0+
+
+### 后端启动
+
+```bash
+cd backend
+
+# 1. 创建数据库并执行初始化脚本
+mysql -u root -p < sql/init.sql
+
+# 2. (可选) 导入开发种子数据
+mysql -u root -p petlumina < sql/seed.sql
+
+# 3. 修改数据库连接配置
+# src/main/resources/application-dev.yml
+
+# 4. 启动
+mvn spring-boot:run
+```
+
+**种子数据账号：**
+| 角色 | 手机号 | 密码 |
+|---|---|---|
+| 管理员 | 13800000001 | 123456 |
+| 普通用户 | 13800000002 ~ 13800000007 | 123456 |
+
+### 移动端启动
+
+```bash
+cd pet-lumina-app
+npm install
+npm run dev        # http://localhost:5173
+```
+
+### 管理后台启动
+
+```bash
+cd pet-lumina-web
+npm install
+npm run dev        # http://localhost:3000
+```
+
+## 项目结构
+
+```text
+ai-PetShop/
+├── backend/                    # Spring Boot 后端
+│   ├── sql/                    # 数据库脚本 (init.sql + seed.sql)
+│   └── src/main/java/com/petlumina/backend/
+│       ├── annotation/         # 自定义注解 (@AuthCheck, @RateLimiter)
+│       ├── aop/                # AOP 切面 (权限校验, 限流)
+│       ├── common/             # 通用类 (BaseResponse, PageRequest)
+│       ├── config/             # 配置 (CORS, Sa-Token, MyBatis-Plus, Redis)
+│       ├── controller/
+│       │   ├── user/           # 用户端 API (12个)
+│       │   └── admin/          # 管理端 API (8个)
+│       ├── service/
+│       │   ├── user/           # 用户端 Service (14个)
+│       │   └── admin/          # 管理端 Service
+│       ├── model/              # 实体/DTO/VO
+│       ├── mapper/             # MyBatis-Plus Mapper
+│       ├── manager/            # 第三方服务管理 (COS, Sa-Token)
+│       ├── exception/          # 异常处理
+│       └── utils/              # 工具类
+│
+├── pet-lumina-app/             # 移动端 Vue App
+│   └── src/
+│       ├── api/                # 接口请求层 (10个模块)
+│       ├── components/         # 业务组件
+│       ├── views/              # 页面组件
+│       ├── stores/             # Pinia 状态管理
+│       ├── router/             # 路由配置
+│       └── types/              # TypeScript 类型
+│
+├── pet-lumina-web/             # 管理后台 Vue App
+│   └── src/
+│       ├── api/                # 接口请求层 (11个模块)
+│       ├── layout/             # 布局组件 (Sidebar, Header)
+│       ├── views/              # 页面组件 (11个)
+│       ├── components/         # 通用组件
+│       ├── stores/             # Pinia 状态管理
+│       └── types/              # TypeScript 类型
+│
+└── z-plan/                     # 开发计划文档
+```
 
 ## 技术架构
 
-**前端架构**
-- **核心框架**: Vue 3 (Composition API + `<script setup>`) + Vite 6
-- **类型系统**: TypeScript 5.6 (严格模式)
-- **状态管理**: Pinia (用户信息、宠物档案、健康数据)
-- **UI 组件库**: Vant 4 (移动端组件)
-- **样式方案**: Tailwind CSS 3 + 自定义设计令牌 (Material Design 3 色彩)
-- **路由控制**: Vue Router 4 (Hash 模式，适配 5+App)
-- **工程化**: 路径别名 `@/`、组件懒加载、代码分割
+### 后端
 
-**设计系统**
-- **玻璃拟态 UI**: `glass-card` 工具类 (backdrop-filter + 半透明背景)
-- **响应式布局**: 移动优先，适配不同屏幕尺寸
-- **动画系统**: fade-in、slide-up、pulse 等过渡动画
-- **字体系统**: Plus Jakarta Sans + Be Vietnam Pro
+- **核心框架**: Spring Boot 2.7 + JDK 8
+- **ORM**: MyBatis-Plus 3.5.9 (BaseMapper + IService)
+- **认证**: Sa-Token 1.39.0 (角色权限 + 路由拦截)
+- **缓存**: Redis + Redisson (验证码/限流)
+- **序列化**: Jackson (Long→String 防精度丢失)
+- **文件存储**: 腾讯云 COS
+- **响应格式**: `BaseResponse<T>` (code=0 成功)
+- **ID 策略**: 雪花算法 (Long 类型)
 
-## 目录结构
+### 移动端
 
-```text
-pet-lumina-app/
-├── src/
-│   ├── api/          # 接口请求层
-│   ├── assets/       # 静态资源
-│   ├── components/   # 公共/业务组件
-│   │   ├── common/   # 全局通用组件
-│   │   ├── home/     # 首页组件
-│   │   ├── lifelog/  # 生活记录组件
-│   │   ├── community/# 社区组件
-│   │   ├── wellness/ # 健康组件
-│   │   └── profile/  # 个人中心组件
-│   ├── composables/  # 组合式函数
-│   ├── layout/       # 页面布局组件
-│   ├── router/       # 路由配置
-│   ├── stores/       # Pinia 状态管理
-│   ├── types/        # TypeScript 类型定义
-│   ├── utils/        # 工具函数
-│   └── views/        # 页面级组件
-│       ├── auth/     # 认证页面
-│       ├── community/# 社区页面
-│       ├── home/     # 首页
-│       ├── lifelog/  # 生活记录页面
-│       ├── pet/      # 宠物页面
-│       ├── profile/  # 个人中心页面
-│       ├── schedule/ # 日程页面
-│       └── wellness/ # 健康页面
-├── vite.config.ts    # Vite 构建配置
-├── tailwind.config.js
-└── package.json
-```
+- **核心框架**: Vue 3.5 (Composition API + `<script setup>`) + Vite 6
+- **UI 组件库**: Vant 4 (移动端)
+- **样式方案**: Tailwind CSS 3 + Material Design 3 色彩令牌
+- **路由**: Vue Router 4 (Hash 模式，适配 5+App)
 
-## HBuilder APK 打包
+### 管理后台
 
-1. 构建项目：`cd pet-lumina-app && node ./node_modules/vite/bin/vite.js build`
-2. 构建产物自动输出到 `ai-pet-app/` 目录
-3. 在 HBuilder 中打开 `ai-pet-app/` 目录
-4. 右键项目 → **发行 → 发行为原生安装包** → 云打包生成 APK
+- **核心框架**: Vue 3.5 + TypeScript + Vite 6
+- **UI 组件库**: Element Plus 2.x (表格/分页/标签等)
+- **样式方案**: Tailwind CSS 4 + 毛玻璃效果 (glass-panel)
+- **图表**: ECharts 5 + vue-echarts
+- **图标**: Material Symbols Outlined
+- **字体**: Plus Jakarta Sans + Noto Sans SC
 
-## 更新日志 (Changelog)
+## 更新日志
 
-### 1.0.0 (2026-05-01)
+### v2.1 (2026-06-03)
+
+**后端目录重构**
+- controller/service 按 user/ 和 admin/ 子目录重构
+- 新建管理端 API (8个 Controller + DashboardService)
+- 管理端接口统一 @AuthCheck(mustRole="admin") 权限校验
+
+**Web 管理后台**
+- 从零搭建 pet-lumina-web 项目
+- 实现 11 个管理页面 (登录/Dashboard/用户/宠物/帖子/评论/记录/话题/健康/通知)
+- 毛玻璃 + Material Design 3 设计风格
+- 搜索筛选、分页、CRUD、详情抽屉、统计图表
+
+### v2.0 (2026-06-02)
+
+**后端开发**
+- Spring Boot 后端全部业务模块 (12个 Controller, 55个接口)
+- Sa-Token 认证 + 角色权限
+- MySQL 建表脚本 + 开发种子数据
+
+**前端对接**
+- 新建 API 层 (10个业务模块)
+- 重构 20+ 页面组件接入真实 API
+- 全局路由守卫、类型系统完善
+
+### v1.0 (2026-05-01)
 
 **基础工程搭建**
 - Vue 3 + Vite + TypeScript 项目初始化
-- Tailwind CSS 设计系统集成 (Material Design 3 色彩令牌)
-- 全局底部导航布局 (`MainLayout`)
-
-**页面开发**
-- 认证系统：登录、注册、密码重置
-- 首页仪表盘：宠物状态、提醒、快捷操作、社区动态
-- 生活记录：列表、详情页、图片轮播
-- 宠物社区：话题、帖子、评论、用户主页
-- 健康管理：数据录入、周度指标、计划制定
-- 日程提醒：列表、添加、通知中心
-- 个人中心：资料编辑、设置、帮助反馈
-
-**组件开发**
-- 评论弹窗、表情选择器、分享弹窗、Toast 提示
-- 各页面业务组件拆分
-
-**APK 打包适配**
-- Vite 构建配置优化 (相对路径、输出目录)
-- 路由改为 Hash 模式 (适配 5+App)
-- manifest.json 配置
+- Tailwind CSS 设计系统 (Material Design 3 色彩)
+- 全部移动端页面开发 (7大模块)
+- HBuilder APK 打包适配
 
 ---
 
