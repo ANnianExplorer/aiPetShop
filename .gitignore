@@ -5,3 +5,5 @@ ai-pet-app/
 *.log
 .idea/
 .claude/
+z-plan
+backend/target/

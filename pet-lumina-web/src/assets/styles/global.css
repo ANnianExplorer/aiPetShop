@@ -1,0 +1,116 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #266a51;
+  --color-primary-container: #6daf92;
+  --color-on-primary: #ffffff;
+  --color-on-primary-container: #00412e;
+  --color-secondary: #3a6758;
+  --color-secondary-container: #bcedda;
+  --color-on-secondary: #ffffff;
+  --color-on-secondary-container: #406d5e;
+  --color-surface: #f7f9fb;
+  --color-surface-container: #eceef0;
+  --color-surface-container-low: #f2f4f6;
+  --color-surface-container-high: #e6e8ea;
+  --color-surface-container-highest: #e0e3e5;
+  --color-on-surface: #191c1e;
+  --color-on-surface-variant: #404944;
+  --color-outline: #707973;
+  --color-outline-variant: #bfc9c2;
+  --color-error: #ba1a1a;
+  --color-error-container: #ffdad6;
+  --color-background: #f7f9fb;
+
+  --font-family-h1: "Plus Jakarta Sans", sans-serif;
+  --font-family-h2: "Plus Jakarta Sans", sans-serif;
+  --font-family-h3: "Plus Jakarta Sans", sans-serif;
+  --font-family-label: "Plus Jakarta Sans", sans-serif;
+  --font-family-numeral: "Plus Jakarta Sans", sans-serif;
+  --font-family-body: "Noto Sans SC", sans-serif;
+}
+
+@layer base {
+  * {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+  }
+
+  html, body, #app {
+    height: 100%;
+  }
+
+  body {
+    font-family: "Noto Sans SC", sans-serif;
+    color: var(--color-on-surface);
+    background-color: var(--color-surface);
+    background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAXh-O56oifm0Gv2uZuKY68agK3RibAGlm9Fp_Qg_CNJ45ZkgbWoXoTdEePWnteRGvmKop0DaB-FzMMKjF9T76YebLKOQ_zDUYJWshF2_GHQawOfV9Q7E2IS1_UinQErdNvo5_TZdrUIlyd0O0VCQHRHRnyE-ETiEdCWDiGugbqc3k9m4ZYxjsxJy_vfXuCXEAwFFKt74mcgpoccmqKcoFtd_YoIOpbFQE7Fva9qU7SSzgPs84IV9D6muY4wXKZYaQMjkZ_MmBTWl-s");
+    background-size: cover;
+    background-position: center;
+    background-attachment: fixed;
+  }
+
+  ::selection {
+    background-color: var(--color-primary-container);
+    color: white;
+  }
+
+  /* Hide scrollbars */
+  * {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+  }
+  *::-webkit-scrollbar {
+    display: none;
+  }
+}
+
+@layer components {
+  .glass-panel {
+    background: rgba(255, 255, 255, 0.4);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+  }
+
+  .glass-panel-deep {
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(40px);
+    -webkit-backdrop-filter: blur(40px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+  }
+
+  .glass-card {
+    background: rgba(255, 255, 255, 0.3);
+    backdrop-filter: blur(15px);
+    -webkit-backdrop-filter: blur(15px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.3s ease-out;
+  }
+
+  .glass-card:hover {
+    background: rgba(255, 255, 255, 0.45);
+    border-color: rgba(255, 255, 255, 0.5);
+    transform: translateY(-2px);
+    box-shadow: 0 10px 30px -15px rgba(109, 175, 146, 0.1);
+  }
+
+  .material-symbols-outlined {
+    font-variation-settings: "FILL" 0, "wght" 400, "GRAD" 0, "opsz" 24;
+  }
+
+  .glow-icon {
+    filter: drop-shadow(0 0 8px rgba(109, 175, 146, 0.4));
+  }
+}
+
+/* Element Plus theme overrides */
+:root {
+  --el-color-primary: #266a51;
+  --el-color-primary-light-3: #6daf92;
+  --el-color-primary-light-5: #91d4b6;
+  --el-color-primary-light-7: #bcedda;
+  --el-color-primary-light-9: #e8f5ee;
+  --el-border-radius-base: 8px;
+}

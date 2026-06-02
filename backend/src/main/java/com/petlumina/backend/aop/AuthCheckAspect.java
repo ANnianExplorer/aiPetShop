@@ -4,7 +4,7 @@ import com.petlumina.backend.annotation.AuthCheck;
 import com.petlumina.backend.exception.BusinessException;
 import com.petlumina.backend.exception.ErrorCode;
 import com.petlumina.backend.model.entity.User;
-import com.petlumina.backend.service.UserService;
+import com.petlumina.backend.service.user.UserService;
 import lombok.extern.slf4j.Slf4j;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;

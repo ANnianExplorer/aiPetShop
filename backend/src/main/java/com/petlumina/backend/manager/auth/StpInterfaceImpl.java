@@ -1,7 +1,7 @@
 package com.petlumina.backend.manager.auth;
 
 import cn.dev33.satoken.stp.StpInterface;
-import com.petlumina.backend.service.UserService;
+import com.petlumina.backend.service.user.UserService;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.Resource;
