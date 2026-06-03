@@ -77,7 +77,7 @@ const handleStatusChange = async (user: User) => {
         <input
           v-model="searchText"
           type="text"
-          placeholder="姓名/邮箱/手机号"
+          placeholder="姓名"
           class="w-full bg-white/15 backdrop-blur-[10px] border border-white/30 rounded-full pl-11 pr-4 py-3 text-on-surface placeholder-on-surface-variant/60 focus:ring-2 focus:ring-primary-container/30 focus:border-primary-container/50 outline-none transition-all text-sm"
           @keyup.enter="handleSearch"
         />

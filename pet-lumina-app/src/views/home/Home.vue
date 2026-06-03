@@ -12,7 +12,7 @@ import type { Reminder, Post } from '@/types'
 
 const router = useRouter()
 const userStore = useUserStore()
-const { currentUser, currentPet, tasks } = storeToRefs(userStore)
+const { currentUser, currentPet, tasks, unreadNotifications } = storeToRefs(userStore)
 
 const reminders = ref<Reminder[]>([])
 const trends = ref<Post[]>([])
@@ -58,8 +58,11 @@ onMounted(async () => {
           </div>
           <span class="text-xl font-bold tracking-tighter text-primary font-['Plus_Jakarta_Sans']">PetLumina</span>
         </div>
-        <div @click="goToNotifications" class="icon-btn cursor-pointer p-2 rounded-full">
+        <div @click="goToNotifications" class="icon-btn cursor-pointer p-2 rounded-full relative">
           <span class="material-symbols-outlined text-primary">notifications</span>
+          <span v-if="unreadNotifications > 0" class="absolute -top-0.5 -right-0.5 w-4 h-4 bg-error text-white text-[9px] font-bold rounded-full flex items-center justify-center shadow-sm animate-badge-pop">
+            {{ unreadNotifications > 9 ? '9+' : unreadNotifications }}
+          </span>
         </div>
       </div>
     </header>

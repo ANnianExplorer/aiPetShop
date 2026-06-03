@@ -4,6 +4,9 @@ export const notificationApi = {
   listPage: (data: { current?: number; pageSize?: number; type?: string; isRead?: number }) =>
     request.post('/notification/list/page', data),
 
+  getDetail: (id: number) =>
+    request.get('/notification/detail', { params: { id } }),
+
   unreadCount: () =>
     request.get('/notification/unread/count'),
 

@@ -9,9 +9,12 @@ import com.petlumina.backend.constant.UserConstant;
 import com.petlumina.backend.exception.ErrorCode;
 import com.petlumina.backend.model.dto.notification.NotificationAddRequest;
 import com.petlumina.backend.model.dto.notification.NotificationQueryRequest;
+import com.petlumina.backend.model.dto.notification.NotificationToggleRequest;
 import com.petlumina.backend.model.entity.Notification;
+import com.petlumina.backend.model.entity.User;
 import com.petlumina.backend.model.vo.NotificationVO;
 import com.petlumina.backend.service.user.NotificationService;
+import com.petlumina.backend.service.user.UserService;
 import com.petlumina.backend.utils.ThrowUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
@@ -30,6 +33,9 @@ public class AdminNotificationController {
 
     @Resource
     private NotificationService notificationService;
+
+    @Resource
+    private UserService userService;
 
     /**
      * 通知分页查询（所有用户的通知）
@@ -56,7 +62,7 @@ public class AdminNotificationController {
     public BaseResponse<Boolean> addNotification(@RequestBody NotificationAddRequest request) {
         ThrowUtils.throwIf(request == null, ErrorCode.PARAMS_ERROR);
         ThrowUtils.throwIf(request.getTitle() == null || request.getTitle().isEmpty(), ErrorCode.PARAMS_ERROR, "标题不能为空");
-        // userId=0 表示系统广播通知
+        // 创建广播模板 (user_id=0, status=1)
         notificationService.createNotification(0L, request.getType(), request.getTitle(), request.getContent(), null);
         return ResultUtils.success(true);
     }
@@ -74,6 +80,23 @@ public class AdminNotificationController {
         if (request.getContent() != null) existing.setContent(request.getContent());
         if (request.getType() != null) existing.setType(request.getType());
         boolean result = notificationService.updateById(existing);
+        return ResultUtils.success(result);
+    }
+
+    /**
+     * 切换通知发布状态
+     */
+    @PostMapping("/toggle-status")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    public BaseResponse<Boolean> toggleStatus(@RequestBody NotificationToggleRequest request) {
+        ThrowUtils.throwIf(request == null || request.getId() == null, ErrorCode.PARAMS_ERROR);
+        ThrowUtils.throwIf(request.getStatus() != 0 && request.getStatus() != 1, ErrorCode.PARAMS_ERROR, "状态值无效");
+        // 使用 lambdaUpdate 直接更新 status 字段
+        boolean result = notificationService.lambdaUpdate()
+                .eq(Notification::getId, request.getId())
+                .set(Notification::getStatus, request.getStatus())
+                .update();
+        log.info("通知状态切换: id={}, newStatus={}, result={}", request.getId(), request.getStatus(), result);
         return ResultUtils.success(result);
     }
 

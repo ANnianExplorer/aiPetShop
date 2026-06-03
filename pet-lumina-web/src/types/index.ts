@@ -95,6 +95,7 @@ export interface Notification {
   title: string
   content: string
   isRead: number
+  status?: number
   createTime?: string
 }
 

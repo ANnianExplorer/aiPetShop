@@ -69,8 +69,9 @@ public class NotificationServiceImpl extends ServiceImpl<NotificationMapper, Not
         notification.setTitle(title);
         notification.setContent(content);
         notification.setIsRead(0);
+        notification.setStatus(1);
         notification.setRelatedId(relatedId);
-        this.save(notification);
-        log.debug("创建通知: userId={}, type={}, title={}", userId, type, title);
+        boolean saved = this.save(notification);
+        log.info("创建通知: userId={}, type={}, title={}, saved={}", userId, type, title, saved);
     }
 }

@@ -33,7 +33,9 @@ async function fetchData() {
   try {
     const params = { current: currentPage.value, pageSize: pageSize.value }
     const res = await notificationApi.listPage(params) as any
-    tableData.value = res?.records || []
+    const records = res?.records || []
+    console.log('[Notification] fetchData raw records:', records.map((r: any) => ({ id: r.id, title: r.title, status: r.status, statusType: typeof r.status })))
+    tableData.value = records
     total.value = res?.total || 0
   } catch (e) { console.error(e) } finally { loading.value = false }
 }
@@ -53,6 +55,11 @@ const typeConfig = (type: string) => {
     system: { icon: 'info', bg: 'bg-outline-variant/30', color: 'text-slate-400' },
   }
   return map[type] || map.system
+}
+
+const isPublished = (item: Notification) => {
+  const s = item.status
+  return s == null || s === 1
 }
 
 const openCreate = () => {
@@ -93,6 +100,23 @@ const handleDelete = async (item: Notification) => {
     fetchData()
   } catch {}
 }
+
+const handleToggleStatus = async (item: Notification) => {
+  const currentStatus = item.status == null ? 1 : Number(item.status)
+  const newStatus = currentStatus === 1 ? 0 : 1
+  const label = newStatus === 1 ? '发布' : '取消发布'
+  try {
+    await ElMessageBox.confirm(`确定要${label}这条通知吗？`, '确认操作', { type: 'warning' })
+  } catch { return }
+  try {
+    await notificationApi.toggleStatus(item.id, newStatus)
+    // 直接更新本地数据，确保 Vue 响应式触发
+    item.status = newStatus
+    ElMessage.success(`已${label}`)
+  } catch (e: any) {
+    ElMessage.error(e?.message || '操作失败')
+  }
+}
 </script>
 
 <template>
@@ -132,14 +156,24 @@ const handleDelete = async (item: Notification) => {
               <span class="px-2.5 py-0.5 rounded-full text-xs font-[Plus_Jakarta_Sans] font-semibold" :class="typeConfig(item.type).bg + ' ' + typeConfig(item.type).color">
                 {{ notificationTypes.find(t => t.value === item.type)?.label || item.type }}
               </span>
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-[Plus_Jakarta_Sans] font-bold"
+                :class="isPublished(item) ? 'badge-success' : 'badge-warning'">
+                {{ isPublished(item) ? '已发布' : '草稿' }}
+              </span>
             </div>
           </div>
         </div>
-        <div class="flex items-center gap-3">
-          <button @click="openEdit(item)" class="p-3 rounded-xl glass-card text-on-surface-variant hover:text-primary-container transition-colors">
+        <div class="flex items-center gap-2">
+          <button @click="handleToggleStatus(item)"
+            class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold transition-all btn-jelly"
+            :class="isPublished(item) ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' : 'bg-emerald-100 text-emerald-700 hover:bg-emerald-200'">
+            <span class="material-symbols-outlined text-base">{{ isPublished(item) ? 'toggle_off' : 'toggle_on' }}</span>
+            {{ isPublished(item) ? '取消发布' : '发布' }}
+          </button>
+          <button @click="openEdit(item)" class="p-2.5 rounded-xl glass-card text-on-surface-variant hover:text-primary-container transition-colors" title="编辑">
             <span class="material-symbols-outlined">edit</span>
           </button>
-          <button @click="handleDelete(item)" class="p-3 rounded-xl glass-card text-on-surface-variant hover:text-error transition-colors">
+          <button @click="handleDelete(item)" class="p-2.5 rounded-xl glass-card text-on-surface-variant hover:text-error transition-colors" title="删除">
             <span class="material-symbols-outlined">delete</span>
           </button>
         </div>

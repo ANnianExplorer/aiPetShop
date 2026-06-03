@@ -1,1 +1,0 @@
-import{G as o}from"./index-euZUWogi.js";const s={add:t=>o.post("/topic/add",t),edit:t=>o.post("/topic/edit",t),delete:t=>o.post("/topic/delete",{id:t}),getById:t=>o.get("/topic/get/vo",{params:{id:t}}),listPage:t=>o.post("/topic/list/page/vo",t),toggleFollow:t=>o.post(`/topic/follow/${t}`),listTopicPosts:t=>o.post("/topic/list/page/vo/posts",t)};export{s as t};

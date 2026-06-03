@@ -28,8 +28,14 @@ public class Notification implements Serializable {
 
     private Integer isRead;
 
+    /** 状态: 0-草稿/未发布 1-已发布 */
+    private Integer status;
+
     private Long relatedId;
 
     @TableField(fill = FieldFill.INSERT)
     private Date createTime;
+
+    @TableLogic
+    private Integer isDelete;
 }

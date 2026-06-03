@@ -2,12 +2,17 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { notificationApi } from '@/api/notification'
+import { useUserStore } from '@/stores/user'
 import type { Notification } from '@/types'
 
 const router = useRouter()
+const userStore = useUserStore()
 
 const notifications = ref<Notification[]>([])
 const unreadCount = ref(0)
+const selectedNotification = ref<Notification | null>(null)
+const showDetail = ref(false)
+const detailLoading = ref(false)
 
 const fetchNotifications = async () => {
   try {
@@ -20,10 +25,8 @@ const fetchNotifications = async () => {
 
 const fetchUnreadCount = async () => {
   try {
-    unreadCount.value = await notificationApi.unreadCount() as any
-  } catch (e) {
-    console.error('Failed to fetch unread count:', e)
-  }
+    unreadCount.value = await notificationApi.unreadCount() as any || 0
+  } catch {}
 }
 
 onMounted(() => {
@@ -31,16 +34,37 @@ onMounted(() => {
   fetchUnreadCount()
 })
 
-const markAsRead = async (notification: Notification) => {
-  await notificationApi.markAsRead(notification.id)
-  notification.isRead = 1
-  unreadCount.value = Math.max(0, unreadCount.value - 1)
+const openDetail = async (notification: Notification) => {
+  // 标记已读
+  if (notification.isRead === 0) {
+    await notificationApi.markAsRead(notification.id)
+    notification.isRead = 1
+    unreadCount.value = Math.max(0, unreadCount.value - 1)
+    userStore.unreadNotifications = Math.max(0, userStore.unreadNotifications - 1)
+  }
+  // 获取详情
+  detailLoading.value = true
+  showDetail.value = true
+  try {
+    const detail = await notificationApi.getDetail(notification.id) as any
+    selectedNotification.value = detail || notification
+  } catch {
+    selectedNotification.value = notification
+  } finally {
+    detailLoading.value = false
+  }
+}
+
+const closeDetail = () => {
+  showDetail.value = false
+  selectedNotification.value = null
 }
 
 const markAllAsRead = async () => {
   await notificationApi.markAllAsRead()
   notifications.value.forEach(n => (n.isRead = 1))
   unreadCount.value = 0
+  userStore.unreadNotifications = 0
 }
 
 const getTypeIcon = (type: string) => {
@@ -48,7 +72,10 @@ const getTypeIcon = (type: string) => {
     reminder: 'notifications_active',
     social: 'group',
     health: 'monitor_heart',
-    system: 'info'
+    system: 'info',
+    update: 'update',
+    campaign: 'campaign',
+    priority: 'priority_high',
   }
   return icons[type] || 'info'
 }
@@ -58,60 +85,140 @@ const getTypeColor = (type: string) => {
     reminder: 'bg-primary-fixed text-primary',
     social: 'bg-secondary-fixed text-secondary',
     health: 'bg-tertiary-container text-tertiary',
-    system: 'bg-surface-container-high text-on-surface'
+    system: 'bg-surface-container-high text-on-surface',
+    update: 'bg-blue-100 text-blue-600',
+    campaign: 'bg-purple-100 text-purple-600',
+    priority: 'bg-red-100 text-red-600',
   }
   return colors[type] || 'bg-surface-container-high text-on-surface'
 }
 
-const goBack = () => {
-  router.back()
+const getTypeLabel = (type: string) => {
+  const labels: Record<string, string> = {
+    reminder: '提醒',
+    social: '社交',
+    health: '健康',
+    system: '系统',
+    update: '更新',
+    campaign: '活动',
+    priority: '紧急',
+  }
+  return labels[type] || '通知'
 }
+
+const goBack = () => router.back()
 </script>
 
 <template>
   <div class="pb-32 bg-background min-h-screen">
     <main class="pt-4">
       <div class="px-container-padding max-w-screen-xl mx-auto">
-        <div class="flex items-center justify-between py-md mb-md">
-          <button @click="goBack" class="active:scale-95 transition-transform p-2 rounded-full hover:bg-zinc-100">
-            <span class="material-symbols-outlined text-emerald-700">arrow_back</span>
+        <!-- Header -->
+        <div class="flex items-center justify-between py-md mb-md animate-float-up">
+          <button @click="goBack" class="icon-btn p-2 rounded-full">
+            <span class="material-symbols-outlined text-primary">arrow_back</span>
           </button>
           <span class="font-title-sm text-on-surface">通知</span>
-          <button @click="markAllAsRead" class="active:scale-95 transition-transform px-3 py-1 text-primary font-label-bold text-label-bold rounded-full hover:bg-primary-fixed">
+          <button @click="markAllAsRead" class="text-primary font-label-bold text-label-bold px-3 py-1 rounded-full active:bg-primary-fixed transition-colors">
             全部已读
           </button>
         </div>
-        <div v-if="unreadCount > 0" class="py-md">
-          <span class="font-label-bold text-label-bold text-on-surface-variant">{{ unreadCount }} 条未读通知</span>
+
+        <!-- Unread count -->
+        <div v-if="unreadCount > 0" class="mb-md animate-float-up stagger-1">
+          <span class="px-3 py-1 bg-primary/10 text-primary text-xs font-label-bold rounded-full">
+            {{ unreadCount }} 条未读通知
+          </span>
         </div>
 
-        <div class="space-y-md">
-          <div 
-            v-for="notification in notifications" 
+        <!-- Notification List -->
+        <div class="space-y-3 animate-float-up stagger-2">
+          <div
+            v-for="notification in notifications"
             :key="notification.id"
-            @click="markAsRead(notification)"
-            class="glass-card bg-white/70 p-container-padding rounded-xl shadow-sm border border-white/40 flex items-start gap-4 cursor-pointer transition-all duration-200 active:scale-[0.98] hover:shadow-md"
-            :class="{ 'opacity-70': notification.isRead === 1 }"
+            @click="openDetail(notification)"
+            class="glass-card p-4 rounded-2xl flex items-start gap-4 cursor-pointer ripple-card"
+            :class="{ 'opacity-60': notification.isRead === 1 }"
           >
             <div class="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" :class="getTypeColor(notification.type)">
               <span class="material-symbols-outlined text-xl">{{ getTypeIcon(notification.type) }}</span>
             </div>
-            <div class="flex-1">
-              <div class="flex items-center justify-between">
-                <h3 class="font-title-sm text-title-sm" :class="{ 'font-bold': notification.isRead === 0 }">{{ notification.title }}</h3>
-                <span v-if="notification.isRead === 0" class="w-2 h-2 bg-primary rounded-full flex-shrink-0"></span>
+            <div class="flex-1 min-w-0">
+              <div class="flex items-center justify-between gap-2">
+                <h3 class="text-sm font-semibold truncate" :class="{ 'font-bold text-on-surface': notification.isRead === 0, 'text-on-surface-variant': notification.isRead === 1 }">
+                  {{ notification.title }}
+                </h3>
+                <span v-if="notification.isRead === 0" class="w-2 h-2 bg-primary rounded-full flex-shrink-0 animate-pulse-glow"></span>
               </div>
-              <p class="font-body-sm text-body-sm text-on-surface-variant mt-1">{{ notification.content }}</p>
-              <p class="font-caption-sm text-caption-sm text-on-surface-variant opacity-60 mt-2">{{ notification.createTime }}</p>
+              <p class="text-xs text-on-surface-variant mt-1 line-clamp-2">{{ notification.content }}</p>
+              <p class="text-[11px] text-on-surface-variant/50 mt-2">{{ notification.createTime }}</p>
             </div>
           </div>
         </div>
 
-        <div v-if="notifications.length === 0" class="flex flex-col items-center justify-center py-20">
+        <!-- Empty -->
+        <div v-if="notifications.length === 0" class="flex flex-col items-center justify-center py-20 animate-fade-in">
           <span class="material-symbols-outlined text-6xl text-on-surface-variant opacity-30">notifications_none</span>
           <p class="mt-4 font-title-md text-on-surface-variant">暂无通知</p>
         </div>
       </div>
     </main>
+
+    <!-- Detail Modal -->
+    <Teleport to="body">
+      <Transition name="slide-up">
+        <div v-if="showDetail" class="fixed inset-0 z-50 flex items-end justify-center">
+          <div class="absolute inset-0 bg-black/30" @click="closeDetail"></div>
+          <div class="relative w-full max-w-lg bg-surface-container-low rounded-t-3xl overflow-hidden animate-slide-up max-h-[80vh]">
+            <div class="p-5 pb-8">
+              <!-- Drag handle -->
+              <div class="flex justify-center mb-4">
+                <div class="w-10 h-1 rounded-full bg-surface-variant"></div>
+              </div>
+
+              <!-- Loading -->
+              <div v-if="detailLoading" class="flex justify-center py-10">
+                <div class="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+              </div>
+
+              <!-- Detail Content -->
+              <template v-else-if="selectedNotification">
+                <!-- Type badge + time -->
+                <div class="flex items-center gap-3 mb-4">
+                  <span class="px-3 py-1 rounded-full text-xs font-label-bold" :class="getTypeColor(selectedNotification.type)">
+                    {{ getTypeLabel(selectedNotification.type) }}
+                  </span>
+                  <span class="text-xs text-on-surface-variant">{{ selectedNotification.createTime }}</span>
+                </div>
+
+                <!-- Title -->
+                <h2 class="font-title-sm text-title-sm text-on-surface mb-4">{{ selectedNotification.title }}</h2>
+
+                <!-- Content -->
+                <div class="bg-surface-container rounded-2xl p-5 mb-6">
+                  <p class="text-sm text-on-surface-variant leading-relaxed whitespace-pre-wrap">{{ selectedNotification.content }}</p>
+                </div>
+
+                <!-- Actions -->
+                <button @click="closeDetail" class="w-full py-3 bg-primary text-on-primary rounded-2xl font-label-bold text-label-bold btn-jelly shadow-md">
+                  我知道了
+                </button>
+              </template>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </div>
 </template>
+
+<style scoped>
+.slide-up-enter-active,
+.slide-up-leave-active {
+  transition: all 0.3s ease;
+}
+.slide-up-enter-from,
+.slide-up-leave-to {
+  opacity: 0;
+}
+</style>

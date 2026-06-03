@@ -5,6 +5,7 @@ import { authApi } from '@/api/auth'
 import { petApi } from '@/api/pet'
 import { reminderApi } from '@/api/reminder'
 import { healthApi } from '@/api/health'
+import { notificationApi } from '@/api/notification'
 
 export const useUserStore = defineStore('user', () => {
   const currentUser = ref<User | null>(null)
@@ -14,6 +15,7 @@ export const useUserStore = defineStore('user', () => {
   const healthPlans = ref<HealthPlan[]>([])
   const petHealthData = ref<Record<number, PetHealthData>>({})
   const loading = ref(false)
+  const unreadNotifications = ref(0)
 
   const getPetById = computed(() => (id: number | string) => {
     // 用 == 而非 ===，避免大数字ID因精度丢失导致字符串/数字不匹配
@@ -90,11 +92,18 @@ export const useUserStore = defineStore('user', () => {
   }
 
   // 初始化加载
+  const fetchUnreadNotifications = async () => {
+    try {
+      unreadNotifications.value = (await notificationApi.unreadCount() as any) || 0
+    } catch {}
+  }
+
   const init = async () => {
     loading.value = true
     try {
       await fetchCurrentUser()
       await fetchPets()
+      fetchUnreadNotifications()
       if (currentPet.value) {
         await Promise.all([
           fetchHealthData(currentPet.value.id),
@@ -183,6 +192,7 @@ export const useUserStore = defineStore('user', () => {
     tasks,
     healthPlans,
     loading,
+    unreadNotifications,
     getPetById,
     getTasksByPetId,
     getHealthDataByPetId,
@@ -192,6 +202,7 @@ export const useUserStore = defineStore('user', () => {
     fetchHealthData,
     fetchTasks,
     fetchHealthPlans,
+    fetchUnreadNotifications,
     init,
     updateAvatar,
     updatePet,
