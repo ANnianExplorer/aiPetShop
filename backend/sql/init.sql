@@ -176,16 +176,19 @@ CREATE TABLE IF NOT EXISTS `reminder` (
 -- 通知表
 CREATE TABLE IF NOT EXISTS `notification` (
     `id` BIGINT NOT NULL COMMENT '主键ID',
-    `user_id` BIGINT NOT NULL COMMENT '接收用户ID',
+    `user_id` BIGINT NOT NULL COMMENT '接收用户ID (0=系统广播)',
     `type` VARCHAR(20) NOT NULL COMMENT '通知类型: reminder/social/health/system',
     `title` VARCHAR(100) NOT NULL COMMENT '通知标题',
     `content` TEXT COMMENT '通知内容',
     `is_read` TINYINT NOT NULL DEFAULT 0 COMMENT '是否已读: 0=未读 1=已读',
+    `status` TINYINT NOT NULL DEFAULT 1 COMMENT '状态: 0=草稿/未发布 1=已发布',
+    `is_delete` TINYINT NOT NULL DEFAULT 0 COMMENT '逻辑删除: 0=未删除 1=已删除',
     `related_id` BIGINT DEFAULT NULL COMMENT '关联业务ID',
     `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
     PRIMARY KEY (`id`),
     KEY `idx_user_id` (`user_id`),
-    KEY `idx_is_read` (`is_read`)
+    KEY `idx_is_read` (`is_read`),
+    KEY `idx_status` (`status`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='通知表';
 
 -- 关注关系表
