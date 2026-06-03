@@ -4,10 +4,10 @@ import com.baomidou.mybatisplus.core.conditions.query.QueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.petlumina.backend.annotation.AuthCheck;
 import com.petlumina.backend.common.BaseResponse;
-import com.petlumina.backend.common.PageRequest;
 import com.petlumina.backend.common.ResultUtils;
 import com.petlumina.backend.constant.UserConstant;
 import com.petlumina.backend.exception.ErrorCode;
+import com.petlumina.backend.model.dto.health.HealthQueryRequest;
 import com.petlumina.backend.model.entity.HealthRecord;
 import com.petlumina.backend.model.entity.Pet;
 import com.petlumina.backend.model.vo.HealthRecordVO;
@@ -35,18 +35,16 @@ public class AdminHealthController {
 
     @PostMapping("/record/list/page")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
-    public BaseResponse<Page<HealthRecordVO>> listHealthRecords(@RequestBody PageRequest request,
-                                                                 @RequestParam(required = false) Long petId,
-                                                                 @RequestParam(required = false) String mood) {
+    public BaseResponse<Page<HealthRecordVO>> listHealthRecords(@RequestBody HealthQueryRequest request) {
         ThrowUtils.throwIf(request == null, ErrorCode.PARAMS_ERROR);
         long current = request.getCurrent();
         long size = request.getPageSize();
         QueryWrapper<HealthRecord> queryWrapper = new QueryWrapper<>();
-        if (petId != null) {
-            queryWrapper.eq("pet_id", petId);
+        if (request.getPetId() != null) {
+            queryWrapper.eq("pet_id", request.getPetId());
         }
-        if (mood != null && !mood.isEmpty()) {
-            queryWrapper.eq("mood", mood);
+        if (request.getMood() != null && !request.getMood().isEmpty()) {
+            queryWrapper.eq("mood", request.getMood());
         }
         queryWrapper.orderByDesc("date");
         Page<HealthRecord> page = healthService.page(new Page<>(current, size), queryWrapper);
@@ -57,7 +55,7 @@ public class AdminHealthController {
 
     @GetMapping("/record/detail")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
-    public BaseResponse<Map<String, Object>> getRecordDetail(@RequestParam Long id) {
+    public BaseResponse<Map<String, Object>> getRecordDetail(@RequestParam(value = "id") Long id) {
         HealthRecord record = healthService.getById(id);
         ThrowUtils.throwIf(record == null, ErrorCode.NOT_FOUND_ERROR);
 
@@ -74,7 +72,6 @@ public class AdminHealthController {
             result.put("pet", petInfo);
         }
 
-        // Recent records for trend
         QueryWrapper<HealthRecord> wrapper = new QueryWrapper<HealthRecord>()
                 .eq("pet_id", record.getPetId())
                 .orderByDesc("date")

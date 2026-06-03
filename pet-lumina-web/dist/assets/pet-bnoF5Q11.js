@@ -1,0 +1,1 @@
+import{j as e}from"./index-CIRfuumO.js";const a={listPage:t=>e.post("/admin/pet/list/page/vo",t),getDetail:t=>e.get("/pet/get/vo",{params:{id:t}}),add:t=>e.post("/pet/add",t),edit:t=>e.post("/pet/edit",t),delete:t=>e.post("/admin/pet/delete",{id:t})};export{a as p};

@@ -7,6 +7,7 @@ import com.petlumina.backend.common.BaseResponse;
 import com.petlumina.backend.common.ResultUtils;
 import com.petlumina.backend.constant.UserConstant;
 import com.petlumina.backend.exception.ErrorCode;
+import com.petlumina.backend.model.dto.notification.NotificationAddRequest;
 import com.petlumina.backend.model.dto.notification.NotificationQueryRequest;
 import com.petlumina.backend.model.entity.Notification;
 import com.petlumina.backend.model.vo.NotificationVO;
@@ -45,6 +46,35 @@ public class AdminNotificationController {
         Page<NotificationVO> voPage = new Page<>(current, size, page.getTotal());
         voPage.setRecords(page.getRecords().stream().map(NotificationVO::objToVo).collect(Collectors.toList()));
         return ResultUtils.success(voPage);
+    }
+
+    /**
+     * 发布通知（广播给所有用户）
+     */
+    @PostMapping("/add")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    public BaseResponse<Boolean> addNotification(@RequestBody NotificationAddRequest request) {
+        ThrowUtils.throwIf(request == null, ErrorCode.PARAMS_ERROR);
+        ThrowUtils.throwIf(request.getTitle() == null || request.getTitle().isEmpty(), ErrorCode.PARAMS_ERROR, "标题不能为空");
+        // userId=0 表示系统广播通知
+        notificationService.createNotification(0L, request.getType(), request.getTitle(), request.getContent(), null);
+        return ResultUtils.success(true);
+    }
+
+    /**
+     * 更新通知
+     */
+    @PostMapping("/update")
+    @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
+    public BaseResponse<Boolean> updateNotification(@RequestBody Notification request) {
+        ThrowUtils.throwIf(request == null || request.getId() == null, ErrorCode.PARAMS_ERROR);
+        Notification existing = notificationService.getById(request.getId());
+        ThrowUtils.throwIf(existing == null, ErrorCode.NOT_FOUND_ERROR);
+        if (request.getTitle() != null) existing.setTitle(request.getTitle());
+        if (request.getContent() != null) existing.setContent(request.getContent());
+        if (request.getType() != null) existing.setType(request.getType());
+        boolean result = notificationService.updateById(existing);
+        return ResultUtils.success(result);
     }
 
     /**
