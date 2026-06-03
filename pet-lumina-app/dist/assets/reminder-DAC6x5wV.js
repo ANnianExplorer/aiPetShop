@@ -1,1 +1,0 @@
-import{r}from"./request-BdQ4_fC-.js";const d={add:e=>r.post("/reminder/add",e),edit:e=>r.post("/reminder/edit",e),delete:e=>r.post("/reminder/delete",{id:e}),getById:e=>r.get("/reminder/get/vo",{params:{id:e}}),listPage:e=>r.post("/reminder/list/page",e),toggleComplete:e=>r.post(`/reminder/complete/${e}`)};export{d as r};

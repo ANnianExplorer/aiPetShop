@@ -11,7 +11,7 @@ import Header from './Header.vue'
 
     <Sidebar />
     <Header />
-    <main class="ml-64 p-8">
+    <main class="ml-[264px] mr-4 mt-4 p-6">
       <router-view v-slot="{ Component }">
         <transition name="page" mode="out-in">
           <component :is="Component" />

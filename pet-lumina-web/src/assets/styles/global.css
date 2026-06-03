@@ -48,10 +48,7 @@
   body {
     font-family: "Noto Sans SC", sans-serif;
     color: var(--color-on-surface);
-    background-color: var(--color-surface);
-    background-image: url("https://lh3.googleusercontent.com/aida-public/AB6AXuAXh-O56oifm0Gv2uZuKY68agK3RibAGlm9Fp_Qg_CNJ45ZkgbWoXoTdEePWnteRGvmKop0DaB-FzMMKjF9T76YebLKOQ_zDUYJWshF2_GHQawOfV9Q7E2IS1_UinQErdNvo5_TZdrUIlyd0O0VCQHRHRnyE-ETiEdCWDiGugbqc3k9m4ZYxjsxJy_vfXuCXEAwFFKt74mcgpoccmqKcoFtd_YoIOpbFQE7Fva9qU7SSzgPs84IV9D6muY4wXKZYaQMjkZ_MmBTWl-s");
-    background-size: cover;
-    background-position: center;
+    background: linear-gradient(135deg, #f7f9fb 0%, #e8f5ee 50%, #f0f4f8 100%);
     background-attachment: fixed;
   }
 

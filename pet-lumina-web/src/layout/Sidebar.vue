@@ -39,7 +39,7 @@ const handleLogout = () => {
 </script>
 
 <template>
-  <aside class="fixed left-0 top-0 h-full flex flex-col py-8 h-screen w-64 border-r border-white/30 bg-white/60 backdrop-blur-[24px] shadow-[4px_0_24px_-8px_rgba(109,175,146,0.12)] z-50">
+  <aside class="fixed left-4 top-4 bottom-4 flex flex-col py-8 w-60 bg-white/70 backdrop-blur-2xl rounded-[28px] shadow-[0_8px_32px_rgba(75,100,85,0.1),0_0_0_1px_rgba(255,255,255,0.5)] z-50">
     <!-- Logo -->
     <div class="px-8 mb-12">
       <h1 class="text-2xl font-black text-primary-container drop-shadow-[0_0_8px_rgba(109,175,146,0.4)] font-[Plus_Jakarta_Sans]">PetLumina</h1>

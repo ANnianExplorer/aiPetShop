@@ -15,9 +15,31 @@ request.interceptors.request.use((config) => {
   return config
 })
 
+/**
+ * 处理 JSON 中超大数字的精度丢失问题
+ */
+function parseJsonWithBigInt(jsonStr: string): any {
+  const safeStr = jsonStr.replace(/"(?:[^"\\]|\\.)*"|(-?\d{16,}(?:\.\d+)?(?:[eE][+-]?\d+)?)/g, (match, num) => {
+    if (num) return `"${num}"`
+    return match
+  })
+  return JSON.parse(safeStr)
+}
+
 request.interceptors.response.use(
   (response) => {
-    const res = response.data
+    let res: any
+    const rawText = (response as any).request?.responseText
+    if (rawText) {
+      try {
+        res = parseJsonWithBigInt(rawText)
+      } catch {
+        res = response.data
+      }
+    } else {
+      res = response.data
+    }
+
     if (res.code !== 0) {
       ElMessage.error(res.message || '请求失败')
       if (res.code === 40100) {

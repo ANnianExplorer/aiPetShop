@@ -10,7 +10,7 @@ export const petApi = {
   delete: (id: number) =>
     request.post('/pet/delete', { id }),
 
-  getById: (id: number) =>
+  getById: (id: number | string) =>
     request.get('/pet/get/vo', { params: { id } }),
 
   list: () =>

@@ -12,8 +12,8 @@ const goToAddPet = () => {
   router.push({ name: 'addPet' })
 }
 
-const goToPetDetail = (petId: number) => {
-  router.push({ name: 'petDetail', params: { id: petId } })
+const goToPetDetail = (petId: number | string) => {
+  router.push({ name: 'petDetail', params: { id: String(petId) } })
 }
 </script>
 

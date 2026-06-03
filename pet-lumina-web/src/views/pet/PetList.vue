@@ -60,6 +60,10 @@ const petImages = [
   'https://images.unsplash.com/photo-1583511655857-d19b40a7a54e?w=400&h=300&fit=crop',
   'https://images.unsplash.com/photo-1548199973-03cce0bbc87b?w=400&h=300&fit=crop',
 ]
+
+const getPetImage = (pet: Pet, index: number) => {
+  return pet.avatar || petImages[index % petImages.length]
+}
 </script>
 
 <template>
@@ -145,7 +149,7 @@ const petImages = [
         <!-- Image -->
         <div class="relative h-48 overflow-hidden">
           <img
-            :src="petImages[index % petImages.length]"
+            :src="getPetImage(pet, index)"
             :alt="pet.name"
             class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500"
           />

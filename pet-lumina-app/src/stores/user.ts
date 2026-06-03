@@ -15,8 +15,9 @@ export const useUserStore = defineStore('user', () => {
   const petHealthData = ref<Record<number, PetHealthData>>({})
   const loading = ref(false)
 
-  const getPetById = computed(() => (id: number) => {
-    return pets.value.find(pet => pet.id === id)
+  const getPetById = computed(() => (id: number | string) => {
+    // 用 == 而非 ===，避免大数字ID因精度丢失导致字符串/数字不匹配
+    return pets.value.find(pet => String(pet.id) === String(id))
   })
 
   const getTasksByPetId = computed(() => (petId: number) => {

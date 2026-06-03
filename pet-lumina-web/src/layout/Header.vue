@@ -12,7 +12,7 @@ const handleLogout = () => {
 </script>
 
 <template>
-  <header class="sticky top-0 z-40 w-full flex justify-between items-center px-12 py-4 h-20 ml-72 bg-white/10 backdrop-blur-md border-b border-white/10">
+  <header class="sticky top-4 z-40 flex justify-between items-center px-8 py-3 h-16 ml-[286px] mr-4 bg-white/70 backdrop-blur-2xl rounded-[20px] shadow-[0_4px_20px_rgba(75,100,85,0.06),0_0_0_1px_rgba(255,255,255,0.5)]">
     <div class="flex items-center gap-6">
       <h2 class="font-[Plus_Jakarta_Sans] text-2xl font-semibold text-on-surface">管理后台</h2>
     </div>

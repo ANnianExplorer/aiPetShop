@@ -8,6 +8,14 @@ spring:
     url: jdbc:mysql://localhost:3306/petlumina?useSSL=false&serverTimezone=Asia/Shanghai
     username: root
     password: yzh521
+  application:
+    name: pet-backend
+  servlet:
+    multipart:
+      # 文件上传最大限制
+      max-file-size: 10MB
+      # 整个请求的最大大小  Spring Boot 默认的文件上传限制就是 1MB
+      max-request-size: 10MB
 
   # Redis
   redis:
@@ -20,6 +28,10 @@ spring:
         max-active: 8
         max-idle: 8
         min-idle: 0
+  # 配置session
+  session:
+    store-type: redis
+    timeout: 360000
 
 # MyBatis-Plus
 mybatis-plus:

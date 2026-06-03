@@ -1,8 +1,12 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import MainLayout from '@/layout/MainLayout.vue'
+import { useUserStore } from '@/stores/user'
 
 // 公开路径（不需要登录）
 const publicPaths = ['/login', '/sign-up', '/reset-password']
+
+// 是否已初始化（防止重复调用）
+let storeInitialized = false
 
 const router = createRouter({
   history: createWebHashHistory(),
@@ -159,17 +163,29 @@ const router = createRouter({
 })
 
 // 路由守卫
-router.beforeEach((to, _from, next) => {
+router.beforeEach(async (to, _from, next) => {
   const token = localStorage.getItem('satoken')
   const isPublicPath = publicPaths.includes(to.path)
 
   if (!token && !isPublicPath) {
-    // 未登录且访问非公开页面 → 跳转登录
     next('/login')
   } else if (token && isPublicPath) {
-    // 已登录且访问公开页面 → 跳转首页
     next('/home')
   } else {
+    // 已登录访问非公开页面 → 确保 store 已初始化
+    if (token && !storeInitialized) {
+      const userStore = useUserStore()
+      try {
+        await userStore.init()
+        storeInitialized = true
+      } catch (e) {
+        // 初始化失败（token 过期等），清除登录状态
+        localStorage.removeItem('satoken')
+        storeInitialized = false
+        next('/login')
+        return
+      }
+    }
     next()
   }
 })

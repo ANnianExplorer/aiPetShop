@@ -172,6 +172,13 @@ const openComment = () => {
       </div>
     </main>
 
+    <!-- Loading -->
+    <div v-else-if="loading" class="pt-20 flex flex-col items-center justify-center min-h-[60vh]">
+      <div class="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+      <p class="mt-4 text-on-surface-variant text-sm">加载中...</p>
+    </div>
+
+    <!-- Not Found -->
     <div v-else class="pt-20 px-container-padding flex flex-col items-center justify-center min-h-[60vh]">
       <span class="material-symbols-outlined text-6xl text-on-surface-variant opacity-30">error_outline</span>
       <p class="mt-4 font-title-md text-on-surface-variant">帖子不存在</p>

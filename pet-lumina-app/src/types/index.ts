@@ -147,6 +147,7 @@ export interface PetEditRequest {
   id: number
   name?: string
   breed?: string
+  type?: string
   age?: string
   notes?: string
   avatar?: string

@@ -5,6 +5,7 @@ import { storeToRefs } from 'pinia'
 import { useUserStore } from '@/stores/user'
 import { useToast } from '@/composables/useToast'
 import { petApi } from '@/api/pet'
+import { healthApi } from '@/api/health'
 import type { Pet } from '@/types'
 
 const router = useRouter()
@@ -13,57 +14,54 @@ const { showToast } = useToast()
 const userStore = useUserStore()
 const { getPetById } = storeToRefs(userStore)
 
-const petId = computed(() => Number(route.params.id))
-
-// 优先从 store 取，取不到则从 API 获取
+const petId = computed(() => route.params.id as string)
 const pet = ref<Pet | null>(null)
 const loading = ref(true)
+const errorMsg = ref('')
+const healthRecords = ref<any[]>([])
 
 const loadPet = async () => {
   loading.value = true
-  // 先尝试 store
-  const storePet = getPetById.value(petId.value)
-  if (storePet) {
-    pet.value = storePet
-    loading.value = false
-    return
-  }
-  // store 没有，从 API 获取
+  errorMsg.value = ''
+  const id = petId.value
+  if (!id) { pet.value = null; errorMsg.value = '无效的宠物ID'; loading.value = false; return }
+
+  // 1. store
+  const storePet = getPetById.value(id)
+  if (storePet) { pet.value = storePet as Pet; loading.value = false }
+
+  // 2. API
   try {
-    const res = await petApi.getById(petId.value) as any
-    pet.value = res
-  } catch (e) {
-    pet.value = null
-  } finally {
-    loading.value = false
-  }
+    const res = await petApi.getById(id)
+    if (res) pet.value = res as unknown as Pet
+    else if (!storePet) errorMsg.value = '未找到该宠物'
+  } catch (e: any) {
+    if (!storePet) { pet.value = null; errorMsg.value = e?.message || '获取宠物信息失败' }
+  } finally { loading.value = false }
+
+  // 3. health records
+  try {
+    const hRes = await healthApi.listRecords({ petId: id, pageSize: 5 }) as any
+    healthRecords.value = hRes?.records || []
+  } catch {}
 }
 
 onMounted(loadPet)
-
-// 监听路由参数变化重新加载
 watch(() => route.params.id, loadPet)
 
 const isEditing = ref(false)
-const editForm = ref({
-  name: '',
-  breed: '',
-  age: '',
-  notes: '',
-  avatar: ''
-})
+const editForm = ref({ name: '', breed: '', type: '', age: '', notes: '', avatar: '' })
 const avatarInput = ref<HTMLInputElement | null>(null)
 const avatarUploading = ref(false)
 
-const goBack = () => {
-  router.push('/profile')
-}
+const goBack = () => router.push('/profile')
 
 const startEdit = () => {
   if (!pet.value) return
   editForm.value = {
     name: pet.value.name,
     breed: pet.value.breed,
+    type: pet.value.type,
     age: pet.value.age,
     notes: pet.value.notes || '',
     avatar: pet.value.avatar
@@ -71,58 +69,30 @@ const startEdit = () => {
   isEditing.value = true
 }
 
-const cancelEdit = () => {
-  isEditing.value = false
-}
-
-const handleAvatarClick = () => {
-  avatarInput.value?.click()
-}
+const cancelEdit = () => { isEditing.value = false }
+const handleAvatarClick = () => { avatarInput.value?.click() }
 
 const handleFileChange = async (event: Event) => {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
   if (!file) return
-  if (file.size > 5 * 1024 * 1024) {
-    showToast('图片大小不能超过5MB', 'error')
-    input.value = ''
-    return
-  }
+  if (file.size > 5 * 1024 * 1024) { showToast('图片大小不能超过5MB', 'error'); input.value = ''; return }
   avatarUploading.value = true
   try {
-    // 用 petApi 或 fileApi 上传，拿到 URL
     const { fileApi } = await import('@/api/file')
-    const url = await fileApi.uploadImage(file)
-    editForm.value.avatar = url
+    editForm.value.avatar = await fileApi.uploadImage(file, 'avatar/pet')
     showToast('头像上传成功', 'success')
-  } catch (e) {
-    showToast('头像上传失败', 'error')
-  } finally {
-    avatarUploading.value = false
-    input.value = ''
-  }
+  } catch { showToast('头像上传失败', 'error') } finally { avatarUploading.value = false; input.value = '' }
 }
 
 const saveEdit = async () => {
-  if (!editForm.value.name || !editForm.value.breed) {
-    showToast('请填写完整信息', 'error')
-    return
-  }
+  if (!editForm.value.name || !editForm.value.breed) { showToast('请填写完整信息', 'error'); return }
   try {
-    await userStore.updatePet(petId.value, {
-      name: editForm.value.name,
-      breed: editForm.value.breed,
-      age: editForm.value.age,
-      notes: editForm.value.notes,
-      avatar: editForm.value.avatar,
-    })
-    // 重新获取最新数据
+    await userStore.updatePet(petId.value, editForm.value)
     await loadPet()
     showToast('保存成功', 'success')
     isEditing.value = false
-  } catch (e) {
-    showToast('保存失败', 'error')
-  }
+  } catch { showToast('保存失败', 'error') }
 }
 
 const getHealthLevel = (score: number) => {
@@ -136,6 +106,8 @@ const healthLevel = computed(() => {
   if (!pet.value) return { text: '', color: '', bg: '' }
   return getHealthLevel(pet.value.healthScore)
 })
+
+const typeLabel = (type: string) => ({ dog: '狗狗', cat: '猫咪', other: '其他' }[type] || type)
 </script>
 
 <template>
@@ -157,45 +129,49 @@ const healthLevel = computed(() => {
         <p class="mt-4 text-on-surface-variant text-sm">加载中...</p>
       </div>
 
-      <!-- Pet Not Found -->
-      <div v-else-if="!pet" class="flex flex-col items-center justify-center py-20 animate-fade-in">
-        <span class="material-symbols-outlined text-6xl text-on-surface-variant opacity-30">pets</span>
-        <p class="mt-4 text-on-surface-variant">未找到该宠物信息</p>
-        <button @click="goBack" class="mt-4 px-6 py-2 bg-primary text-on-primary rounded-full text-sm btn-jelly">返回</button>
+      <!-- Error -->
+      <div v-else-if="errorMsg" class="flex flex-col items-center justify-center py-20 animate-fade-in">
+        <span class="material-symbols-outlined text-6xl text-on-surface-variant opacity-30">error_outline</span>
+        <p class="mt-4 text-on-surface-variant">{{ errorMsg }}</p>
+        <button @click="loadPet" class="mt-4 px-6 py-2 bg-primary text-on-primary rounded-full text-sm btn-jelly">重试</button>
       </div>
 
       <!-- Pet Content -->
-      <template v-else>
-        <!-- Avatar + Name -->
-        <section class="flex flex-col items-center mb-lg animate-float-up stagger-1">
-          <div class="w-32 h-32 rounded-full border-4 border-white shadow-xl overflow-hidden">
-            <img class="w-full h-full object-cover" :src="pet.avatar" />
-          </div>
-          <h2 class="mt-4 font-display-lg text-display-lg text-on-surface">{{ pet.name }}</h2>
-          <p class="text-tertiary">{{ pet.breed }} · {{ pet.age }}</p>
-          <div class="mt-3">
-            <span class="px-3 py-1 rounded-full text-sm font-label-bold" :class="[healthLevel.color, healthLevel.bg]">
-              健康评分 {{ pet.healthScore }} - {{ healthLevel.text }}
+      <template v-else-if="pet">
+        <!-- Hero Card -->
+        <div class="glass-card rounded-2xl overflow-hidden mb-lg animate-float-up stagger-1">
+          <div class="h-48 relative overflow-hidden">
+            <img v-if="pet.avatar" :src="pet.avatar" class="w-full h-full object-cover" />
+            <div v-else class="w-full h-full bg-gradient-to-br from-primary-container/30 to-primary/10 flex items-center justify-center">
+              <span class="material-symbols-outlined text-white/30" style="font-size: 80px">pets</span>
+            </div>
+            <div class="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+            <div class="absolute bottom-4 left-4 text-white">
+              <h2 class="font-display-lg text-display-lg drop-shadow-lg">{{ pet.name }}</h2>
+              <p class="text-white/80 text-sm">{{ pet.breed }} · {{ typeLabel(pet.type) }}</p>
+            </div>
+            <span class="absolute top-4 right-4 px-3 py-1 rounded-full text-xs font-label-bold" :class="[healthLevel.color, healthLevel.bg]">
+              {{ healthLevel.text }}
             </span>
           </div>
-        </section>
+        </div>
 
         <!-- Stats Grid -->
         <section class="grid grid-cols-4 gap-3 mb-lg animate-float-up stagger-2">
           <div class="glass-card rounded-xl p-3 text-center ripple-card">
-            <p class="text-xl font-display-lg text-on-surface">{{ pet.todaySteps }}</p>
+            <p class="text-xl font-display-lg text-on-surface">{{ pet.todaySteps ?? 0 }}</p>
             <p class="text-xs text-tertiary mt-1">今日步数</p>
           </div>
           <div class="glass-card rounded-xl p-3 text-center ripple-card">
-            <p class="text-xl font-display-lg text-on-surface">{{ pet.feedingCount }}/{{ pet.feedingTotal }}</p>
+            <p class="text-xl font-display-lg text-on-surface">{{ pet.feedingCount ?? 0 }}/{{ pet.feedingTotal ?? 0 }}</p>
             <p class="text-xs text-tertiary mt-1">今日喂食</p>
           </div>
           <div class="glass-card rounded-xl p-3 text-center ripple-card">
-            <p class="text-xl font-display-lg text-on-surface">{{ pet.healthScore }}</p>
+            <p class="text-xl font-display-lg text-on-surface">{{ pet.healthScore ?? '-' }}</p>
             <p class="text-xs text-tertiary mt-1">健康评分</p>
           </div>
           <div class="glass-card rounded-xl p-3 text-center ripple-card">
-            <p class="text-xl font-display-lg text-on-surface">{{ pet.age }}</p>
+            <p class="text-xl font-display-lg text-on-surface">{{ pet.age ?? '-' }}</p>
             <p class="text-xs text-tertiary mt-1">年龄</p>
           </div>
         </section>
@@ -204,18 +180,10 @@ const healthLevel = computed(() => {
         <section class="mb-lg animate-float-up stagger-3">
           <h3 class="font-label-bold text-label-bold text-on-surface mb-3">基本信息</h3>
           <div class="glass-card rounded-xl p-4 space-y-3">
-            <div class="flex justify-between">
-              <span class="text-sm text-on-surface-variant">类型</span>
-              <span class="text-sm font-label-bold text-on-surface">{{ pet.type === 'dog' ? '狗狗' : pet.type === 'cat' ? '猫咪' : '其他' }}</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-sm text-on-surface-variant">品种</span>
-              <span class="text-sm font-label-bold text-on-surface">{{ pet.breed }}</span>
-            </div>
-            <div class="flex justify-between">
-              <span class="text-sm text-on-surface-variant">年龄</span>
-              <span class="text-sm font-label-bold text-on-surface">{{ pet.age }}</span>
-            </div>
+            <div class="flex justify-between"><span class="text-sm text-on-surface-variant">类型</span><span class="text-sm font-label-bold text-on-surface">{{ typeLabel(pet.type) }}</span></div>
+            <div class="flex justify-between"><span class="text-sm text-on-surface-variant">品种</span><span class="text-sm font-label-bold text-on-surface">{{ pet.breed }}</span></div>
+            <div class="flex justify-between"><span class="text-sm text-on-surface-variant">年龄</span><span class="text-sm font-label-bold text-on-surface">{{ pet.age ?? '-' }}</span></div>
+            <div class="flex justify-between"><span class="text-sm text-on-surface-variant">备注</span><span class="text-sm font-label-bold text-on-surface">{{ pet.notes || '无' }}</span></div>
           </div>
         </section>
 
@@ -224,10 +192,34 @@ const healthLevel = computed(() => {
           <h3 class="font-label-bold text-label-bold text-on-surface mb-3">喂食记录</h3>
           <div class="glass-card rounded-xl p-4 flex justify-between items-center">
             <div>
-              <p class="text-sm font-label-bold text-on-surface">今日已喂食 {{ pet.feedingCount }} 次</p>
-              <p class="text-xs text-tertiary">计划 {{ pet.feedingTotal }} 次</p>
+              <p class="text-sm font-label-bold text-on-surface">今日已喂食 {{ pet.feedingCount ?? 0 }} 次</p>
+              <p class="text-xs text-tertiary">计划 {{ pet.feedingTotal ?? 0 }} 次</p>
             </div>
-            <span class="text-sm font-label-bold text-primary">{{ pet.feedingTotal > 0 ? Math.round(pet.feedingCount / pet.feedingTotal * 100) : 0 }}%</span>
+            <span class="text-sm font-label-bold text-primary">{{ (pet.feedingTotal ?? 0) > 0 ? Math.round((pet.feedingCount ?? 0) / pet.feedingTotal * 100) : 0 }}%</span>
+          </div>
+        </section>
+
+        <!-- Health Records -->
+        <section class="mb-lg animate-float-up stagger-5">
+          <div class="flex justify-between items-center mb-3">
+            <h3 class="font-label-bold text-label-bold text-on-surface">健康记录</h3>
+            <span @click="router.push({ path: '/wellness' })" class="text-primary text-xs font-label-bold active:opacity-50">查看全部</span>
+          </div>
+          <div v-if="healthRecords.length > 0" class="space-y-2">
+            <div v-for="record in healthRecords" :key="record.id" class="glass-card rounded-xl p-4 flex items-center gap-3">
+              <div class="w-10 h-10 rounded-full bg-primary-fixed flex items-center justify-center shrink-0">
+                <span class="material-symbols-outlined text-primary text-lg">monitor_heart</span>
+              </div>
+              <div class="flex-1 min-w-0">
+                <p class="text-sm font-label-bold text-on-surface">{{ record.date || '-' }}</p>
+                <p class="text-xs text-tertiary">心率 {{ record.heartRate ?? '-' }} · 步数 {{ record.steps ?? '-' }} · 睡眠 {{ record.sleepHours ?? '-' }}h</p>
+              </div>
+              <span class="text-xs font-label-bold text-primary shrink-0">{{ record.mood || '正常' }}</span>
+            </div>
+          </div>
+          <div v-else class="glass-card rounded-xl p-6 text-center">
+            <span class="material-symbols-outlined text-3xl text-on-surface-variant opacity-30">medical_services</span>
+            <p class="text-xs text-tertiary mt-2">暂无健康记录</p>
           </div>
         </section>
       </template>
@@ -237,17 +229,21 @@ const healthLevel = computed(() => {
         <Transition name="modal">
           <div v-if="isEditing" class="fixed inset-0 z-50 flex items-end justify-center">
             <div class="absolute inset-0 bg-black/30" @click="cancelEdit"></div>
-            <div class="relative w-full max-w-lg bg-surface-container-low rounded-t-3xl overflow-hidden animate-slide-up">
-              <div class="p-4 pb-6">
-                <div class="flex justify-between items-center mb-4">
+            <div class="relative w-full max-w-lg bg-surface-container-low rounded-t-3xl overflow-hidden animate-slide-up max-h-[85vh] overflow-y-auto">
+              <div class="p-5 pb-8">
+                <!-- Drag Handle -->
+                <div class="flex justify-center mb-3">
+                  <div class="w-10 h-1 rounded-full bg-surface-variant"></div>
+                </div>
+
+                <div class="flex justify-between items-center mb-6">
                   <h3 class="font-title-sm text-title-sm text-on-surface">编辑宠物信息</h3>
                   <button @click="cancelEdit" class="p-2 rounded-full active:bg-surface-container-high transition-colors">
                     <span class="material-symbols-outlined text-on-surface-variant">close</span>
                   </button>
                 </div>
 
-                <!-- Avatar Upload -->
-                <div class="flex justify-center mb-4">
+                <div class="flex justify-center mb-6">
                   <input ref="avatarInput" type="file" accept="image/jpeg,image/png,image/gif,image/webp" class="hidden" @change="handleFileChange" />
                   <div class="relative cursor-pointer" @click="handleAvatarClick">
                     <div class="w-24 h-24 rounded-full border-4 border-white shadow-xl overflow-hidden">
@@ -259,35 +255,39 @@ const healthLevel = computed(() => {
                   </div>
                 </div>
 
-                <!-- Form -->
                 <div class="space-y-3">
                   <div>
                     <label class="font-label-bold text-label-bold text-on-surface mb-2 block">宠物名称</label>
-                    <input v-model="editForm.name" placeholder="请输入宠物名称"
-                      class="w-full bg-surface-container rounded-xl px-4 py-3 font-body-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary" />
+                    <input v-model="editForm.name" class="w-full bg-surface-container rounded-xl px-4 py-3 font-body-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary" />
                   </div>
                   <div>
                     <label class="font-label-bold text-label-bold text-on-surface mb-2 block">品种</label>
-                    <input v-model="editForm.breed" placeholder="请输入品种"
-                      class="w-full bg-surface-container rounded-xl px-4 py-3 font-body-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary" />
+                    <input v-model="editForm.breed" class="w-full bg-surface-container rounded-xl px-4 py-3 font-body-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary" />
+                  </div>
+                  <div>
+                    <label class="font-label-bold text-label-bold text-on-surface mb-2 block">类型</label>
+                    <div class="grid grid-cols-3 gap-2">
+                      <button v-for="t in [{id:'dog',name:'狗狗'},{id:'cat',name:'猫咪'},{id:'other',name:'其他'}]" :key="t.id" type="button"
+                        @click="editForm.type = t.id"
+                        class="py-2 rounded-xl text-xs font-label-bold transition-all"
+                        :class="editForm.type === t.id ? 'bg-primary text-on-primary' : 'bg-surface-container text-on-surface-variant'">
+                        {{ t.name }}
+                      </button>
+                    </div>
                   </div>
                   <div>
                     <label class="font-label-bold text-label-bold text-on-surface mb-2 block">年龄</label>
-                    <input v-model="editForm.age" placeholder="例如：2岁"
-                      class="w-full bg-surface-container rounded-xl px-4 py-3 font-body-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary" />
+                    <input v-model="editForm.age" class="w-full bg-surface-container rounded-xl px-4 py-3 font-body-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary" />
+                  </div>
+                  <div>
+                    <label class="font-label-bold text-label-bold text-on-surface mb-2 block">备注</label>
+                    <textarea v-model="editForm.notes" rows="2" class="w-full bg-surface-container rounded-xl px-4 py-3 font-body-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary resize-none"></textarea>
                   </div>
                 </div>
 
-                <!-- Actions -->
-                <div class="flex gap-3 mt-6">
-                  <button @click="cancelEdit"
-                    class="flex-1 py-3.5 bg-surface-container text-on-surface rounded-xl font-label-bold text-label-bold active:scale-95 transition-transform">
-                    取消
-                  </button>
-                  <button @click="saveEdit"
-                    class="flex-1 py-3.5 bg-primary text-on-primary rounded-xl font-label-bold text-label-bold btn-jelly shadow-md">
-                    保存
-                  </button>
+                <div class="flex gap-3 mt-8">
+                  <button @click="cancelEdit" class="flex-1 py-3.5 bg-surface-container text-on-surface rounded-xl font-label-bold text-label-bold active:scale-95 transition-transform">取消</button>
+                  <button @click="saveEdit" class="flex-1 py-3.5 bg-primary text-on-primary rounded-xl font-label-bold text-label-bold btn-jelly shadow-md">保存</button>
                 </div>
               </div>
             </div>
@@ -299,12 +299,6 @@ const healthLevel = computed(() => {
 </template>
 
 <style scoped>
-.modal-enter-active,
-.modal-leave-active {
-  transition: all 0.3s ease;
-}
-.modal-enter-from,
-.modal-leave-to {
-  opacity: 0;
-}
+.modal-enter-active, .modal-leave-active { transition: all 0.3s ease; }
+.modal-enter-from, .modal-leave-to { opacity: 0; }
 </style>
