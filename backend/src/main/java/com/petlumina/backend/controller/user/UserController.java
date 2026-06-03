@@ -7,6 +7,7 @@ import com.petlumina.backend.annotation.AuthCheck;
 import com.petlumina.backend.annotation.RateLimiter;
 import com.petlumina.backend.common.BaseResponse;
 import com.petlumina.backend.common.ResultUtils;
+import com.petlumina.backend.constant.CosConstant;
 import com.petlumina.backend.constant.UserConstant;
 import com.petlumina.backend.exception.BusinessException;
 import com.petlumina.backend.exception.ErrorCode;
@@ -100,7 +101,7 @@ public class UserController {
         if (originalFilename != null && originalFilename.contains(".")) {
             extension = originalFilename.substring(originalFilename.lastIndexOf("."));
         }
-        String key = "avatar/" + loginUser.getId() + extension;
+        String key = CosConstant.AVATAR_USER + "/" + loginUser.getId() + extension;
         String avatarUrl;
         try {
             avatarUrl = cosManager.upload(key, file.getInputStream());

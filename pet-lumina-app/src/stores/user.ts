@@ -115,13 +115,12 @@ export const useUserStore = defineStore('user', () => {
   const updatePet = async (petId: number, updates: Partial<Pet>) => {
     await petApi.edit({ id: petId, ...updates })
     await fetchPets()
-    // 更新 currentPet
     if (currentPet.value?.id === petId) {
       currentPet.value = pets.value.find(p => p.id === petId) || null
     }
   }
 
-  const addPet = async (pet: { name: string; type: string; breed?: string; age?: string; notes?: string }) => {
+  const addPet = async (pet: { name: string; type: string; breed?: string; age?: string; notes?: string; avatar?: string }) => {
     await petApi.add(pet)
     await fetchPets()
   }

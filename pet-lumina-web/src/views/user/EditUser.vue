@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { fileApi } from '@/api/file'
 
 const route = useRoute()
 const router = useRouter()
@@ -14,6 +15,21 @@ const form = ref({
 })
 
 const avatarUrl = ref('')
+const avatarPreview = ref('')
+const avatarInputRef = ref<HTMLInputElement | null>(null)
+const avatarUploading = ref(false)
+
+const triggerAvatarUpload = () => { avatarInputRef.value?.click() }
+
+const onAvatarChange = async (e: Event) => {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  if (file.size > 5 * 1024 * 1024) { ElMessage.warning('图片大小不能超过5MB'); return }
+  avatarPreview.value = URL.createObjectURL(file)
+  avatarUploading.value = true
+  try { avatarUrl.value = await fileApi.uploadImage(file); ElMessage.success('头像上传成功') } catch { avatarPreview.value = '' } finally { avatarUploading.value = false; input.value = '' }
+}
 
 onMounted(async () => {
   loading.value = true
@@ -59,19 +75,21 @@ const handleSubmit = () => {
           <form class="space-y-8" @submit.prevent="handleSubmit">
             <!-- Avatar Section -->
             <div class="flex flex-col items-center gap-4 mb-10">
+              <input ref="avatarInputRef" type="file" accept="image/jpeg,image/png,image/gif,image/webp" class="hidden" @change="onAvatarChange" />
               <div class="relative group">
                 <div class="w-32 h-32 rounded-full border-4 border-white/50 shadow-xl overflow-hidden glass-panel">
-                  <div v-if="!avatarUrl" class="w-full h-full bg-gradient-to-br from-primary-container to-primary flex items-center justify-center text-white text-4xl font-bold font-[Plus_Jakarta_Sans]">
+                  <div v-if="!avatarPreview && !avatarUrl" class="w-full h-full bg-gradient-to-br from-primary-container to-primary flex items-center justify-center text-white text-4xl font-bold font-[Plus_Jakarta_Sans]">
                     {{ form.username.charAt(0) }}
                   </div>
-                  <img v-else :src="avatarUrl" class="w-full h-full object-cover" />
+                  <img v-else :src="avatarPreview || avatarUrl" class="w-full h-full object-cover" />
                 </div>
-                <label class="absolute bottom-0 right-0 w-10 h-10 bg-primary text-white rounded-full flex items-center justify-center cursor-pointer shadow-lg hover:scale-110 transition-transform">
+                <button type="button" @click="triggerAvatarUpload" class="absolute bottom-0 right-0 w-10 h-10 bg-primary text-white rounded-full flex items-center justify-center cursor-pointer shadow-lg hover:scale-110 transition-transform">
                   <span class="material-symbols-outlined text-xl">photo_camera</span>
-                  <input class="hidden" type="file" />
-                </label>
+                </button>
               </div>
-              <span class="text-xs font-[Plus_Jakarta_Sans] font-semibold text-primary">点击图标修改头像</span>
+              <span class="text-xs font-[Plus_Jakarta_Sans] font-semibold text-primary">
+                {{ avatarUploading ? '上传中...' : '点击图标修改头像' }}
+              </span>
             </div>
 
             <!-- Input Grid -->

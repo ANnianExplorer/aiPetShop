@@ -26,4 +26,7 @@ public class PetAddRequest implements Serializable {
 
     /** 备注 */
     private String notes;
+
+    /** 头像URL */
+    private String avatar;
 }

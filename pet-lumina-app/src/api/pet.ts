@@ -1,10 +1,10 @@
 import request from './request'
 
 export const petApi = {
-  add: (data: { name: string; type: string; breed?: string; age?: string; notes?: string }) =>
+  add: (data: { name: string; type: string; breed?: string; age?: string; notes?: string; avatar?: string }) =>
     request.post('/pet/add', data),
 
-  edit: (data: { id: number; name?: string; breed?: string; age?: string; notes?: string }) =>
+  edit: (data: { id: number; name?: string; breed?: string; age?: string; notes?: string; avatar?: string }) =>
     request.post('/pet/edit', data),
 
   delete: (id: number) =>

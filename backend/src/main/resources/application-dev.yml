@@ -45,10 +45,11 @@ sa-token:
 
 # 腾讯云 COS
 cos:
-  secretId: your_secret_id
-  secretKey: your_secret_key
-  bucket: petlumina-1234567890
-  region: ap-guangzhou
+  secretId: ${COS_SECRET_ID}
+  secretKey: ${COS_SECRET_KEY}
+  bucket: ${COS_BUCKET}
+  region: ${COS_REGION}
+  host: ${COS_HOST}
 
 # Knife4j
 knife4j:

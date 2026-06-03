@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { fileApi } from '@/api/file'
 
 const route = useRoute()
 const router = useRouter()
@@ -20,6 +21,20 @@ const form = ref({
 })
 
 const photoPreview = ref('')
+const photoInputRef = ref<HTMLInputElement | null>(null)
+const photoUploading = ref(false)
+
+const triggerPhotoUpload = () => { photoInputRef.value?.click() }
+
+const onPhotoChange = async (e: Event) => {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  if (file.size > 5 * 1024 * 1024) { ElMessage.warning('图片大小不能超过5MB'); return }
+  photoPreview.value = URL.createObjectURL(file)
+  photoUploading.value = true
+  try { await fileApi.uploadImage(file, 'pet/image'); ElMessage.success('照片上传成功') } catch { photoPreview.value = '' } finally { photoUploading.value = false; input.value = '' }
+}
 
 onMounted(async () => {
   loading.value = true
@@ -63,6 +78,7 @@ const handleSubmit = () => {
           <form class="space-y-8" @submit.prevent="handleSubmit">
             <!-- Avatar Section -->
             <div class="flex flex-col items-center gap-4 mb-8">
+              <input ref="photoInputRef" type="file" accept="image/jpeg,image/png,image/gif,image/webp" class="hidden" @change="onPhotoChange" />
               <div class="relative group">
                 <div class="w-32 h-32 rounded-3xl border-4 border-white/50 shadow-xl overflow-hidden glass-panel">
                   <div v-if="!photoPreview" class="w-full h-full bg-gradient-to-br from-primary-container to-primary flex items-center justify-center text-white text-4xl">
@@ -70,12 +86,13 @@ const handleSubmit = () => {
                   </div>
                   <img v-else :src="photoPreview" class="w-full h-full object-cover" />
                 </div>
-                <label class="absolute bottom-0 right-0 w-10 h-10 bg-primary text-white rounded-full flex items-center justify-center cursor-pointer shadow-lg hover:scale-110 transition-transform">
+                <button type="button" @click="triggerPhotoUpload" class="absolute bottom-0 right-0 w-10 h-10 bg-primary text-white rounded-full flex items-center justify-center cursor-pointer shadow-lg hover:scale-110 transition-transform">
                   <span class="material-symbols-outlined text-xl">photo_camera</span>
-                  <input class="hidden" type="file" />
-                </label>
+                </button>
               </div>
-              <span class="text-xs font-[Plus_Jakarta_Sans] font-semibold text-primary">点击图标更换照片</span>
+              <span class="text-xs font-[Plus_Jakarta_Sans] font-semibold text-primary">
+                {{ photoUploading ? '上传中...' : '点击图标更换照片' }}
+              </span>
             </div>
 
             <!-- Form Grid -->

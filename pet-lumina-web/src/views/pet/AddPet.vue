@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { fileApi } from '@/api/file'
 
 const router = useRouter()
 const form = ref({
@@ -13,6 +14,26 @@ const form = ref({
   healthNote: '',
 })
 const photoPreview = ref('')
+const photoUrl = ref('')
+const photoInputRef = ref<HTMLInputElement | null>(null)
+const photoUploading = ref(false)
+
+const triggerPhotoUpload = () => {
+  photoInputRef.value?.click()
+}
+
+const onPhotoChange = async (e: Event) => {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  if (file.size > 5 * 1024 * 1024) { ElMessage.warning('图片大小不能超过5MB'); return }
+  photoPreview.value = URL.createObjectURL(file)
+  photoUploading.value = true
+  try {
+    photoUrl.value = await fileApi.uploadImage(file, 'pet/image')
+    ElMessage.success('照片上传成功')
+  } catch { photoPreview.value = '' } finally { photoUploading.value = false; input.value = '' }
+}
 
 const handleSubmit = () => {
   if (!form.value.name || !form.value.breed) {
@@ -47,7 +68,8 @@ const handleReset = () => {
         </div>
 
         <!-- Photo Upload -->
-        <div class="relative group mt-12">
+        <input ref="photoInputRef" type="file" accept="image/jpeg,image/png,image/gif,image/webp" class="hidden" @change="onPhotoChange" />
+        <div class="relative group mt-12" @click="triggerPhotoUpload">
           <div
             class="aspect-square w-full rounded-3xl overflow-hidden glass-panel border-2 border-white/40 flex flex-col items-center justify-center cursor-pointer hover:border-primary-container transition-all"
           >

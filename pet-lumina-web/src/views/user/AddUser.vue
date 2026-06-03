@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { fileApi } from '@/api/file'
 
 const router = useRouter()
 const form = ref({
@@ -13,6 +14,9 @@ const form = ref({
 })
 const showPassword = ref(false)
 const avatarPreview = ref('')
+const avatarUrl = ref('')
+const avatarInputRef = ref<HTMLInputElement | null>(null)
+const avatarUploading = ref(false)
 
 const passwordStrength = ref(0)
 const passwordLabel = ref('')
@@ -33,7 +37,20 @@ const checkPasswordStrength = () => {
 }
 
 const handleAvatarUpload = () => {
-  ElMessage.info('头像上传功能开发中')
+  avatarInputRef.value?.click()
+}
+
+const onAvatarChange = async (e: Event) => {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  if (file.size > 5 * 1024 * 1024) { ElMessage.warning('图片大小不能超过5MB'); return }
+  avatarPreview.value = URL.createObjectURL(file)
+  avatarUploading.value = true
+  try {
+    avatarUrl.value = await fileApi.uploadImage(file)
+    ElMessage.success('头像上传成功')
+  } catch { avatarPreview.value = '' } finally { avatarUploading.value = false; input.value = '' }
 }
 
 const handleSubmit = () => {
@@ -78,6 +95,7 @@ const handleReset = () => {
           <div class="grid grid-cols-12 gap-10">
             <!-- Avatar Upload Side -->
             <div class="col-span-12 lg:col-span-4 flex flex-col items-center">
+              <input ref="avatarInputRef" type="file" accept="image/jpeg,image/png,image/gif,image/webp" class="hidden" @change="onAvatarChange" />
               <div class="relative group cursor-pointer" @click="handleAvatarUpload">
                 <div class="w-48 h-48 rounded-3xl overflow-hidden glass-panel border-2 border-white/40 flex items-center justify-center transition-all duration-500 group-hover:border-primary-container/60 group-hover:shadow-[0_0_30px_rgba(109,175,146,0.2)]">
                   <div v-if="!avatarPreview" class="w-full h-full bg-gradient-to-br from-primary-container/20 to-primary/10 flex items-center justify-center">

@@ -1,1 +1,0 @@
-import{r as e}from"./request-BoVumONf.js";const o={login:t=>e.post("/auth/login",t),register:t=>e.post("/auth/register",t),sendCode:t=>e.post("/auth/send-code",{phone:t}),resetPassword:t=>e.post("/auth/reset-password",t),getCurrentUser:()=>e.get("/auth/current"),logout:()=>e.post("/auth/logout")};export{o as a};

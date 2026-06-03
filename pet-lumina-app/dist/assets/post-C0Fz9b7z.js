@@ -1,1 +1,0 @@
-import{r as o}from"./request-BoVumONf.js";const s={add:t=>o.post("/post/add",t),edit:t=>o.post("/post/edit",t),delete:t=>o.post("/post/delete",{id:t}),getById:t=>o.get("/post/get/vo",{params:{id:t}}),listPage:t=>o.post("/post/list/page/vo",t),toggleLike:t=>o.post(`/post/like/${t}`),toggleFavorite:t=>o.post(`/post/favorite/${t}`)};export{s as p};

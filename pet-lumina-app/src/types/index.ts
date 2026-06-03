@@ -140,6 +140,7 @@ export interface PetAddRequest {
   breed?: string
   age?: string
   notes?: string
+  avatar?: string
 }
 
 export interface PetEditRequest {
@@ -148,6 +149,7 @@ export interface PetEditRequest {
   breed?: string
   age?: string
   notes?: string
+  avatar?: string
 }
 
 export interface PetQueryRequest {

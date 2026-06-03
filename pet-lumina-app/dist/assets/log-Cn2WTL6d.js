@@ -1,1 +1,0 @@
-import{r as e}from"./request-BoVumONf.js";const g={add:t=>e.post("/log/add",t),edit:t=>e.post("/log/edit",t),delete:t=>e.post("/log/delete",{id:t}),getById:t=>e.get("/log/get/vo",{params:{id:t}}),listPage:t=>e.post("/log/list/page/vo",t)};export{g as l};
