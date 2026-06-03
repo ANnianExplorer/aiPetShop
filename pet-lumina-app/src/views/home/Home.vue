@@ -30,7 +30,6 @@ const goToNotifications = () => {
 }
 
 onMounted(async () => {
-  // 获取今日提醒
   try {
     const today = new Date().toISOString().split('T')[0]
     const res = await reminderApi.listPage({ pageSize: 5, startDate: today }) as any
@@ -39,7 +38,6 @@ onMounted(async () => {
     reminders.value = []
   }
 
-  // 获取社区热门帖子
   try {
     const res = await postApi.listPage({ pageSize: 3 }) as any
     trends.value = res?.records || []
@@ -52,35 +50,45 @@ onMounted(async () => {
 <template>
   <div class="pb-32">
     <!-- TopAppBar -->
-    <header class="fixed top-0 w-full z-50 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl border-b border-zinc-100/50 dark:border-zinc-800/50 shadow-sm">
+    <header class="fixed top-0 w-full z-50 bg-white/70 backdrop-blur-2xl border-b border-white/30 shadow-[0_4px_20px_rgba(75,100,85,0.04)]">
       <div class="flex justify-between items-center px-5 py-3 w-full max-w-screen-xl mx-auto">
         <div class="flex items-center gap-3">
-          <div @click="goToProfile" class="w-10 h-10 rounded-full overflow-hidden border-2 border-primary-fixed cursor-pointer active:scale-95 transition-transform">
+          <div @click="goToProfile" class="w-10 h-10 rounded-full overflow-hidden border-2 border-primary-fixed cursor-pointer active:scale-90 transition-all duration-300 shadow-md">
             <img class="w-full h-full object-cover" :src="currentUser?.avatar" alt="Avatar" />
           </div>
-          <span class="text-xl font-bold tracking-tighter text-emerald-800 dark:text-emerald-100 font-['Plus_Jakarta_Sans']">PetLumina</span>
+          <span class="text-xl font-bold tracking-tighter text-primary font-['Plus_Jakarta_Sans']">PetLumina</span>
         </div>
-        <div @click="goToNotifications" class="active:scale-95 transition-transform duration-200 cursor-pointer">
-          <span class="material-symbols-outlined text-emerald-700 dark:text-emerald-400">notifications</span>
+        <div @click="goToNotifications" class="icon-btn cursor-pointer p-2 rounded-full">
+          <span class="material-symbols-outlined text-primary">notifications</span>
         </div>
       </div>
     </header>
 
     <main class="pt-20 px-container-padding space-y-lg max-w-screen-xl mx-auto">
       <!-- Welcome Section -->
-      <section class="mt-4">
+      <section class="mt-4 animate-float-up">
         <h1 class="font-display-lg text-display-lg text-on-background">你好, {{ currentUser?.nickname }}</h1>
         <p class="font-body-md text-body-md text-on-surface-variant opacity-70">今天也是充满活力的一天！</p>
       </section>
 
-      <!-- Extracted Components -->
-      <TodayReminders :reminders="reminders" />
-      <PetStatusBento v-if="currentPet" :pet="currentPet" />
-      <CommunityTrends :trends="trends" />
+      <!-- Extracted Components with stagger -->
+      <div class="animate-float-up stagger-1">
+        <TodayReminders :reminders="reminders" />
+      </div>
+      <div class="animate-float-up stagger-2">
+        <PetStatusBento v-if="currentPet" :pet="currentPet" />
+      </div>
+      <div class="animate-float-up stagger-3">
+        <CommunityTrends :trends="trends" />
+      </div>
     </main>
 
-    <!-- FAB -->
-    <button @click="addNewReminder" class="fixed bottom-24 right-5 w-14 h-14 bg-primary text-on-primary rounded-full shadow-lg flex items-center justify-center z-40 active:scale-90 transition-transform">
+    <!-- FAB with jelly effect -->
+    <button
+      @click="addNewReminder"
+      class="fixed bottom-24 right-5 w-14 h-14 bg-primary text-on-primary rounded-full shadow-[0_8px_24px_rgba(75,100,85,0.3)] flex items-center justify-center z-40 btn-jelly animate-scale-in"
+      style="animation-delay: 0.4s"
+    >
       <span class="material-symbols-outlined text-3xl">add</span>
     </button>
   </div>

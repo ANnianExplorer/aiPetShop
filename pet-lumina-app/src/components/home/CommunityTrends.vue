@@ -21,21 +21,21 @@ const goToPost = (postId: number) => {
   <section class="pb-10">
     <div class="flex justify-between items-end mb-md">
       <h2 class="font-headline-md text-headline-md">社区动态</h2>
-      <span @click="goToCommunity" class="font-label-bold text-label-bold text-primary cursor-pointer hover:opacity-80 transition-opacity">发现更多</span>
+      <span @click="goToCommunity" class="font-label-bold text-label-bold text-primary cursor-pointer hover:opacity-70 transition-opacity">发现更多</span>
     </div>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-lg">
-      <div 
-        v-for="post in trends" 
+      <div
+        v-for="post in trends"
         :key="post.id"
         @click="goToPost(post.id)"
-        class="group rounded-3xl overflow-hidden bg-white shadow-sm hover:shadow-md transition-shadow cursor-pointer active:scale-[0.98]"
+        class="group rounded-2xl overflow-hidden glass-card depth-1 cursor-pointer"
       >
         <div class="h-48 overflow-hidden">
-          <img class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" :src="post.imageList[0]" />
+          <img class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" :src="post.imageList[0]" />
         </div>
         <div class="p-md">
           <div class="flex items-center gap-2 mb-2">
-            <div class="w-6 h-6 rounded-full bg-surface-variant overflow-hidden">
+            <div class="w-6 h-6 rounded-full bg-surface-variant overflow-hidden shadow-sm">
               <img class="w-full h-full object-cover" :src="post.user?.avatar" />
             </div>
             <span class="font-label-bold text-caption-sm opacity-60">由 {{ post.user?.nickname }} 分享</span>

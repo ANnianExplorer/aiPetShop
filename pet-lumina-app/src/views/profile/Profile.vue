@@ -24,26 +24,34 @@ const handleLogout = async () => {
 <template>
   <div class="pb-32 bg-background min-h-screen">
     <main class="pt-4 px-container-padding max-w-screen-xl mx-auto">
-      <div class="flex justify-between items-center py-md mb-md">
+      <!-- Header -->
+      <div class="flex justify-between items-center py-md mb-md animate-float-up">
         <div class="flex items-center gap-3">
-          <div class="w-8 h-8 rounded-full overflow-hidden ring-2 ring-primary-fixed">
+          <div class="w-8 h-8 rounded-full overflow-hidden ring-2 ring-primary-fixed shadow-sm">
             <img class="w-full h-full object-cover" :src="currentUser?.avatar" />
           </div>
-          <span class="text-xl font-bold tracking-tighter text-emerald-800">PetLumina</span>
+          <span class="text-xl font-bold tracking-tighter text-primary font-['Plus_Jakarta_Sans']">PetLumina</span>
         </div>
-        <button @click="goToNotifications" class="text-zinc-400 hover:bg-emerald-50 transition-colors p-2 rounded-full active:scale-95 duration-200">
-          <span class="material-symbols-outlined">notifications</span>
+        <button @click="goToNotifications" class="icon-btn p-2 rounded-full">
+          <span class="material-symbols-outlined text-primary">notifications</span>
         </button>
       </div>
-      <UserInfo v-if="currentUser" :user="currentUser" @update-avatar="(avatar: string) => userStore.updateAvatar(avatar)" />
-      <PetList :pets="pets" />
-      <SettingsMenu />
+
+      <div class="animate-float-up stagger-1">
+        <UserInfo v-if="currentUser" :user="currentUser" @update-avatar="(avatar: string) => userStore.updateAvatar(avatar)" />
+      </div>
+      <div class="animate-float-up stagger-2">
+        <PetList :pets="pets" />
+      </div>
+      <div class="animate-float-up stagger-3">
+        <SettingsMenu />
+      </div>
 
       <!-- Logout Button -->
-      <div class="mt-12 px-2">
-        <button 
+      <div class="mt-12 px-2 animate-float-up stagger-4">
+        <button
           @click="handleLogout"
-          class="w-full py-4 rounded-xl bg-error-container text-on-error-container font-label-bold text-body-md flex items-center justify-center gap-2 active:scale-95 transition-transform"
+          class="w-full py-4 rounded-2xl bg-error-container text-on-error-container font-label-bold text-body-md flex items-center justify-center gap-2 btn-jelly depth-1"
         >
           <span class="material-symbols-outlined">logout</span>
           退出登录
