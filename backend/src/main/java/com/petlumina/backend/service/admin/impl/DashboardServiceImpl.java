@@ -79,8 +79,8 @@ public class DashboardServiceImpl implements DashboardService {
 
             // Count posts created on this day as activity proxy
             long dailyPosts = postService.count(new QueryWrapper<Post>()
-                    .ge("createTime", dateStr + " 00:00:00")
-                    .lt("createTime", dateStr + " 23:59:59"));
+                    .ge("create_time", dateStr + " 00:00:00")
+                    .lt("create_time", dateStr + " 23:59:59"));
 
             Map<String, Object> dayData = new HashMap<>();
             dayData.put("date", dateStr);
@@ -91,8 +91,8 @@ public class DashboardServiceImpl implements DashboardService {
 
         // Recent posts (top 5)
         List<Post> recentPosts = postService.list(new QueryWrapper<Post>()
-                .eq("isDelete", 0)
-                .orderByDesc("createTime")
+                .eq("is_delete", 0)
+                .orderByDesc("create_time")
                 .last("LIMIT 5"));
         List<Map<String, Object>> hotPosts = recentPosts.stream().map(post -> {
             Map<String, Object> item = new HashMap<>();
@@ -110,8 +110,8 @@ public class DashboardServiceImpl implements DashboardService {
 
         // Recent topics (top 5)
         List<Topic> recentTopics = topicService.list(new QueryWrapper<Topic>()
-                .eq("isDelete", 0)
-                .orderByDesc("createTime")
+                .eq("is_delete", 0)
+                .orderByDesc("create_time")
                 .last("LIMIT 5"));
         List<Map<String, Object>> hotTopics = recentTopics.stream().map(topic -> {
             Map<String, Object> item = new HashMap<>();

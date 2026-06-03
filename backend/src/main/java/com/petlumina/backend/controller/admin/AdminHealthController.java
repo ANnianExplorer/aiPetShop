@@ -43,7 +43,7 @@ public class AdminHealthController {
         long size = request.getPageSize();
         QueryWrapper<HealthRecord> queryWrapper = new QueryWrapper<>();
         if (petId != null) {
-            queryWrapper.eq("petId", petId);
+            queryWrapper.eq("pet_id", petId);
         }
         if (mood != null && !mood.isEmpty()) {
             queryWrapper.eq("mood", mood);
@@ -76,7 +76,7 @@ public class AdminHealthController {
 
         // Recent records for trend
         QueryWrapper<HealthRecord> wrapper = new QueryWrapper<HealthRecord>()
-                .eq("petId", record.getPetId())
+                .eq("pet_id", record.getPetId())
                 .orderByDesc("date")
                 .last("LIMIT 7");
         result.put("recentRecords", healthService.list(wrapper));

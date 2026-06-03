@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { userApi } from '@/api/user'
 import { usePagination } from '@/composables/usePagination'
 import UserDetail from './UserDetail.vue'
 import type { User } from '@/types'
+
+const router = useRouter()
 
 const loading = ref(false)
 const tableData = ref<User[]>([])
@@ -92,6 +95,18 @@ const handleStatusChange = async (user: User) => {
       </button>
       <button class="glass-panel rounded-2xl px-6 py-3 text-on-surface-variant hover:bg-white/20 transition-all text-sm" @click="handleReset">
         重置
+      </button>
+    </div>
+
+    <!-- Action Bar -->
+    <div class="flex justify-between items-center">
+      <h3 class="font-[Plus_Jakarta_Sans] text-lg font-bold text-on-surface">用户列表</h3>
+      <button
+        class="btn-jelly flex items-center gap-2 px-5 py-2.5 bg-primary-container text-white rounded-2xl font-bold text-sm shadow-[0_8px_20px_-4px_rgba(109,175,146,0.4)]"
+        @click="router.push('/user/add')"
+      >
+        <span class="material-symbols-outlined text-lg">person_add</span>
+        新增用户
       </button>
     </div>
 

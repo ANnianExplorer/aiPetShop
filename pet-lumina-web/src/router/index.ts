@@ -26,16 +26,52 @@ const routes = [
         meta: { title: '用户管理' },
       },
       {
+        path: 'user/add',
+        name: 'addUser',
+        component: () => import('@/views/user/AddUser.vue'),
+        meta: { title: '新增用户', parent: '用户管理' },
+      },
+      {
+        path: 'user/edit/:id',
+        name: 'editUser',
+        component: () => import('@/views/user/EditUser.vue'),
+        meta: { title: '编辑用户', parent: '用户管理' },
+      },
+      {
         path: 'pet',
         name: 'petList',
         component: () => import('@/views/pet/PetList.vue'),
         meta: { title: '宠物管理' },
       },
       {
+        path: 'pet/add',
+        name: 'addPet',
+        component: () => import('@/views/pet/AddPet.vue'),
+        meta: { title: '添加宠物', parent: '宠物管理' },
+      },
+      {
+        path: 'pet/edit/:id',
+        name: 'editPet',
+        component: () => import('@/views/pet/EditPet.vue'),
+        meta: { title: '编辑宠物', parent: '宠物管理' },
+      },
+      {
+        path: 'pet/:id',
+        name: 'petDetail',
+        component: () => import('@/views/pet/PetDetail.vue'),
+        meta: { title: '宠物详情', parent: '宠物管理' },
+      },
+      {
         path: 'post',
         name: 'postList',
         component: () => import('@/views/content/PostList.vue'),
         meta: { title: '帖子管理' },
+      },
+      {
+        path: 'post/:id',
+        name: 'postDetail',
+        component: () => import('@/views/content/PostDetail.vue'),
+        meta: { title: '帖子详情', parent: '帖子管理' },
       },
       {
         path: 'comment',
@@ -48,6 +84,12 @@ const routes = [
         name: 'logList',
         component: () => import('@/views/content/LogList.vue'),
         meta: { title: '生活记录' },
+      },
+      {
+        path: 'log/:id',
+        name: 'recordDetail',
+        component: () => import('@/views/content/RecordDetail.vue'),
+        meta: { title: '记录详情', parent: '生活记录' },
       },
       {
         path: 'topic',
@@ -67,6 +109,24 @@ const routes = [
         component: () => import('@/views/notification/NotificationList.vue'),
         meta: { title: '通知管理' },
       },
+      {
+        path: 'violation',
+        name: 'violationManage',
+        component: () => import('@/views/content/ViolationManage.vue'),
+        meta: { title: '违规管理' },
+      },
+      {
+        path: 'settings',
+        name: 'systemSettings',
+        component: () => import('@/views/settings/SystemSettings.vue'),
+        meta: { title: '系统设置' },
+      },
+      {
+        path: 'profile',
+        name: 'personalCenter',
+        component: () => import('@/views/profile/PersonalCenter.vue'),
+        meta: { title: '个人中心' },
+      },
     ],
   },
 ]
@@ -74,6 +134,7 @@ const routes = [
 const router = createRouter({
   history: createWebHashHistory(),
   routes,
+  scrollBehavior: () => ({ top: 0 }),
 })
 
 router.beforeEach((to, _from, next) => {

@@ -35,9 +35,9 @@ public class AdminCommentController {
         long size = request.getPageSize();
         QueryWrapper<Comment> queryWrapper = new QueryWrapper<>();
         if (request.getPostId() != null) {
-            queryWrapper.eq("postId", request.getPostId());
+            queryWrapper.eq("post_id", request.getPostId());
         }
-        queryWrapper.orderByDesc("createTime");
+        queryWrapper.orderByDesc("create_time");
         Page<Comment> page = commentService.page(new Page<>(current, size), queryWrapper);
         Page<CommentVO> voPage = new Page<>(current, size, page.getTotal());
         voPage.setRecords(page.getRecords().stream().map(CommentVO::objToVo).collect(Collectors.toList()));

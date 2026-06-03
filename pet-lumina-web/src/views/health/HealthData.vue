@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue'
+import { useRoute } from 'vue-router'
 import { healthApi } from '@/api/health'
 import { usePagination } from '@/composables/usePagination'
 import HealthDetail from './HealthDetail.vue'
 import type { HealthRecord } from '@/types'
 
+const route = useRoute()
 const loading = ref(false)
 const tableData = ref<HealthRecord[]>([])
 const searchText = ref('')
@@ -19,13 +21,20 @@ async function fetchData() {
   try {
     const params: any = { current: currentPage.value, pageSize: pageSize.value }
     if (moodFilter.value) params.mood = moodFilter.value
+    if (searchText.value) params.petId = searchText.value
+    else if (route.query.petId) params.petId = route.query.petId
     const res = await healthApi.listRecords(params) as any
     tableData.value = res?.records || []
     total.value = res?.total || 0
   } catch (e) { console.error(e) } finally { loading.value = false }
 }
 
-onMounted(fetchData)
+onMounted(() => {
+  if (route.query.petId) {
+    searchText.value = route.query.petId as string
+  }
+  fetchData()
+})
 const handleSearch = () => { currentPage.value = 1; fetchData() }
 const handleReset = () => { searchText.value = ''; moodFilter.value = ''; currentPage.value = 1; fetchData() }
 

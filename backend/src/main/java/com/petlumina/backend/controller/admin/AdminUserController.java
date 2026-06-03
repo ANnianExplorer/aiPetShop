@@ -64,12 +64,12 @@ public class AdminUserController {
         result.put("user", UserVO.objToVo(user));
 
         // User's pets
-        List<Pet> pets = petService.list(new QueryWrapper<Pet>().eq("userId", id).eq("isDelete", 0));
+        List<Pet> pets = petService.list(new QueryWrapper<Pet>().eq("user_id", id).eq("is_delete", 0));
         result.put("pets", pets.stream().map(PetVO::objToVo).collect(Collectors.toList()));
 
         // Recent posts
-        List<Post> posts = postService.list(new QueryWrapper<Post>().eq("authorId", id).eq("isDelete", 0)
-                .orderByDesc("createTime").last("LIMIT 10"));
+        List<Post> posts = postService.list(new QueryWrapper<Post>().eq("author_id", id).eq("is_delete", 0)
+                .orderByDesc("create_time").last("LIMIT 10"));
         result.put("posts", posts.stream().map(PostVO::objToVo).collect(Collectors.toList()));
 
         return ResultUtils.success(result);
