@@ -7,89 +7,173 @@
   <img src="https://img.shields.io/badge/Spring_Boot-2.7-6DB33F.svg" alt="Spring Boot" />
   <img src="https://img.shields.io/badge/Vite-6.0-646CFF.svg" alt="Vite" />
   <img src="https://img.shields.io/badge/TypeScript-5.7-blue.svg" alt="TypeScript" />
-  <img src="https://img.shields.io/badge/TailwindCSS-4.3-38B2AC.svg" alt="Tailwind CSS" />
+  <img src="https://img.shields.io/badge/Tailwind_CSS-4.3-38B2AC.svg" alt="Tailwind CSS" />
   <img src="https://img.shields.io/badge/Element_Plus-2.8-409EFF.svg" alt="Element Plus" />
+  <img src="https://img.shields.io/badge/Vant-4.9-07C160.svg" alt="Vant" />
   <img src="https://img.shields.io/badge/MyBatis--Plus-3.5-red.svg" alt="MyBatis-Plus" />
   <img src="https://img.shields.io/badge/Sa--Token-1.39-orange.svg" alt="Sa-Token" />
+  <img src="https://img.shields.io/badge/ECharts-5.5-AA344D.svg" alt="ECharts" />
 </p>
 
 **三端架构：移动端 App + Web 管理后台 + 后端服务**
-
-<br />
 
 </div>
 
 ## 项目概述
 
-PetLumina 是一个面向宠物主人的智能生活管理与社区互动平台，包含：
+PetLumina 是一个面向宠物主人的智能生活管理与社区互动平台，采用三端分离架构：
 
 | 端 | 路径 | 技术栈 | 说明 |
 |---|---|---|---|
-| **移动端** | `pet-lumina-app/` | Vue 3 + Vant 4 + Tailwind CSS | 宠物主人使用的移动 Web App |
-| **管理后台** | `pet-lumina-web/` | Vue 3 + Element Plus + ECharts + Tailwind CSS | 管理员使用的 Web 后台 |
-| **后端服务** | `backend/` | Spring Boot 2.7 + MyBatis-Plus + Sa-Token + Redis | RESTful API 服务 |
+| **移动端 App** | `pet-lumina-app/` | Vue 3.5 + Vant 4 + Tailwind CSS 3 + Pinia | 宠物主人使用的移动 Web App |
+| **Web 管理后台** | `pet-lumina-web/` | Vue 3.5 + Element Plus 2.8 + ECharts 5 + Tailwind CSS 4 | 管理员使用的 Web 后台 |
+| **后端服务** | `backend/` | Spring Boot 2.7 + MyBatis-Plus 3.5 + Sa-Token 1.39 + Redis | RESTful API 服务 |
 
 ## 页面预览
 
-### 移动端
+### 移动端 App
 
 <div align="center">
 
-| 登录页 | 首页 | 生活记录 |
+| 登录页 | 首页 | 宠物详情 |
 |:---:|:---:|:---:|
-| <img src="./image/登录页.png" width="240" /> | <img src="./image/首页.png" width="240" /> | <img src="./image/生活记录页面.png" width="240" /> |
+| <img src="./image/app/登录页.png" width="240" /> | <img src="./image/app/首页.png" width="240" /> | <img src="./image/app/宠物详情页面.png" width="240" /> |
 
-| 宠物社区 | 饮食健康 | 个人中心 |
+| 生活记录 | 宠物社区 | 饮食健康 |
 |:---:|:---:|:---:|
-| <img src="./image/宠物社区页面.png" width="240" /> | <img src="./image/饮食健康页面.png" width="240" /> | <img src="./image/个人中心页面.png" width="240" /> |
+| <img src="./image/app/生活记录页面.png" width="240" /> | <img src="./image/app/宠物社区页面.png" width="240" /> | <img src="./image/app/饮食健康页面.png" width="240" /> |
+
+| 个人中心 | 新增提醒 | 话题详情 |
+|:---:|:---:|:---:|
+| <img src="./image/app/个人中心页面.png" width="240" /> | <img src="./image/app/新增提醒页面.png" width="240" /> | <img src="./image/app/话题详情页面.png" width="240" /> |
+
+</div>
+
+### Web 管理后台
+
+<div align="center">
+
+| 数据概览 | 用户管理 | 宠物管理 |
+|:---:|:---:|:---:|
+| <img src="./image/web端/数据概览.png" width="400" /> | <img src="./image/web端/用户管理.png" width="400" /> | <img src="./image/web端/宠物管理.png" width="400" /> |
+
+| 帖子详情 | 健康数据 | 话题管理 |
+|:---:|:---:|:---:|
+| <img src="./image/web端/帖子详情.png" width="400" /> | <img src="./image/web端/健康数据.png" width="400" /> | <img src="./image/web端/话题管理.png" width="400" /> |
+
+| 添加宠物 | 违规管理 | 系统设置 |
+|:---:|:---:|:---:|
+| <img src="./image/web端/添加宠物.png" width="400" /> | <img src="./image/web端/违规管理.png" width="400" /> | <img src="./image/web端/系统设置.png" width="400" /> |
 
 </div>
 
 ## 核心功能
 
-### 移动端 (pet-lumina-app)
+### 移动端 App (pet-lumina-app)
 
 | 模块 | 能力说明 |
-| --- | --- |
-| **首页仪表盘** | 宠物状态概览、今日提醒、快捷操作入口、社区动态流 |
+|---|---|
+| **首页仪表盘** | 宠物状态 Bento 卡片、今日提醒、社区动态流、未读通知红点 |
+| **宠物管理** | 宠物档案详情、头像上传、健康评分、喂食记录、健康记录列表 |
 | **生活记录** | 图文记录宠物日常、标签分类、图片轮播、分享功能 |
 | **宠物社区** | 话题浏览与发布、帖子详情、评论互动、点赞收藏、用户关注 |
 | **健康管理** | 健康数据录入、周度指标追踪、健康计划制定、趋势可视化 |
-| **日程提醒** | 提醒创建与管理、按日期分组、通知中心 |
-| **个人中心** | 用户资料编辑、宠物档案管理、账号安全、通用设置 |
+| **日程提醒** | 提醒创建与管理、通知中心、通知详情查看、已读/未读状态 |
+| **个人中心** | 用户资料编辑、头像 COS 上传、宠物档案管理、账号安全设置 |
 | **认证系统** | 登录、注册、密码重置、验证码校验 |
+| **UI 交互** | 果冻动画、玻璃态面板、胶囊导航栏、卡片悬浮/呼吸/脉动常驻动效 |
 
-### 管理后台 (pet-lumina-web)
+### Web 管理后台 (pet-lumina-web)
 
 | 模块 | 能力说明 |
-| --- | --- |
+|---|---|
 | **数据概览** | 用户/宠物/帖子统计、活跃趋势折线图、宠物类型分布饼图、热门帖子/话题 |
-| **用户管理** | 搜索筛选、角色/状态过滤、查看详情(宠物+帖子)、禁用/启用 |
-| **宠物管理** | 全局宠物列表、搜索筛选、删除 |
-| **帖子管理** | 帖子列表、图片缩略图、类别筛选、删除 |
-| **评论管理** | 评论列表、搜索、删除 |
-| **生活记录** | 记录列表、类型筛选、删除 |
+| **用户管理** | 搜索筛选、角色/状态过滤、查看详情(宠物+帖子)、禁用/启用、新增/编辑用户 |
+| **宠物管理** | 全局宠物列表、搜索筛选、添加/编辑宠物、宠物详情(健康记录+主人信息)、删除 |
+| **帖子管理** | 帖子列表、作者筛选、帖子详情(真实数据)、审核控制台、删除 |
+| **评论管理** | 评论列表、评论者信息、搜索、删除 |
+| **生活记录** | 记录列表、类型筛选、搜索、删除 |
 | **话题管理** | 话题 CRUD、类别筛选、新建/编辑对话框 |
-| **健康数据** | 健康记录列表、心情筛选、详情抽屉(趋势图+历史表) |
-| **通知管理** | 通知列表、已读/未读状态 |
+| **健康数据** | 健康记录列表、宠物ID/心情筛选、详情抽屉(趋势图+历史表) |
+| **通知管理** | 通知列表、发布/编辑/取消发布/删除、状态切换 |
+| **违规管理** | 敏感词库管理、违规记录审核、添加/删除敏感词 |
+| **系统设置** | 版本信息、功能开关、系统配置 |
+| **个人中心** | 管理员资料、安全设置、登录历史 |
+| **UI 交互** | 果冻动画、毛玻璃面板、胶囊侧边栏/导航栏、卡片悬浮效果、Element Plus 中文 |
 
 ### 后端 API (backend)
 
 | 模块 | 接口数 | 说明 |
-| --- | --- | --- |
+|---|---|---|
 | **认证** | 6 | 登录/注册/验证码/密码重置/登出/当前用户 |
-| **用户** | 6 | 资料查询/更新/头像/密码/分页列表 |
+| **用户** | 6 | 资料查询/更新/头像COS上传/密码/分页列表 |
 | **宠物** | 6 | CRUD + 用户宠物列表 |
-| **帖子** | 7 | CRUD + 点赞/收藏 |
+| **帖子** | 7 | CRUD + 点赞/收藏 + 作者筛选 |
 | **评论** | 3 | 添加/删除/分页列表 |
 | **话题** | 7 | CRUD + 关注/帖子列表 |
 | **关注** | 3 | 关注/粉丝/关注列表 |
 | **健康** | 8 | 数据录入/计划/周报/Dashboard |
 | **提醒** | 6 | CRUD + 完成状态切换 |
-| **通知** | 4 | 列表/未读数/标记已读 |
+| **通知** | 5 | 列表/详情/未读数/标记已读/广播机制 |
 | **生活记录** | 5 | CRUD + 分页列表 |
-| **文件** | 2 | 通用上传/图片上传 |
-| **管理端** | 14 | 用户/宠物/帖子/评论/话题/记录/健康数据管理 + Dashboard统计 |
+| **文件上传** | 2 | 通用上传/图片上传(含魔数校验) |
+| **管理端** | 16 | 用户/宠物/帖子/评论/话题/记录/健康/通知管理 + Dashboard + 违规管理 |
+
+## 技术架构
+
+### 后端
+
+| 技术 | 版本 | 用途 |
+|---|---|---|
+| Spring Boot | 2.7.18 | 核心框架 |
+| MyBatis-Plus | 3.5.9 | ORM (BaseMapper + IService + 逻辑删除) |
+| Sa-Token | 1.39.0 | 认证授权 (角色权限 + 路由拦截) |
+| Redis + Redisson | - | 缓存 (验证码/限流/Session) |
+| Jackson | 2.13.5 | JSON 序列化 (Long→String 防精度丢失 + Date 格式化) |
+| 腾讯云 COS | - | 文件存储 (用户头像/宠物图片/帖子图片) |
+| MySQL | 8.0+ | 数据库 |
+| 雪花算法 | - | ID 生成 (Long 类型，前端需处理精度) |
+
+### 移动端 App
+
+| 技术 | 版本 | 用途 |
+|---|---|---|
+| Vue 3 | 3.5 | 核心框架 (Composition API + `<script setup>`) |
+| Vite | 6.0 | 构建工具 |
+| TypeScript | 5.7 | 类型系统 |
+| Vant | 4.9 | 移动端 UI 组件库 |
+| Tailwind CSS | 3.4 | 样式方案 (Material Design 3 色彩令牌) |
+| Pinia | 2.3 | 状态管理 |
+| Vue Router | 4.5 | 路由 (Hash 模式) |
+| Axios | - | HTTP 请求 |
+| Material Symbols | - | 图标库 |
+
+### Web 管理后台
+
+| 技术 | 版本 | 用途 |
+|---|---|---|
+| Vue 3 | 3.5 | 核心框架 |
+| Vite | 6.0 | 构建工具 |
+| TypeScript | 5.7 | 类型系统 |
+| Element Plus | 2.8 | UI 组件库 (表格/分页/标签/弹窗) |
+| Tailwind CSS | 4.3 | 样式方案 (毛玻璃效果 + 果冻动画) |
+| ECharts | 5.5 | 图表 (折线图/饼图/柱状图) |
+| vue-echarts | 7.0 | ECharts Vue 封装 |
+| Pinia | 2.3 | 状态管理 |
+| Vue Router | 4.5 | 路由 (Hash 模式) |
+| Material Symbols | - | 图标库 |
+| Plus Jakarta Sans + Noto Sans SC | - | 字体 |
+
+### 通用组件库 (pet-lumina-web/src/components/)
+
+| 组件 | 说明 |
+|---|---|
+| `charts/TrendLineChart` | 折线趋势图 (统一 echarts 注册 + PetLumina 主题) |
+| `charts/DonutChart` | 环形饼图 |
+| `charts/BarChart` | 柱状图 |
+| `common/PageHeader` | 标准页面标题 |
+| `common/StatCard` | 统计卡片 |
+| `common/SearchBar` | 搜索栏 |
 
 ## 快速开始
 
@@ -111,14 +195,22 @@ mysql -u root -p < sql/init.sql
 # 2. (可选) 导入开发种子数据
 mysql -u root -p petlumina < sql/seed.sql
 
-# 3. 修改数据库连接配置
+# 3. 配置环境变量 (COS 密钥等)
+export COS_SECRET_ID=your_id
+export COS_SECRET_KEY=your_key
+export COS_BUCKET=your_bucket
+export COS_REGION=ap-shanghai
+export COS_HOST=https://your-cdn.com
+
+# 4. 修改数据库连接配置
 # src/main/resources/application-dev.yml
 
-# 4. 启动
+# 5. 启动
 mvn spring-boot:run
 ```
 
 **种子数据账号：**
+
 | 角色 | 手机号 | 密码 |
 |---|---|---|
 | 管理员 | 13800000001 | 123456 |
@@ -144,101 +236,135 @@ npm run dev        # http://localhost:3000
 
 ```text
 ai-PetShop/
-├── backend/                    # Spring Boot 后端
-│   ├── sql/                    # 数据库脚本 (init.sql + seed.sql)
+├── backend/                         # Spring Boot 后端
+│   ├── sql/                         # 数据库脚本 (init.sql + seed.sql + update.sql)
 │   └── src/main/java/com/petlumina/backend/
-│       ├── annotation/         # 自定义注解 (@AuthCheck, @RateLimiter)
-│       ├── aop/                # AOP 切面 (权限校验, 限流)
-│       ├── common/             # 通用类 (BaseResponse, PageRequest)
-│       ├── config/             # 配置 (CORS, Sa-Token, MyBatis-Plus, Redis)
+│       ├── annotation/              # 自定义注解 (@AuthCheck, @RateLimiter)
+│       ├── aop/                     # AOP 切面 (权限校验, 限流)
+│       ├── common/                  # 通用类 (BaseResponse, PageRequest, DeleteRequest)
+│       ├── config/                  # 配置 (CORS, JsonConfig, MyBatis-Plus, Redis)
+│       ├── constant/                # 常量 (UserConstant, CosConstant)
 │       ├── controller/
-│       │   ├── user/           # 用户端 API (12个)
-│       │   └── admin/          # 管理端 API (8个)
+│       │   ├── user/                # 用户端 API (Auth/User/Pet/Post/Comment/Topic/
+│       │   │                        #   Follow/Health/Reminder/Notification/Log/File)
+│       │   └── admin/               # 管理端 API (User/Pet/Post/Comment/Log/Health/
+│       │                            #   Notification/Dashboard)
 │       ├── service/
-│       │   ├── user/           # 用户端 Service (14个)
-│       │   └── admin/          # 管理端 Service
-│       ├── model/              # 实体/DTO/VO
-│       ├── mapper/             # MyBatis-Plus Mapper
-│       ├── manager/            # 第三方服务管理 (COS, Sa-Token)
-│       ├── exception/          # 异常处理
-│       └── utils/              # 工具类
+│       │   ├── user/                # 用户端 Service + Impl
+│       │   └── admin/               # 管理端 Service + Impl
+│       ├── model/
+│       │   ├── entity/              # 数据库实体 (16个)
+│       │   ├── dto/                 # 请求 DTO
+│       │   └── vo/                  # 响应 VO
+│       ├── mapper/                  # MyBatis-Plus Mapper
+│       ├── manager/
+│       │   ├── cos/                 # 腾讯云 COS 管理 (CosManager)
+│       │   └── auth/                # Sa-Token 权限实现
+│       ├── exception/               # 异常处理 (BusinessException, GlobalExceptionHandler)
+│       └── utils/                   # 工具类 (ThrowUtils)
 │
-├── pet-lumina-app/             # 移动端 Vue App
+├── pet-lumina-app/                  # 移动端 Vue App
 │   └── src/
-│       ├── api/                # 接口请求层 (10个模块)
-│       ├── components/         # 业务组件
-│       ├── views/              # 页面组件
-│       ├── stores/             # Pinia 状态管理
-│       ├── router/             # 路由配置
-│       └── types/              # TypeScript 类型
+│       ├── api/                     # 接口请求层 (12个模块)
+│       ├── components/              # 业务组件 (home/community/wellness/lifelog/profile)
+│       ├── composables/             # 组合函数 (useToast)
+│       ├── layout/                  # 布局 (MainLayout 胶囊导航栏)
+│       ├── stores/                  # Pinia 状态 (user store)
+│       ├── router/                  # 路由配置 (25+ 路由)
+│       ├── types/                   # TypeScript 类型定义
+│       ├── utils/                   # 工具函数 (format 日期格式化)
+│       └── views/                   # 页面组件 (auth/home/community/wellness/
+│                                    #   lifelog/pet/profile/schedule)
 │
-├── pet-lumina-web/             # 管理后台 Vue App
+├── pet-lumina-web/                  # 管理后台 Vue App
 │   └── src/
-│       ├── api/                # 接口请求层 (11个模块)
-│       ├── layout/             # 布局组件 (Sidebar, Header)
-│       ├── views/              # 页面组件 (11个)
-│       ├── components/         # 通用组件
-│       ├── stores/             # Pinia 状态管理
-│       └── types/              # TypeScript 类型
+│       ├── api/                     # 接口请求层 (12个模块)
+│       ├── assets/styles/           # 全局样式 (glass-panel, jelly 动画, depth 系统)
+│       ├── components/
+│       │   ├── charts/              # 图表组件 (TrendLineChart, DonutChart, BarChart)
+│       │   └── common/              # 通用组件 (PageHeader, StatCard, SearchBar)
+│       ├── layout/                  # 布局 (Sidebar 胶囊侧边栏, Header 胶囊导航)
+│       ├── stores/                  # Pinia 状态 (admin store)
+│       ├── router/                  # 路由配置 (20+ 路由)
+│       ├── types/                   # TypeScript 类型定义
+│       ├── utils/                   # 工具函数 (format 日期格式化)
+│       ├── composables/             # 组合函数 (usePagination)
+│       └── views/                   # 页面组件 (dashboard/user/pet/content/
+│                                    #   health/notification/topic/settings/profile/violation)
 │
-└── z-plan/                     # 开发计划文档
+└── image/                           # 项目截图
+    ├── app/                         # 移动端截图 (11张)
+    └── web端/                       # 管理后台截图 (9张)
 ```
-
-## 技术架构
-
-### 后端
-
-- **核心框架**: Spring Boot 2.7 + JDK 8
-- **ORM**: MyBatis-Plus 3.5.9 (BaseMapper + IService)
-- **认证**: Sa-Token 1.39.0 (角色权限 + 路由拦截)
-- **缓存**: Redis + Redisson (验证码/限流)
-- **序列化**: Jackson (Long→String 防精度丢失)
-- **文件存储**: 腾讯云 COS
-- **响应格式**: `BaseResponse<T>` (code=0 成功)
-- **ID 策略**: 雪花算法 (Long 类型)
-
-### 移动端
-
-- **核心框架**: Vue 3.5 (Composition API + `<script setup>`) + Vite 6
-- **UI 组件库**: Vant 4 (移动端)
-- **样式方案**: Tailwind CSS 3 + Material Design 3 色彩令牌
-- **路由**: Vue Router 4 (Hash 模式，适配 5+App)
-
-### 管理后台
-
-- **核心框架**: Vue 3.5 + TypeScript + Vite 6
-- **UI 组件库**: Element Plus 2.x (表格/分页/标签等)
-- **样式方案**: Tailwind CSS 4 + 毛玻璃效果 (glass-panel)
-- **图表**: ECharts 5 + vue-echarts
-- **图标**: Material Symbols Outlined
-- **字体**: Plus Jakarta Sans + Noto Sans SC
 
 ## 更新日志
 
+### v2.7 (2026-06-03)
+
+**日期格式化 + 通知详情**
+- 新增 `utils/format.ts` 前端日期格式化工具 (formatDate / formatDateShort)
+- App 通知详情弹窗 (点击通知查看完整内容)
+- 首页提醒日期格式修复 (yyyy-MM-dd → yyyy-MM-dd HH:mm:ss)
+- 通知列表/帖子详情等页面日期显示统一格式化
+
+### v2.6 (2026-06-03)
+
+**通知系统完善 + 搜索筛选修复**
+- 管理端: 发布/取消发布/编辑/删除通知，状态标签
+- 用户端: 通知列表、未读红点、通知详情、标记已读
+- 广播机制: 管理员发布 user_id=0 广播，用户端查询个人+广播
+- 用户/宠物/评论/生活记录/帖子搜索筛选修复
+- Element Plus 中文语言包
+
+### v2.5 (2026-06-03)
+
+**宠物管理全面升级 + 大数修复**
+- Web PetDetail/AddPet/EditPet 去掉假数据，改为 API 真实数据
+- App PetDetail/AddPet 新增 hero 卡片、类型选择、分组表单
+- JavaScript 大数字精度丢失全局修复 (request.ts JSON 解析)
+- PetEditRequest 新增 type 字段
+
+### v2.4 (2026-06-03)
+
+**图片上传全链路 + COS 路径分类**
+- 新增 CosConstant 统一管理 COS 路径 (avatar/user, pet/image, post/image 等)
+- FileController 新增魔数校验 + category 参数
+- CosManager 启用 HTTPS + 自定义域名
+- 四个页面 (AddUser/EditUser/AddPet/EditPet) 接入 COS 上传
+- App 头像上传改用 userApi.updateAvatar (COS + 存库)
+
+### v2.3 (2026-06-03)
+
+**用户端果冻动画与玻璃态 UI**
+- 12 个常驻动画 (呼吸/浮动/光泽/脉动/摇摆)
+- 三层玻璃面板系统 + 三层深度阴影
+- 果冻按钮 (btn-jelly) + 卡片悬浮 (card-lift)
+- 底部导航胶囊样式 + 未高亮透明度优化
+
+### v2.2 (2026-06-03)
+
+**管理后台 UI 全面升级**
+- 11 个新页面 (AddUser/EditUser/AddPet/EditPet/PetDetail/PostDetail/RecordDetail/SystemSettings/PersonalCenter/ViolationManage)
+- 可复用组件库 (charts/ + common/)
+- 侧边栏胶囊样式 + 渐变白背景
+- 后端 QueryWrapper SQL 字段名修复 (驼峰→下划线)
+- 后端大数字 JSON 精度丢失修复
+
 ### v2.1 (2026-06-03)
 
-**后端目录重构**
+**后端目录重构 + Web 管理后台**
 - controller/service 按 user/ 和 admin/ 子目录重构
 - 新建管理端 API (8个 Controller + DashboardService)
-- 管理端接口统一 @AuthCheck(mustRole="admin") 权限校验
-
-**Web 管理后台**
 - 从零搭建 pet-lumina-web 项目
-- 实现 11 个管理页面 (登录/Dashboard/用户/宠物/帖子/评论/记录/话题/健康/通知)
 - 毛玻璃 + Material Design 3 设计风格
-- 搜索筛选、分页、CRUD、详情抽屉、统计图表
 
 ### v2.0 (2026-06-02)
 
-**后端开发**
+**后端开发与前后端联调**
 - Spring Boot 后端全部业务模块 (12个 Controller, 55个接口)
 - Sa-Token 认证 + 角色权限
 - MySQL 建表脚本 + 开发种子数据
-
-**前端对接**
-- 新建 API 层 (10个业务模块)
-- 重构 20+ 页面组件接入真实 API
-- 全局路由守卫、类型系统完善
+- 前端 API 层 + 20+ 页面接入真实 API
 
 ### v1.0 (2026-05-01)
 
