@@ -21,19 +21,22 @@ const goToPost = (postId: number) => {
   <section class="pb-10">
     <div class="flex justify-between items-end mb-md">
       <h2 class="font-headline-md text-headline-md">社区动态</h2>
-      <span @click="goToCommunity" class="font-label-bold text-label-bold text-primary cursor-pointer hover:opacity-70 transition-opacity">发现更多</span>
+      <span @click="goToCommunity" class="font-label-bold text-label-bold text-primary cursor-pointer active:opacity-50 transition-opacity">发现更多</span>
     </div>
     <div class="grid grid-cols-1 md:grid-cols-2 gap-lg">
       <div
-        v-for="post in trends"
+        v-for="(post, index) in trends"
         :key="post.id"
         @click="goToPost(post.id)"
-        class="group rounded-2xl overflow-hidden glass-card depth-1 cursor-pointer"
+        class="group rounded-2xl overflow-hidden glass-card cursor-pointer ripple-card anim-float"
+        :style="{ animationDelay: `${index * -1.2}s` }"
       >
-        <div class="h-48 overflow-hidden">
-          <img class="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" :src="post.imageList[0]" />
+        <div class="h-48 overflow-hidden relative">
+          <img class="w-full h-full object-cover group-active:scale-110 transition-transform duration-500" :src="post.imageList[0]" />
+          <!-- Shimmer overlay -->
+          <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full animate-[shimmerSweep_5s_ease-in-out_infinite]" :style="{ animationDelay: `${index * -2}s` }"></div>
         </div>
-        <div class="p-md">
+        <div class="p-md relative z-10">
           <div class="flex items-center gap-2 mb-2">
             <div class="w-6 h-6 rounded-full bg-surface-variant overflow-hidden shadow-sm">
               <img class="w-full h-full object-cover" :src="post.user?.avatar" />

@@ -27,10 +27,10 @@ const maxVal = computed(() => Math.max(...activityData.value.map(d => d.value)))
 <template>
   <section class="grid grid-cols-1 md:grid-cols-3 gap-card-gutter">
     <!-- Weight Card -->
-    <div class="glass-card p-6 rounded-2xl depth-2 flex flex-col justify-between h-48 bg-white/60">
+    <div class="glass-card p-6 rounded-2xl flex flex-col justify-between h-48 ripple-card anim-float">
       <div class="flex justify-between items-start">
         <div class="bg-primary-fixed p-3 rounded-full">
-          <span class="material-symbols-outlined text-primary glow-icon">monitor_weight</span>
+          <span class="material-symbols-outlined text-primary glow-icon anim-icon-pulse">monitor_weight</span>
         </div>
         <span class="text-emerald-600 font-label-bold text-xs">{{ weightChange }}</span>
       </div>
@@ -44,7 +44,7 @@ const maxVal = computed(() => Math.max(...activityData.value.map(d => d.value)))
     </div>
 
     <!-- Activity Trends -->
-    <div class="glass-card p-6 rounded-2xl depth-2 md:col-span-2 h-48 relative overflow-hidden bg-white/60">
+    <div class="glass-card p-6 rounded-2xl md:col-span-2 h-48 relative overflow-hidden ripple-card anim-shadow-breathe">
       <div class="flex justify-between items-center mb-4">
         <div>
           <p class="text-tertiary font-label-bold text-label-bold">活动趋势</p>
@@ -59,7 +59,6 @@ const maxVal = computed(() => Math.max(...activityData.value.map(d => d.value)))
 
       <!-- Enhanced Chart -->
       <div class="relative h-24 px-2">
-        <!-- Target line -->
         <div
           class="absolute left-0 right-0 border-t-2 border-dashed border-primary/30"
           :style="{ bottom: (60 / maxVal * 100) + '%' }"
@@ -67,7 +66,6 @@ const maxVal = computed(() => Math.max(...activityData.value.map(d => d.value)))
           <span class="absolute -top-3 right-0 text-[10px] text-primary/60 font-label-bold">目标 60%</span>
         </div>
 
-        <!-- Bars -->
         <div class="flex items-end justify-between h-full gap-3">
           <div
             v-for="(item, index) in activityData"
@@ -75,19 +73,17 @@ const maxVal = computed(() => Math.max(...activityData.value.map(d => d.value)))
             class="flex flex-col items-center gap-2 flex-1 group"
           >
             <div class="relative w-full flex justify-center">
-              <!-- Tooltip on hover -->
               <div class="absolute -top-8 left-1/2 -translate-x-1/2 bg-surface-container-high text-on-surface text-xs px-2 py-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10 shadow-sm">
                 {{ item.value }}% {{ item.met ? '✓' : '✗' }}
               </div>
 
-              <!-- Bar -->
               <div class="relative w-full max-w-[32px]">
                 <div
                   class="w-full rounded-t-lg transition-all duration-500 relative overflow-hidden"
                   :class="item.met ? 'bg-gradient-to-t from-primary to-primary-container' : 'bg-gradient-to-t from-surface-variant/30 to-surface-variant/50'"
                   :style="{ height: (item.value / maxVal * 100) + '%' }"
                 >
-                  <div v-if="item.met" class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12"></div>
+                  <div v-if="item.met" class="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -skew-x-12 animate-[shimmerSweep_3s_ease-in-out_infinite]" :style="{ animationDelay: `${index * -0.5}s` }"></div>
                 </div>
 
                 <div
@@ -103,7 +99,6 @@ const maxVal = computed(() => Math.max(...activityData.value.map(d => d.value)))
         </div>
       </div>
 
-      <!-- Summary -->
       <div class="mt-4 flex items-center justify-between px-2">
         <div class="flex items-center gap-4">
           <div class="flex items-center gap-1.5">

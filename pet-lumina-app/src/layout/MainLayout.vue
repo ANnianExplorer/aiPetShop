@@ -40,46 +40,35 @@ const navigate = (tab: typeof tabs[0]) => {
     <!-- 页面内容区域 -->
     <RouterView />
 
-    <!-- 全局底部导航 -->
-    <nav class="fixed bottom-0 left-0 right-0 w-full z-50 pb-safe bg-white/70 backdrop-blur-2xl border-t border-white/30 shadow-[0_-4px_30px_rgba(75,100,85,0.06)]">
-      <div class="flex justify-around items-center h-20 px-2 max-w-screen-xl mx-auto">
-        <div
-          v-for="tab in tabs"
-          :key="tab.name"
-          @click="navigate(tab)"
-          class="flex flex-col items-center justify-center cursor-pointer transition-all duration-300 ease-out relative px-2"
-          :class="active === tab.name
-            ? 'text-primary scale-105'
-            : 'text-outline-variant/60 active:scale-90'"
-        >
-          <!-- Active indicator dot -->
-          <Transition name="tab-dot">
-            <div v-if="active === tab.name" class="absolute -top-1 w-1 h-1 rounded-full bg-primary shadow-[0_0_8px_rgba(75,100,85,0.5)]" />
-          </Transition>
-
-          <span
-            class="material-symbols-outlined mb-1 transition-all duration-300"
-            :style="active === tab.name
-              ? 'font-variation-settings: \'FILL\' 1; filter: drop-shadow(0 0 6px rgba(75,100,85,0.4))'
-              : 'font-variation-settings: \'FILL\' 0'"
-          >{{ tab.icon }}</span>
-          <span class="font-['Plus_Jakarta_Sans'] text-[10px] font-semibold tracking-wide transition-all duration-300"
-            :class="active === tab.name ? 'font-bold' : ''"
-          >{{ tab.label }}</span>
+    <!-- 全局底部导航 - 胶囊样式 -->
+    <nav class="fixed bottom-3 left-4 right-4 z-50 pb-safe">
+      <div class="bg-white/80 backdrop-blur-2xl rounded-[28px] shadow-[0_8px_32px_rgba(75,100,85,0.12),0_0_0_1px_rgba(255,255,255,0.5)] px-2 py-2">
+        <div class="flex justify-around items-center max-w-screen-xl mx-auto">
+          <div
+            v-for="tab in tabs"
+            :key="tab.name"
+            @click="navigate(tab)"
+            class="flex flex-col items-center justify-center cursor-pointer transition-all duration-300 ease-out relative rounded-[20px] py-2 px-3 min-w-[56px]"
+            :class="active === tab.name
+              ? 'bg-primary/10 scale-105'
+              : 'active:scale-90 active:bg-black/[0.03]'"
+          >
+            <span
+              class="material-symbols-outlined mb-0.5 transition-all duration-300 text-[22px]"
+              :style="active === tab.name
+                ? 'font-variation-settings: \'FILL\' 1, \'wght\' 600; filter: drop-shadow(0 0 6px rgba(75,100,85,0.4))'
+                : 'font-variation-settings: \'FILL\' 0, \'wght\' 400; opacity: 0.5'"
+              :class="active === tab.name ? 'text-primary' : 'text-on-surface'"
+            >{{ tab.icon }}</span>
+            <span
+              class="font-['Plus_Jakarta_Sans'] text-[9px] tracking-wide transition-all duration-300"
+              :class="active === tab.name
+                ? 'font-bold text-primary'
+                : 'font-medium text-on-surface-variant/60'"
+            >{{ tab.label }}</span>
+          </div>
         </div>
       </div>
     </nav>
   </div>
 </template>
-
-<style scoped>
-.tab-dot-enter-active,
-.tab-dot-leave-active {
-  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
-}
-.tab-dot-enter-from,
-.tab-dot-leave-to {
-  opacity: 0;
-  transform: scale(0);
-}
-</style>
