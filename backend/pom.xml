@@ -82,6 +82,14 @@
             <version>3.21.0</version>
         </dependency>
 
+        <!-- Spring Session + Redis
+             自动整合，将seesion存储在redis中，可以避免用户登录等操作频繁过期
+        -->
+        <dependency>
+            <groupId>org.springframework.session</groupId>
+            <artifactId>spring-session-data-redis</artifactId>
+        </dependency>
+
         <!-- Caffeine 本地缓存 -->
         <dependency>
             <groupId>com.github.ben-manes.caffeine</groupId>

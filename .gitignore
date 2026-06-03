@@ -7,3 +7,4 @@ ai-pet-app/
 .claude/
 z-plan
 backend/target/
+/backend/target/
