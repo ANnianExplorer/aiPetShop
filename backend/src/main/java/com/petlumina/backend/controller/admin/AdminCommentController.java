@@ -10,13 +10,19 @@ import com.petlumina.backend.constant.UserConstant;
 import com.petlumina.backend.exception.ErrorCode;
 import com.petlumina.backend.model.dto.comment.CommentQueryRequest;
 import com.petlumina.backend.model.entity.Comment;
+import com.petlumina.backend.model.entity.User;
 import com.petlumina.backend.model.vo.CommentVO;
+import com.petlumina.backend.model.vo.UserVO;
 import com.petlumina.backend.service.user.CommentService;
+import com.petlumina.backend.service.user.UserService;
 import com.petlumina.backend.utils.ThrowUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import javax.annotation.Resource;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @RestController
@@ -26,6 +32,9 @@ public class AdminCommentController {
 
     @Resource
     private CommentService commentService;
+
+    @Resource
+    private UserService userService;
 
     @PostMapping("/list/page/vo")
     @AuthCheck(mustRole = UserConstant.ADMIN_ROLE)
@@ -37,10 +46,25 @@ public class AdminCommentController {
         if (request.getPostId() != null) {
             queryWrapper.eq("post_id", request.getPostId());
         }
+        if (request.getSearchText() != null && !request.getSearchText().isEmpty()) {
+            queryWrapper.like("content", request.getSearchText());
+        }
         queryWrapper.orderByDesc("create_time");
         Page<Comment> page = commentService.page(new Page<>(current, size), queryWrapper);
+
+        List<CommentVO> voList = page.getRecords().stream().map(CommentVO::objToVo).collect(Collectors.toList());
+
+        // 批量填充用户信息
+        Set<Long> userIds = page.getRecords().stream().map(Comment::getUserId).collect(Collectors.toSet());
+        if (!userIds.isEmpty()) {
+            List<User> users = userService.listByIds(userIds);
+            Map<Long, UserVO> userMap = users.stream()
+                    .collect(Collectors.toMap(User::getId, UserVO::objToVo, (a, b) -> a));
+            voList.forEach(vo -> vo.setUser(userMap.get(vo.getUserId())));
+        }
+
         Page<CommentVO> voPage = new Page<>(current, size, page.getTotal());
-        voPage.setRecords(page.getRecords().stream().map(CommentVO::objToVo).collect(Collectors.toList()));
+        voPage.setRecords(voList);
         return ResultUtils.success(voPage);
     }
 

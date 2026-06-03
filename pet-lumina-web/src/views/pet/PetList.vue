@@ -18,7 +18,7 @@ async function fetchData() {
   loading.value = true
   try {
     const params: any = { current: currentPage.value, pageSize: pageSize.value }
-    if (searchText.value) params.searchText = searchText.value
+    if (searchText.value) params.name = searchText.value
     if (typeFilter.value) params.type = typeFilter.value
     const res = await petApi.listPage(params) as any
     tableData.value = res?.records || []

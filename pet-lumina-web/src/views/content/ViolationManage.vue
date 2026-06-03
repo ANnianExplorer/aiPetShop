@@ -83,7 +83,7 @@ const statusLabel = (s: string) => s === 'pending' ? '待处理' : '已处理'
 </script>
 
 <template>
-  <div v-loading="loading" class="space-y-6">
+  <div v-loading="loading" class="space-y-6 max-w-screen-xl mx-auto">
     <!-- Header -->
     <div class="flex justify-between items-end animate-float-up">
       <div>
@@ -171,27 +171,27 @@ const statusLabel = (s: string) => s === 'pending' ? '待处理' : '已处理'
 
       <!-- Words Table -->
       <div class="glass-panel rounded-3xl overflow-hidden depth-2">
-        <el-table :data="wordData" stripe>
-          <el-table-column prop="word" label="敏感词" width="160" />
-          <el-table-column label="分类" width="100">
+        <el-table :data="wordData" stripe style="width: 100%">
+          <el-table-column prop="word" label="敏感词" min-width="160" />
+          <el-table-column label="分类" width="120">
             <template #default="{ row }">
               <span class="text-sm">{{ categoryLabel(row.category) }}</span>
             </template>
           </el-table-column>
-          <el-table-column label="风险等级" width="100">
+          <el-table-column label="风险等级" width="120">
             <template #default="{ row }">
               <span :class="levelColor(row.level)" class="px-3 py-1 rounded-full text-[11px] font-bold">{{ levelLabel(row.level) }}</span>
             </template>
           </el-table-column>
-          <el-table-column prop="hitCount" label="命中次数" width="100" />
-          <el-table-column label="状态" width="80">
+          <el-table-column prop="hitCount" label="命中次数" min-width="100" />
+          <el-table-column label="状态" width="100">
             <template #default="{ row }">
               <span :class="row.status === 'active' ? 'badge-success' : 'badge-info'" class="px-3 py-1 rounded-full text-[11px] font-bold">
                 {{ row.status === 'active' ? '启用' : '禁用' }}
               </span>
             </template>
           </el-table-column>
-          <el-table-column prop="createTime" label="添加时间" width="120" />
+          <el-table-column prop="createTime" label="添加时间" min-width="120" />
           <el-table-column label="操作" width="100" fixed="right">
             <template #default="{ row }">
               <button @click="removeWord(row)" class="p-2 rounded-lg hover:bg-red-50 text-slate-400 hover:text-error transition-all">
@@ -206,7 +206,7 @@ const statusLabel = (s: string) => s === 'pending' ? '待处理' : '已处理'
     <!-- Violations Tab -->
     <div v-if="activeTab === 'violations'" class="space-y-4 animate-float-up" style="animation-delay: 0.15s">
       <div class="glass-panel rounded-3xl overflow-hidden depth-2">
-        <el-table :data="violationData" stripe>
+        <el-table :data="violationData" stripe style="width: 100%">
           <el-table-column label="类型" width="80">
             <template #default="{ row }">
               <span class="flex items-center gap-1 text-sm">

@@ -1,5 +1,6 @@
 package com.petlumina.backend.model.dto.reminder;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import lombok.Data;
 
 import java.io.Serializable;
@@ -19,6 +20,7 @@ public class ReminderAddRequest implements Serializable {
 
     private String type;
 
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm", timezone = "Asia/Shanghai")
     private Date remindTime;
 
     private String location;

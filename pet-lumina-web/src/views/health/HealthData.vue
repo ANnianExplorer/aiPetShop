@@ -45,7 +45,7 @@ const viewDetail = (record: HealthRecord) => {
 </script>
 
 <template>
-  <div class="space-y-5">
+  <div class="space-y-5 max-w-screen-xl mx-auto">
     <!-- Search Bar -->
     <div class="glass-panel rounded-full px-6 py-4 flex items-center gap-4 flex-wrap">
       <div class="relative flex-1 min-w-[200px]">
@@ -73,16 +73,16 @@ const viewDetail = (record: HealthRecord) => {
 
     <!-- Table -->
     <div class="glass-panel rounded-3xl p-6">
-      <el-table :data="tableData" v-loading="loading" stripe>
+      <el-table :data="tableData" v-loading="loading" stripe style="width: 100%">
         <el-table-column prop="id" label="ID" width="80" />
         <el-table-column prop="petId" label="宠物ID" width="80" />
-        <el-table-column prop="date" label="日期" width="120" />
-        <el-table-column prop="heartRate" label="心率" width="70" />
-        <el-table-column prop="sleepHours" label="睡眠(h)" width="80" />
-        <el-table-column prop="steps" label="步数" width="80" />
-        <el-table-column prop="calories" label="消耗" width="70" />
-        <el-table-column prop="weight" label="体重" width="70" />
-        <el-table-column prop="mood" label="心情" width="70" />
+        <el-table-column prop="date" label="日期" min-width="120" />
+        <el-table-column prop="heartRate" label="心率" width="80" />
+        <el-table-column prop="sleepHours" label="睡眠(h)" width="90" />
+        <el-table-column prop="steps" label="步数" min-width="80" />
+        <el-table-column prop="calories" label="消耗" width="80" />
+        <el-table-column prop="weight" label="体重" width="80" />
+        <el-table-column prop="mood" label="心情" min-width="80" />
         <el-table-column label="操作" width="100" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link size="small" @click="viewDetail(row)">详情</el-button>

@@ -25,7 +25,7 @@ async function fetchData() {
       current: currentPage.value,
       pageSize: pageSize.value,
     }
-    if (searchText.value) params.searchText = searchText.value
+    if (searchText.value) params.nickname = searchText.value
     if (roleFilter.value) params.role = roleFilter.value
     if (statusFilter.value !== '') params.status = statusFilter.value
     const res = await userApi.listPage(params) as any

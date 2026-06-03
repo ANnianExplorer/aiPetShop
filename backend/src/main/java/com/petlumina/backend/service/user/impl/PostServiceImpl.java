@@ -18,6 +18,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import javax.annotation.Resource;
+import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * 帖子服务实现
@@ -43,6 +45,7 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post>
         QueryWrapper<Post> queryWrapper = new QueryWrapper<>();
         String category = request.getCategory();
         String searchText = request.getSearchText();
+        String authorName = request.getAuthorName();
 
         queryWrapper.eq(StrUtil.isNotBlank(category), "category", category);
         if (StrUtil.isNotBlank(searchText)) {
@@ -50,6 +53,17 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post>
                     .like("content", searchText)
                     .or()
                     .like("tags", searchText));
+        }
+        // 按作者昵称筛选
+        if (StrUtil.isNotBlank(authorName)) {
+            List<User> authors = userService.list(
+                    new QueryWrapper<User>().like("nickname", authorName).select("id"));
+            if (!authors.isEmpty()) {
+                queryWrapper.in("author_id", authors.stream().map(User::getId).collect(Collectors.toList()));
+            } else {
+                // 没有匹配的作者，返回空结果
+                queryWrapper.eq("author_id", -1);
+            }
         }
         queryWrapper.orderByDesc("create_time");
         return queryWrapper;
@@ -60,6 +74,28 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post>
         post.setAuthorId(loginUser.getId());
         post.setLikes(0);
         post.setComments(0);
+        // tags 字段如果是普通字符串，转为 JSON 数组格式
+        if (StrUtil.isNotBlank(post.getTags()) && !post.getTags().startsWith("[")) {
+            String[] tagArr = post.getTags().split("[,，]");
+            StringBuilder sb = new StringBuilder("[");
+            for (int i = 0; i < tagArr.length; i++) {
+                if (i > 0) sb.append(",");
+                sb.append("\"").append(tagArr[i].trim()).append("\"");
+            }
+            sb.append("]");
+            post.setTags(sb.toString());
+        }
+        // images 字段同理
+        if (StrUtil.isNotBlank(post.getImages()) && !post.getImages().startsWith("[")) {
+            String[] imgArr = post.getImages().split(",");
+            StringBuilder sb = new StringBuilder("[");
+            for (int i = 0; i < imgArr.length; i++) {
+                if (i > 0) sb.append(",");
+                sb.append("\"").append(imgArr[i].trim()).append("\"");
+            }
+            sb.append("]");
+            post.setImages(sb.toString());
+        }
         boolean saved = this.save(post);
         ThrowUtils.throwIf(!saved, ErrorCode.OPERATION_ERROR, "发布帖子失败");
         return post.getId();

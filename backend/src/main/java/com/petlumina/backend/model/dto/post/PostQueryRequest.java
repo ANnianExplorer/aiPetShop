@@ -20,4 +20,7 @@ public class PostQueryRequest extends PageRequest implements Serializable {
     private String searchText;
 
     private Long topicId;
+
+    /** 作者昵称（用于筛选某作者的帖子） */
+    private String authorName;
 }

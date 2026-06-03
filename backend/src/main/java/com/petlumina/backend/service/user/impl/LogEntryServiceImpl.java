@@ -33,10 +33,17 @@ public class LogEntryServiceImpl extends ServiceImpl<LogEntryMapper, LogEntry>
         String type = request.getType();
         Long userId = request.getUserId();
         Long petId = request.getPetId();
+        String searchText = request.getSearchText();
 
         queryWrapper.eq(StrUtil.isNotBlank(type), "type", type);
         queryWrapper.eq(userId != null, "user_id", userId);
         queryWrapper.eq(petId != null, "pet_id", petId);
+        if (StrUtil.isNotBlank(searchText)) {
+            queryWrapper.and(w -> w
+                    .like("title", searchText)
+                    .or()
+                    .like("content", searchText));
+        }
         queryWrapper.orderByDesc("create_time");
         return queryWrapper;
     }

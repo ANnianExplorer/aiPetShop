@@ -20,4 +20,6 @@ public class LogEntryQueryRequest extends PageRequest implements Serializable {
     private Long userId;
 
     private Long petId;
+
+    private String searchText;
 }

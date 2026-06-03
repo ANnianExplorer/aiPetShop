@@ -51,7 +51,7 @@ const handleDelete = async (item: Notification) => {
 </script>
 
 <template>
-  <div v-loading="loading">
+  <div v-loading="loading" class="max-w-screen-xl mx-auto">
     <!-- Header -->
     <div class="flex justify-between items-end mb-10 animate-float-up">
       <div>
