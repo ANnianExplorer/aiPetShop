@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { notificationApi } from '@/api/notification'
 import { usePagination } from '@/composables/usePagination'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { formatDate } from '@/utils/format'
 import type { Notification } from '@/types'
 
 const loading = ref(false)
@@ -151,7 +152,7 @@ const handleToggleStatus = async (item: Notification) => {
             <div class="flex items-center gap-4">
               <span class="flex items-center gap-1.5 text-xs font-[Plus_Jakarta_Sans] text-slate-500">
                 <span class="material-symbols-outlined text-sm">schedule</span>
-                {{ item.createTime }}
+                {{ formatDate(item.createTime) }}
               </span>
               <span class="px-2.5 py-0.5 rounded-full text-xs font-[Plus_Jakarta_Sans] font-semibold" :class="typeConfig(item.type).bg + ' ' + typeConfig(item.type).color">
                 {{ notificationTypes.find(t => t.value === item.type)?.label || item.type }}

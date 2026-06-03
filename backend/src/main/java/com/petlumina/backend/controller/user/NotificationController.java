@@ -80,7 +80,7 @@ public class NotificationController {
      * 获取通知详情
      */
     @GetMapping("/detail")
-    public BaseResponse<NotificationVO> getNotificationDetail(@RequestParam long id,
+    public BaseResponse<NotificationVO> getNotificationDetail(@RequestParam(value = "id") long id,
                                                                HttpServletRequest httpRequest) {
         User loginUser = userService.getLoginUser(httpRequest);
         Notification notification = notificationService.getById(id);

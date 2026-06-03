@@ -3,6 +3,7 @@ import { ref, onMounted, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { postApi } from '@/api/post'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { formatDate } from '@/utils/format'
 import type { Post } from '@/types'
 
 const route = useRoute()
@@ -81,7 +82,7 @@ const tagList = computed(() => {
                 <h2 class="font-[Plus_Jakarta_Sans] text-2xl font-bold mt-2 leading-tight text-on-surface">{{ postData.content?.substring(0, 60) }}{{ (postData.content?.length || 0) > 60 ? '...' : '' }}</h2>
                 <p class="text-sm text-on-surface-variant flex items-center gap-2">
                   <span class="material-symbols-outlined text-sm">schedule</span>
-                  发布于 {{ postData.createTime }}
+                  发布于 {{ formatDate(postData.createTime) }}
                 </p>
               </div>
             </div>

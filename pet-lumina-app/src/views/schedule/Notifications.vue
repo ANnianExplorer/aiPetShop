@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { notificationApi } from '@/api/notification'
 import { useUserStore } from '@/stores/user'
+import { formatDate } from '@/utils/format'
 import type { Notification } from '@/types'
 
 const router = useRouter()
@@ -151,7 +152,7 @@ const goBack = () => router.back()
                 <span v-if="notification.isRead === 0" class="w-2 h-2 bg-primary rounded-full flex-shrink-0 animate-pulse-glow"></span>
               </div>
               <p class="text-xs text-on-surface-variant mt-1 line-clamp-2">{{ notification.content }}</p>
-              <p class="text-[11px] text-on-surface-variant/50 mt-2">{{ notification.createTime }}</p>
+              <p class="text-[11px] text-on-surface-variant/50 mt-2">{{ formatDate(notification.createTime) }}</p>
             </div>
           </div>
         </div>
@@ -188,7 +189,7 @@ const goBack = () => router.back()
                   <span class="px-3 py-1 rounded-full text-xs font-label-bold" :class="getTypeColor(selectedNotification.type)">
                     {{ getTypeLabel(selectedNotification.type) }}
                   </span>
-                  <span class="text-xs text-on-surface-variant">{{ selectedNotification.createTime }}</span>
+                  <span class="text-xs text-on-surface-variant">{{ formatDate(selectedNotification.createTime) }}</span>
                 </div>
 
                 <!-- Title -->

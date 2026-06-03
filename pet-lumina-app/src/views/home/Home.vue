@@ -31,7 +31,9 @@ const goToNotifications = () => {
 
 onMounted(async () => {
   try {
-    const today = new Date().toISOString().split('T')[0]
+    const now = new Date()
+    const pad = (n: number) => String(n).padStart(2, '0')
+    const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} 00:00:00`
     const res = await reminderApi.listPage({ pageSize: 5, startDate: today }) as any
     reminders.value = res?.records || []
   } catch (e) {

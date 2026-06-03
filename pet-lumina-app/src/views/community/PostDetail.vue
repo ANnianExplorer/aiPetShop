@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
 import { postApi } from '@/api/post'
+import { formatDate } from '@/utils/format'
 import { commentApi } from '@/api/comment'
 import ShareModal from '@/components/common/ShareModal.vue'
 import CommentModal from '@/components/common/CommentModal.vue'
@@ -140,7 +141,7 @@ const openComment = () => {
           <img @click="goToUserProfile(post.user?.id)" class="w-10 h-10 rounded-full border-2 border-primary object-cover cursor-pointer active:scale-95 transition-transform" :src="post.user?.avatar" />
           <div @click="goToUserProfile(post.user?.id)" class="cursor-pointer">
             <p class="font-label-bold text-label-bold text-on-surface">{{ post.user?.nickname }}</p>
-            <p class="text-xs text-on-surface-variant">{{ post.createTime }}</p>
+            <p class="text-xs text-on-surface-variant">{{ formatDate(post.createTime) }}</p>
           </div>
         </div>
 

@@ -20,7 +20,6 @@ public class ReminderAddRequest implements Serializable {
 
     private String type;
 
-    @JsonFormat(pattern = "yyyy-MM-dd HH:mm", timezone = "Asia/Shanghai")
     private Date remindTime;
 
     private String location;
