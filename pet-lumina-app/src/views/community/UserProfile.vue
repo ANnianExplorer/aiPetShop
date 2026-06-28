@@ -11,7 +11,7 @@ const route = useRoute()
 const router = useRouter()
 const { showToast } = useToast()
 
-const userId = computed(() => Number(route.params.id))
+const userId = computed(() => String(route.params.id))
 
 const user = ref<User | null>(null)
 const userPosts = ref<Post[]>([])

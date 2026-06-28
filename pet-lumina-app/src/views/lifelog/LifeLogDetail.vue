@@ -8,24 +8,32 @@ import { logApi } from '@/api/log'
 const route = useRoute()
 const router = useRouter()
 
-const logId = computed(() => Number(route.params.id))
+const logId = computed(() => String(route.params.id))
 
 const log = ref<LogEntry | null>(null)
+const loading = ref(true)
+const isLiked = ref(false)
+const likeCount = ref(0)
+const showShareModal = ref(false)
 
 onMounted(async () => {
   try {
     log.value = await logApi.getById(logId.value) as any
+    likeCount.value = log.value?.likes || 0
   } catch (e) {
     console.error('Failed to fetch log:', e)
     log.value = null
+  } finally {
+    loading.value = false
   }
 })
 
-const isLiked = ref(false)
-const showShareModal = ref(false)
-
-const toggleLike = () => {
-  isLiked.value = !isLiked.value
+const toggleLike = async () => {
+  try {
+    const result = await logApi.toggleLike(logId.value) as any
+    isLiked.value = !!result
+    likeCount.value += result ? 1 : -1
+  } catch {}
 }
 
 const goBack = () => {
@@ -89,7 +97,7 @@ const getTypeColor = (type: string) => {
         <p class="font-body-md text-body-md text-on-surface leading-relaxed">{{ log.content }}</p>
 
         <div class="flex gap-sm flex-wrap">
-          <span v-for="tag in log.tagList" :key="tag" class="px-3 py-1 bg-primary-container text-primary rounded-full text-xs font-label-bold">
+          <span v-for="tag in (log.tagList || [])" :key="tag" class="px-3 py-1 bg-primary-container text-primary rounded-full text-xs font-label-bold">
             #{{ tag }}
           </span>
         </div>
@@ -97,7 +105,7 @@ const getTypeColor = (type: string) => {
         <div class="flex items-center justify-between py-md border-t border-b border-surface-variant/30">
           <button @click="toggleLike" class="flex items-center gap-2 px-4 py-2 rounded-full transition-colors" :class="isLiked ? 'text-red-500' : 'text-on-surface-variant hover:bg-surface-container'">
             <span class="material-symbols-outlined">{{ isLiked ? 'favorite' : 'favorite_border' }}</span>
-            <span class="font-label-bold">{{ isLiked ? 1 : 0 }}</span>
+            <span class="font-label-bold">{{ likeCount }}</span>
           </button>
           <button @click="openShare" class="flex items-center gap-2 px-4 py-2 rounded-full text-on-surface-variant hover:bg-surface-container transition-colors">
             <span class="material-symbols-outlined">share</span>
@@ -107,6 +115,13 @@ const getTypeColor = (type: string) => {
       </div>
     </main>
 
+    <!-- Loading state -->
+    <div v-else-if="loading" class="pt-20 px-container-padding flex flex-col items-center justify-center min-h-[60vh]">
+      <div class="w-10 h-10 border-3 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+      <p class="mt-4 text-tertiary">加载中...</p>
+    </div>
+
+    <!-- Not found state -->
     <div v-else class="pt-20 px-container-padding flex flex-col items-center justify-center min-h-[60vh]">
       <span class="material-symbols-outlined text-6xl text-on-surface-variant opacity-30">error_outline</span>
       <p class="mt-4 font-title-md text-on-surface-variant">记录不存在</p>

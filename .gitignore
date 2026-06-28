@@ -8,3 +8,6 @@ ai-pet-app/
 z-plan
 backend/target/
 /backend/target/
+.claude/
+z-plan/.playwright-cli/
+test-screenshots/

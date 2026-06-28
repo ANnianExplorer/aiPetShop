@@ -38,7 +38,7 @@ const openComment = (post: Post) => {
 const openShare = (post: Post) => {
   currentSharePost.value = {
     title: post.content.slice(0, 30) + (post.content.length > 30 ? '...' : ''),
-    image: post.imageList[0] || '',
+    image: (post.imageList && post.imageList[0]) || '',
     author: post.user?.nickname || ''
   }
   showShareModal.value = true
@@ -66,7 +66,7 @@ const openShare = (post: Post) => {
           </button>
         </div>
 
-        <div class="aspect-[4/5] w-full overflow-hidden" v-if="post.imageList.length > 0">
+        <div class="aspect-[4/5] w-full overflow-hidden" v-if="post.imageList && post.imageList.length > 0">
           <img class="w-full h-full object-cover" :src="post.imageList[0]" />
         </div>
 
@@ -76,7 +76,7 @@ const openShare = (post: Post) => {
           </p>
           <div class="flex gap-sm">
             <span 
-              v-for="tag in post.tagList" 
+              v-for="tag in (post.tagList || []).filter(t => !t.startsWith('topic:'))"
               :key="tag"
               class="text-secondary font-label-bold text-[11px]"
             >

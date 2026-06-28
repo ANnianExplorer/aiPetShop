@@ -23,7 +23,7 @@ const filteredLogs = computed(() => {
   let result = logs.value
   
   if (activeCategory.value !== '全部') {
-    result = result.filter(l => l.tagList.some(t => t.includes(activeCategory.value)))
+    result = result.filter(l => (l.tagList || []).some(t => t.includes(activeCategory.value)))
   }
 
   if (searchQuery.value.trim()) {
@@ -31,7 +31,7 @@ const filteredLogs = computed(() => {
     result = result.filter(l =>
       l.title.toLowerCase().includes(query) ||
       l.content.toLowerCase().includes(query) ||
-      l.tagList.some(t => t.toLowerCase().includes(query))
+      (l.tagList || []).some(t => t.toLowerCase().includes(query))
     )
   }
   
@@ -39,7 +39,7 @@ const filteredLogs = computed(() => {
 })
 
 const goToNewTopic = () => {
-  router.push({ name: 'newTopic' })
+  router.push({ name: 'newLog' })
 }
 
 const logs = ref<LogEntry[]>([])

@@ -5,8 +5,11 @@ import cn.dev33.satoken.exception.NotPermissionException;
 import com.petlumina.backend.common.BaseResponse;
 import com.petlumina.backend.common.ResultUtils;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+
+import javax.servlet.http.HttpServletRequest;
 
 /**
  * 全局异常处理器
@@ -14,6 +17,9 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @Value("${spring.profiles.active:prod}")
+    private String activeProfile;
 
     @ExceptionHandler(BusinessException.class)
     public BaseResponse<?> handleBusinessException(BusinessException e) {
@@ -34,8 +40,14 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(RuntimeException.class)
-    public BaseResponse<?> handleRuntimeException(RuntimeException e) {
-        log.error("系统异常", e);
+    public BaseResponse<?> handleRuntimeException(RuntimeException e, HttpServletRequest request) {
+        String uri = request.getRequestURI();
+        log.error("系统异常 [{}]: {} - {}", uri, e.getClass().getSimpleName(), e.getMessage(), e);
+        // 开发环境返回详细错误信息，方便调试
+        if ("dev".equals(activeProfile)) {
+            return ResultUtils.error(ErrorCode.SYSTEM_ERROR,
+                    e.getClass().getSimpleName() + ": " + e.getMessage());
+        }
         return ResultUtils.error(ErrorCode.SYSTEM_ERROR);
     }
 }

@@ -13,7 +13,7 @@ const route = useRoute()
 const router = useRouter()
 const { showToast } = useToast()
 
-const postId = computed(() => Number(route.params.id))
+const postId = computed(() => String(route.params.id))
 
 const post = ref<Post | null>(null)
 const comments = ref<Comment[]>([])
@@ -31,7 +31,8 @@ const displayComments = computed(() =>
     avatar: c.user?.avatar ?? '',
     content: c.content,
     createdAt: c.createTime,
-    likes: c.likes
+    likes: c.likes,
+    isLiked: (c as any).isLiked ?? 0
   }))
 )
 
@@ -152,7 +153,7 @@ const openComment = () => {
         <p class="font-body-md text-body-md text-on-surface leading-relaxed">{{ post.content }}</p>
 
         <div class="flex gap-sm flex-wrap">
-          <span v-for="tag in post.tagList" :key="tag" class="px-3 py-1 bg-primary-container text-primary rounded-full text-xs font-label-bold">
+          <span v-for="tag in (post.tagList || []).filter(t => !t.startsWith('topic:'))" :key="tag" class="px-3 py-1 bg-primary-container text-primary rounded-full text-xs font-label-bold">
             #{{ tag }}
           </span>
         </div>
@@ -189,13 +190,14 @@ const openComment = () => {
     <Teleport to="body">
       <ShareModal
         v-model:visible="showShareModal"
-        :post="post ? { title: post.content.slice(0, 30) + '...', image: post.imageList[0] || '', author: post.user?.nickname ?? '' } : null"
+        :post="post ? { title: post.content.slice(0, 30) + '...', image: (post.imageList && post.imageList[0]) || '', author: post.user?.nickname ?? '' } : null"
       />
     </Teleport>
 
     <CommentModal
       :visible="showCommentModal"
       :comments="displayComments"
+      :post-id="postId"
       @close="showCommentModal = false"
       @submit="handleCommentSubmit"
     />

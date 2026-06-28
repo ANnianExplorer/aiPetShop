@@ -57,7 +57,7 @@ const switchPet = (petId: number) => {
             <div class="absolute bottom-0 right-0 w-3 h-3 bg-primary rounded-full border-2 border-white shadow-sm"></div>
           </div>
           <div @click="showPetSelector = !showPetSelector" class="cursor-pointer">
-            <h1 class="text-xl font-bold tracking-tighter text-primary font-display-lg">{{ currentPet?.name }}的健康</h1>
+            <h1 class="text-xl font-bold tracking-tighter text-primary font-display-lg">{{ currentPet ? `${currentPet.name}的健康` : '健康中心' }}</h1>
             <p class="text-xs text-tertiary">点击切换宠物</p>
           </div>
         </div>
@@ -108,10 +108,18 @@ const switchPet = (petId: number) => {
         </div>
       </section>
 
+      <!-- Empty state when no pet -->
+      <div v-if="!currentPet" class="flex flex-col items-center justify-center py-16 animate-float-up stagger-2">
+        <span class="material-symbols-outlined text-6xl text-tertiary mb-4">pets</span>
+        <p class="text-tertiary text-lg mb-4">还没有添加宠物哦</p>
+        <button @click="router.push('/add-pet')" class="bg-primary text-on-primary px-6 py-3 rounded-full font-label-bold btn-jelly shadow-md">
+          添加宠物
+        </button>
+      </div>
+
       <!-- Split Components -->
-      <div class="animate-float-up stagger-2">
+      <div v-if="currentHealthData" class="animate-float-up stagger-2">
         <BentoDashboard
-          v-if="currentHealthData"
           :weight="currentHealthData.weight"
           :weightChange="currentHealthData.weightChange"
         />

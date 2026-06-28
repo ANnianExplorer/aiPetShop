@@ -10,15 +10,15 @@ export const postApi = {
   delete: (id: number) =>
     request.post('/post/delete', { id }),
 
-  getById: (id: number) =>
-    request.get('/post/get/vo', { params: { id } }),
+  getById: (id: number | string) =>
+    request.get('/post/get/vo', { params: { id: String(id) } }),
 
   listPage: (data: { current?: number; pageSize?: number; category?: string; searchText?: string; topicId?: number; authorId?: number }) =>
     request.post('/post/list/page/vo', data),
 
-  toggleLike: (id: number) =>
-    request.post(`/post/like/${id}`),
+  toggleLike: (id: number | string) =>
+    request.post(`/post/like/${String(id)}`),
 
-  toggleFavorite: (id: number) =>
-    request.post(`/post/favorite/${id}`),
+  toggleFavorite: (id: number | string) =>
+    request.post(`/post/favorite/${String(id)}`),
 }

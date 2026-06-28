@@ -93,9 +93,19 @@ const router = createRouter({
           component: () => import('@/views/schedule/Notifications.vue')
         },
         {
+          path: '/new-log',
+          name: 'newLog',
+          component: () => import('@/views/community/NewLog.vue')
+        },
+        {
           path: '/new-topic',
           name: 'newTopic',
           component: () => import('@/views/community/NewTopic.vue')
+        },
+        {
+          path: '/create-post',
+          name: 'createPost',
+          component: () => import('@/views/community/CreatePost.vue')
         },
         {
           path: '/topic/:id',

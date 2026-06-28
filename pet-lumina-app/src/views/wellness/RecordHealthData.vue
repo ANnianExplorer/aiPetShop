@@ -5,6 +5,7 @@ import { storeToRefs } from 'pinia'
 import { useToast } from '@/composables/useToast'
 import { healthApi } from '@/api/health'
 import { useUserStore } from '@/stores/user'
+import { formatDate } from '@/utils/format'
 
 const router = useRouter()
 const { showToast } = useToast()
@@ -184,6 +185,7 @@ const handleSubmit = async () => {
     submitting.value = true
     await healthApi.addRecord({
       petId: currentPet.value!.id,
+      date: formatDate(new Date()),
       heartRate: healthData.value.heartRate ? Number(healthData.value.heartRate) : undefined,
       sleepHours: healthData.value.sleepHours ? Number(healthData.value.sleepHours) : undefined,
       steps: healthData.value.steps ? Number(healthData.value.steps) : undefined,

@@ -32,7 +32,7 @@ const goToPost = (postId: number) => {
         :style="{ animationDelay: `${index * -1.2}s` }"
       >
         <div class="h-48 overflow-hidden relative">
-          <img class="w-full h-full object-cover group-active:scale-110 transition-transform duration-500" :src="post.imageList[0]" />
+          <img v-if="post.imageList && post.imageList.length > 0" class="w-full h-full object-cover group-active:scale-110 transition-transform duration-500" :src="post.imageList[0]" />
           <!-- Shimmer overlay -->
           <div class="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full animate-[shimmerSweep_5s_ease-in-out_infinite]" :style="{ animationDelay: `${index * -2}s` }"></div>
         </div>

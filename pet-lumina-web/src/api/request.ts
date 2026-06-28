@@ -41,7 +41,11 @@ request.interceptors.response.use(
     }
 
     if (res.code !== 0) {
-      ElMessage.error(res.message || '请求失败')
+      if (res.code === 42900) {
+        ElMessage.warning(res.message || '操作过于频繁，请稍后再试')
+      } else {
+        ElMessage.error(res.message || '请求失败')
+      }
       if (res.code === 40100) {
         localStorage.removeItem('satoken')
         router.push('/login')

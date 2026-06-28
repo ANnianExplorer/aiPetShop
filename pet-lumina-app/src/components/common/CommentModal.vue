@@ -1,11 +1,23 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useToast } from '@/composables/useToast'
+import { commentApi } from '@/api/comment'
 import EmojiPicker from './EmojiPicker.vue'
+
+interface CommentItem {
+  id: string
+  author: string
+  avatar: string
+  content: string
+  createdAt: string
+  likes: number
+  isLiked?: number
+}
 
 const props = defineProps<{
   visible: boolean
-  comments: Array<{ id: string; author: string; avatar: string; content: string; createdAt: string; likes: number }>
+  comments: CommentItem[]
+  postId?: string
 }>()
 
 const emit = defineEmits<{
@@ -34,6 +46,14 @@ const handleEmojiSelect = (emoji: string) => {
 const toggleEmojiPicker = () => {
   showEmojiPicker.value = !showEmojiPicker.value
 }
+
+const toggleLike = async (comment: CommentItem) => {
+  try {
+    const isLiked = await commentApi.toggleLike(comment.id) as any
+    comment.isLiked = isLiked ? 1 : 0
+    comment.likes += isLiked ? 1 : -1
+  } catch {}
+}
 </script>
 
 <template>
@@ -41,7 +61,7 @@ const toggleEmojiPicker = () => {
     <Transition name="comment-modal">
       <div v-if="visible" class="fixed inset-0 z-50 flex items-end justify-center">
         <div class="absolute inset-0 bg-black/30" @click="emit('close')"></div>
-        
+
         <div class="relative w-full max-w-lg bg-surface-container-low rounded-t-3xl overflow-hidden animate-slide-up">
           <div class="p-4 pb-6">
             <div class="flex justify-between items-center mb-4">
@@ -61,8 +81,9 @@ const toggleEmojiPicker = () => {
                   </div>
                   <div class="flex items-center gap-md mt-1 px-2">
                     <span class="text-xs text-on-surface-variant">{{ comment.createdAt }}</span>
-                    <button class="text-xs text-on-surface-variant hover:text-primary flex items-center gap-1">
-                      <span class="material-symbols-outlined text-sm">favorite_border</span>
+                    <button @click="toggleLike(comment)" class="text-xs flex items-center gap-1 transition-colors"
+                      :class="comment.isLiked === 1 ? 'text-rose-500' : 'text-on-surface-variant hover:text-primary'">
+                      <span class="material-symbols-outlined text-sm">{{ comment.isLiked === 1 ? 'favorite' : 'favorite_border' }}</span>
                       {{ comment.likes }}
                     </button>
                   </div>
@@ -72,12 +93,12 @@ const toggleEmojiPicker = () => {
 
             <div class="flex items-center gap-sm">
               <div class="flex-1 flex items-center bg-surface-container rounded-full px-4 py-2">
-                <input 
+                <input
                   ref="commentInputRef"
-                  v-model="commentText" 
-                  @keyup.enter="handleSubmit" 
-                  placeholder="写下你的评论..." 
-                  class="flex-1 bg-transparent font-body-sm text-on-surface focus:outline-none" 
+                  v-model="commentText"
+                  @keyup.enter="handleSubmit"
+                  placeholder="写下你的评论..."
+                  class="flex-1 bg-transparent font-body-sm text-on-surface focus:outline-none"
                 />
                 <button @click="toggleEmojiPicker" class="ml-2 text-on-surface-variant hover:text-primary transition-colors active:scale-90">
                   <span class="material-symbols-outlined text-xl">mood</span>
@@ -93,21 +114,17 @@ const toggleEmojiPicker = () => {
     </Transition>
   </Teleport>
 
-  <EmojiPicker 
-    :visible="showEmojiPicker" 
-    @select="handleEmojiSelect" 
-    @close="showEmojiPicker = false" 
+  <EmojiPicker
+    :visible="showEmojiPicker"
+    @select="handleEmojiSelect"
+    @close="showEmojiPicker = false"
   />
 </template>
 
 <style scoped>
 @keyframes slide-up {
-  from {
-    transform: translateY(100%);
-  }
-  to {
-    transform: translateY(0);
-  }
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
 }
 
 .animate-slide-up {

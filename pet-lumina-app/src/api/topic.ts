@@ -10,8 +10,8 @@ export const topicApi = {
   delete: (id: number) =>
     request.post('/topic/delete', { id }),
 
-  getById: (id: number) =>
-    request.get('/topic/get/vo', { params: { id } }),
+  getById: (id: number | string) =>
+    request.get('/topic/get/vo', { params: { id: String(id) } }),
 
   listPage: (data: { current?: number; pageSize?: number; category?: string; searchText?: string }) =>
     request.post('/topic/list/page/vo', data),

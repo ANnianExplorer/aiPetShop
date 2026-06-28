@@ -65,6 +65,7 @@ const handleLogin = async () => {
               <input
                 v-model="password"
                 type="password"
+                autocomplete="current-password"
                 placeholder="请输入密码"
                 @keyup.enter="handleLogin"
                 class="w-full pl-12 pr-12 py-4 rounded-2xl bg-white/15 backdrop-blur-[10px] border border-white/30 text-on-surface placeholder-slate-400 focus:border-primary-container focus:ring-2 focus:ring-primary-container/30 outline-none transition-all"

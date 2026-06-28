@@ -225,3 +225,14 @@ CREATE TABLE IF NOT EXISTS `favorite_record` (
     UNIQUE KEY `uk_user_target` (`user_id`, `target_id`, `target_type`),
     KEY `idx_target` (`target_id`, `target_type`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='收藏记录表';
+
+-- 话题关注表
+CREATE TABLE IF NOT EXISTS `topic_follow` (
+    `id` BIGINT NOT NULL COMMENT '主键ID',
+    `user_id` BIGINT NOT NULL COMMENT '用户ID',
+    `topic_id` BIGINT NOT NULL COMMENT '话题ID',
+    `create_time` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_user_topic` (`user_id`, `topic_id`),
+    KEY `idx_topic_id` (`topic_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='话题关注表';

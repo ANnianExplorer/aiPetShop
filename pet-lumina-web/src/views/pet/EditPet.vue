@@ -44,7 +44,7 @@ onMounted(async () => {
 const handleSubmit = async () => {
   if (!form.value.name || !form.value.breed) { ElMessage.warning('请填写宠物名称和品种'); return }
   try {
-    await petApi.edit({ id: Number(route.params.id), ...form.value })
+    await petApi.edit({ id: String(route.params.id), ...form.value })
     ElMessage.success('宠物信息已更新')
     router.push(`/pet/${route.params.id}`)
   } catch { ElMessage.error('更新失败') }

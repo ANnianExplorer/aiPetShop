@@ -12,6 +12,7 @@ import com.petlumina.backend.model.entity.Comment;
 import com.petlumina.backend.model.entity.User;
 import com.petlumina.backend.model.vo.CommentVO;
 import com.petlumina.backend.service.user.CommentService;
+import com.petlumina.backend.service.user.LikeRecordService;
 import com.petlumina.backend.service.user.UserService;
 import com.petlumina.backend.utils.ThrowUtils;
 import lombok.extern.slf4j.Slf4j;
@@ -33,6 +34,9 @@ public class CommentController {
 
     @Resource
     private UserService userService;
+
+    @Resource
+    private LikeRecordService likeRecordService;
 
     /**
      * 发表评论
@@ -68,6 +72,29 @@ public class CommentController {
         User loginUser = userService.getLoginUser(httpRequest);
         boolean result = commentService.deleteComment(request.getId(), loginUser);
         return ResultUtils.success(result);
+    }
+
+    /**
+     * 评论点赞/取消
+     */
+    @PostMapping("/like/{id}")
+    public BaseResponse<Boolean> toggleCommentLike(@PathVariable long id,
+                                                   HttpServletRequest httpRequest) {
+        User loginUser = userService.getLoginUser(httpRequest);
+        boolean isLiked = likeRecordService.toggleLike(loginUser.getId(), id, "comment");
+        // 更新评论点赞数
+        if (isLiked) {
+            commentService.lambdaUpdate()
+                    .eq(Comment::getId, id)
+                    .setSql("likes = likes + 1")
+                    .update();
+        } else {
+            commentService.lambdaUpdate()
+                    .eq(Comment::getId, id)
+                    .setSql("likes = GREATEST(likes - 1, 0)")
+                    .update();
+        }
+        return ResultUtils.success(isLiked);
     }
 
     /**

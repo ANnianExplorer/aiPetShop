@@ -14,6 +14,7 @@ import com.petlumina.backend.model.entity.LogEntry;
 import com.petlumina.backend.model.entity.User;
 import com.petlumina.backend.model.vo.LogEntryVO;
 import com.petlumina.backend.model.vo.UserVO;
+import com.petlumina.backend.service.user.LikeRecordService;
 import com.petlumina.backend.service.user.LogEntryService;
 import com.petlumina.backend.service.user.UserService;
 import com.petlumina.backend.utils.ThrowUtils;
@@ -39,6 +40,9 @@ public class LogController {
 
     @Resource
     private UserService userService;
+
+    @Resource
+    private LikeRecordService likeRecordService;
 
     /**
      * 添加生活记录
@@ -106,6 +110,28 @@ public class LogController {
             vo.setUser(UserVO.objToVo(user));
         }
         return ResultUtils.success(vo);
+    }
+
+    /**
+     * 生活记录点赞/取消
+     */
+    @PostMapping("/like/{id}")
+    public BaseResponse<Boolean> toggleLogLike(@PathVariable long id,
+                                               HttpServletRequest httpRequest) {
+        User loginUser = userService.getLoginUser(httpRequest);
+        boolean isLiked = likeRecordService.toggleLike(loginUser.getId(), id, "log");
+        if (isLiked) {
+            logEntryService.lambdaUpdate()
+                    .eq(LogEntry::getId, id)
+                    .setSql("likes = likes + 1")
+                    .update();
+        } else {
+            logEntryService.lambdaUpdate()
+                    .eq(LogEntry::getId, id)
+                    .setSql("likes = GREATEST(likes - 1, 0)")
+                    .update();
+        }
+        return ResultUtils.success(isLiked);
     }
 
     /**

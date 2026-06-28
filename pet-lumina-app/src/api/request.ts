@@ -62,7 +62,11 @@ request.interceptors.response.use(
     }
 
     if (res.code !== 0) {
-      showToast(res.message || '请求失败')
+      if (res.code === 42900) {
+        showToast({ message: res.message || '操作过于频繁，请稍后再试', type: 'warning' } as any)
+      } else {
+        showToast(res.message || '请求失败')
+      }
       if (res.code === 40100) {
         localStorage.removeItem('satoken')
         window.location.hash = '#/login'

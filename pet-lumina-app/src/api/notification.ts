@@ -5,7 +5,7 @@ export const notificationApi = {
     request.post('/notification/list/page', data),
 
   getDetail: (id: number | string) =>
-    request.get('/notification/detail', { params: { id } }),
+    request.get('/notification/detail', { params: { id: String(id) } }),
 
   unreadCount: () =>
     request.get('/notification/unread/count'),

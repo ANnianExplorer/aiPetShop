@@ -14,8 +14,8 @@ export const reminderApi = {
   delete: (id: number) =>
     request.post('/reminder/delete', { id }),
 
-  getById: (id: number) =>
-    request.get('/reminder/get/vo', { params: { id } }),
+  getById: (id: number | string) =>
+    request.get('/reminder/get/vo', { params: { id: String(id) } }),
 
   listPage: (data: {
     current?: number; pageSize?: number; type?: string;

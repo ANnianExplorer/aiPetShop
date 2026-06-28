@@ -9,7 +9,7 @@ const router = useRouter()
 const route = useRoute()
 const { showToast } = useToast()
 
-const topicId = computed(() => Number(route.params.id))
+const topicId = computed(() => String(route.params.id))
 
 const topic = ref<Topic | null>(null)
 const relatedPosts = ref<Post[]>([])
@@ -34,6 +34,10 @@ const goBack = () => {
 
 const goToPostDetail = (postId: number) => {
   router.push({ name: 'postDetail', params: { id: postId } })
+}
+
+const goToCreatePost = () => {
+  router.push({ name: 'createPost', query: { topicId: topicId.value, category: topic.value?.category || 'daily' } })
 }
 
 const toggleFollow = async () => {
@@ -93,7 +97,13 @@ const toggleFollow = async () => {
       </section>
 
       <section>
-        <h2 class="font-title-sm text-title-sm text-on-surface mb-4">相关帖子</h2>
+        <div class="flex items-center justify-between mb-4">
+          <h2 class="font-title-sm text-title-sm text-on-surface">相关帖子</h2>
+          <button @click="goToCreatePost" class="flex items-center gap-1.5 px-4 py-2 bg-primary text-on-primary rounded-full text-xs font-label-bold btn-jelly shadow-md">
+            <span class="material-symbols-outlined text-[16px]">edit</span>
+            发帖
+          </button>
+        </div>
         <div class="space-y-4">
           <div 
             v-for="post in relatedPosts" 
@@ -108,7 +118,7 @@ const toggleFollow = async () => {
                 <p class="text-[10px] text-outline-variant">{{ post.createTime }}</p>
               </div>
             </div>
-            <img v-if="post.imageList.length > 0" :src="post.imageList[0]" class="w-full h-40 object-cover" />
+            <img v-if="post.imageList && post.imageList.length > 0" :src="post.imageList[0]" class="w-full h-40 object-cover" />
             <div class="p-4 pt-2">
               <p class="text-body-md text-on-surface leading-relaxed">{{ post.content }}</p>
               <div class="flex items-center gap-4 mt-3">
