@@ -21,7 +21,7 @@ const actions = [
         @click="router.push(action.path)"
         class="flex flex-col items-center gap-2 px-4 cursor-pointer hover:opacity-80 transition-opacity"
       >
-        <div class="w-14 h-14 bg-white rounded-2xl shadow-sm flex items-center justify-center text-primary">
+        <div class="w-14 h-14 bg-white dark:bg-surface-container rounded-2xl shadow-sm dark:shadow-[0_2px_8px_rgba(0,0,0,0.2)] flex items-center justify-center text-primary">
           <span class="material-symbols-outlined text-3xl">{{ action.icon }}</span>
         </div>
         <span class="font-label-bold text-[11px]">{{ action.label }}</span>

@@ -139,7 +139,7 @@ onUnmounted(() => {
       <button 
         v-if="topics.length > 1"
         @click="goToPrev"
-        class="absolute left-0 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center shadow-md active:scale-90 transition-transform"
+        class="absolute left-0 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/80 dark:bg-surface-container/80 backdrop-blur-sm rounded-full flex items-center justify-center shadow-md active:scale-90 transition-transform"
         :class="{ 'opacity-0 pointer-events-none': currentIndex === 0 }"
       >
         <span class="material-symbols-outlined text-sm text-on-surface">chevron_left</span>
@@ -147,7 +147,7 @@ onUnmounted(() => {
       <button 
         v-if="topics.length > 1"
         @click="goToNext"
-        class="absolute right-0 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/80 backdrop-blur-sm rounded-full flex items-center justify-center shadow-md active:scale-90 transition-transform"
+        class="absolute right-0 top-1/2 -translate-y-1/2 w-8 h-8 bg-white/80 dark:bg-surface-container/80 backdrop-blur-sm rounded-full flex items-center justify-center shadow-md active:scale-90 transition-transform"
         :class="{ 'opacity-0 pointer-events-none': currentIndex === topics.length - 1 }"
       >
         <span class="material-symbols-outlined text-sm text-on-surface">chevron_right</span>

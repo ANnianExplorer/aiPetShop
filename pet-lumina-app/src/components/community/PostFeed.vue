@@ -2,6 +2,7 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { useToast } from '@/composables/useToast'
+import { postApi } from '@/api/post'
 import ShareModal from '@/components/common/ShareModal.vue'
 import type { Post } from '@/types'
 
@@ -14,21 +15,35 @@ const props = defineProps<{
 
 const showShareModal = ref(false)
 const currentSharePost = ref<{ title: string; image: string; author: string } | null>(null)
+const likingPosts = ref<Set<number>>(new Set())
 
 const navigateToPost = (postId: number) => {
-  router.push({ name: 'postDetail', params: { id: postId } })
+  router.push({ name: 'postDetail', params: { id: String(postId) } })
 }
 
-const toggleLike = (post: Post) => {
-  const wasLiked = post.isLiked === 1
-  post.isLiked = wasLiked ? 0 : 1
-  post.likes += wasLiked ? -1 : 1
-  showToast(wasLiked ? '已取消点赞' : '已点赞', 'success')
+const toggleLike = async (post: Post) => {
+  if (likingPosts.value.has(post.id)) return
+  likingPosts.value.add(post.id)
+  try {
+    const isLiked = await postApi.toggleLike(post.id) as any
+    post.isLiked = isLiked ? 1 : 0
+    post.likes += isLiked ? 1 : -1
+    showToast(isLiked ? '点赞成功' : '已取消点赞', 'success')
+  } catch {
+    showToast('操作失败', 'error')
+  } finally {
+    likingPosts.value.delete(post.id)
+  }
 }
 
-const toggleBookmark = (post: Post) => {
-  post.isFavorited = post.isFavorited ? 0 : 1
-  showToast(post.isFavorited === 1 ? '已收藏' : '已取消收藏', 'success')
+const toggleBookmark = async (post: Post) => {
+  try {
+    const isFavorited = await postApi.toggleFavorite(post.id) as any
+    post.isFavorited = isFavorited ? 1 : 0
+    showToast(isFavorited ? '收藏成功' : '已取消收藏', 'success')
+  } catch {
+    showToast('操作失败', 'error')
+  }
 }
 
 const openComment = (post: Post) => {
@@ -50,7 +65,7 @@ const openShare = (post: Post) => {
     <article 
       v-for="post in posts" 
       :key="post.id"
-      class="glass-card rounded-xl overflow-hidden shadow-sm border border-white/20 transition-transform active:scale-[0.98] bg-white/80 cursor-pointer"
+      class="glass-card rounded-xl overflow-hidden shadow-sm border border-white/20 dark:border-surface-variant/20 transition-transform active:scale-[0.98] bg-white/80 dark:bg-surface-container/80 cursor-pointer"
     >
       <div @click="navigateToPost(post.id)" class="block">
         <div class="p-md flex items-center justify-between">

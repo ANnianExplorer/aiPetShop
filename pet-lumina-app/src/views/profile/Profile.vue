@@ -2,12 +2,14 @@
 import { ref } from 'vue'
 import { storeToRefs } from 'pinia'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useUserStore } from '@/stores/user'
 import UserInfo from '@/components/profile/UserInfo.vue'
 import PetList from '@/components/profile/PetList.vue'
 import SettingsMenu from '@/components/profile/SettingsMenu.vue'
 
 const router = useRouter()
+const { t } = useI18n()
 const userStore = useUserStore()
 const { currentUser, pets } = storeToRefs(userStore)
 
@@ -54,7 +56,7 @@ const handleLogout = async () => {
           class="w-full py-4 rounded-2xl bg-error-container text-on-error-container font-label-bold text-body-md flex items-center justify-center gap-2 btn-jelly depth-1"
         >
           <span class="material-symbols-outlined">logout</span>
-          退出登录
+          {{ t('profile.logout') }}
         </button>
       </div>
     </main>

@@ -14,8 +14,10 @@ const topicId = computed(() => String(route.params.id))
 const topic = ref<Topic | null>(null)
 const relatedPosts = ref<Post[]>([])
 const isFollowing = ref(false)
+const loading = ref(true)
 
 onMounted(async () => {
+  loading.value = true
   try {
     const topicData = await topicApi.getById(topicId.value) as any
     topic.value = topicData
@@ -25,6 +27,8 @@ onMounted(async () => {
     relatedPosts.value = postsRes?.records || []
   } catch (error) {
     console.error('Failed to fetch topic detail:', error)
+  } finally {
+    loading.value = false
   }
 })
 
@@ -33,7 +37,7 @@ const goBack = () => {
 }
 
 const goToPostDetail = (postId: number) => {
-  router.push({ name: 'postDetail', params: { id: postId } })
+  router.push({ name: 'postDetail', params: { id: String(postId) } })
 }
 
 const goToCreatePost = () => {
@@ -57,6 +61,19 @@ const toggleFollow = async () => {
 <template>
   <div class="pb-32 bg-background min-h-screen">
     <main class="pt-4 px-container-padding max-w-screen-xl mx-auto space-y-lg">
+      <!-- Loading State -->
+      <div v-if="loading" class="flex flex-col items-center justify-center py-20">
+        <span class="material-symbols-outlined text-6xl text-primary animate-spin">progress_activity</span>
+        <p class="mt-4 font-title-md text-on-surface-variant">加载中...</p>
+      </div>
+
+      <div v-else-if="!topic" class="flex flex-col items-center justify-center py-20">
+        <span class="material-symbols-outlined text-6xl text-on-surface-variant opacity-30">error_outline</span>
+        <p class="mt-4 font-title-md text-on-surface-variant">话题不存在</p>
+        <button @click="goBack" class="mt-4 px-6 py-2 bg-primary text-white rounded-full">返回</button>
+      </div>
+
+      <template v-else>
       <div class="flex items-center justify-between py-md mb-md">
         <button @click="goBack" class="active:scale-95 transition-transform p-2 rounded-full hover:bg-zinc-100">
           <span class="material-symbols-outlined text-emerald-700">arrow_back</span>
@@ -71,7 +88,7 @@ const toggleFollow = async () => {
         </button>
       </div>
 
-      <section v-if="topic" class="relative rounded-xl overflow-hidden">
+      <section class="relative rounded-xl overflow-hidden">
         <img :src="topic.image" class="w-full h-48 object-cover" />
         <div class="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent"></div>
         <div class="absolute bottom-4 left-4 right-4">
@@ -82,7 +99,7 @@ const toggleFollow = async () => {
         </div>
       </section>
 
-      <section v-if="topic" class="bg-surface-container-low rounded-xl p-4">
+      <section class="bg-surface-container-low rounded-xl p-4">
         <p class="text-body-md text-on-surface leading-relaxed">{{ topic.description }}</p>
         <div class="flex gap-6 mt-4 pt-4 border-t border-outline-variant/20">
           <div class="flex items-center gap-2">
@@ -135,6 +152,7 @@ const toggleFollow = async () => {
           </div>
         </div>
       </section>
+      </template>
     </main>
   </div>
 </template>

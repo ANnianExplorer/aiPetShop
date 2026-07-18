@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { notificationApi } from '@/api/notification'
 import { useUserStore } from '@/stores/user'
 import { formatDate } from '@/utils/format'
 import type { Notification } from '@/types'
 
+const { t } = useI18n()
 const router = useRouter()
 const userStore = useUserStore()
 
@@ -36,14 +38,12 @@ onMounted(() => {
 })
 
 const openDetail = async (notification: Notification) => {
-  // 标记已读
   if (notification.isRead === 0) {
     await notificationApi.markAsRead(notification.id)
     notification.isRead = 1
     unreadCount.value = Math.max(0, unreadCount.value - 1)
     userStore.unreadNotifications = Math.max(0, userStore.unreadNotifications - 1)
   }
-  // 获取详情
   detailLoading.value = true
   showDetail.value = true
   try {
@@ -96,15 +96,15 @@ const getTypeColor = (type: string) => {
 
 const getTypeLabel = (type: string) => {
   const labels: Record<string, string> = {
-    reminder: '提醒',
-    social: '社交',
-    health: '健康',
-    system: '系统',
-    update: '更新',
-    campaign: '活动',
-    priority: '紧急',
+    reminder: t('notification.reminder'),
+    social: t('notification.social'),
+    health: t('notification.health'),
+    system: t('notification.system'),
+    update: t('notification.update'),
+    campaign: t('notification.activity'),
+    priority: t('notification.urgent'),
   }
-  return labels[type] || '通知'
+  return labels[type] || t('notification.notifications')
 }
 
 const goBack = () => router.back()
@@ -119,16 +119,16 @@ const goBack = () => router.back()
           <button @click="goBack" class="icon-btn p-2 rounded-full">
             <span class="material-symbols-outlined text-primary">arrow_back</span>
           </button>
-          <span class="font-title-sm text-on-surface">通知</span>
+          <span class="font-title-sm text-on-surface">{{ t('notification.notifications') }}</span>
           <button @click="markAllAsRead" class="text-primary font-label-bold text-label-bold px-3 py-1 rounded-full active:bg-primary-fixed transition-colors">
-            全部已读
+            {{ t('notification.markAllRead') }}
           </button>
         </div>
 
         <!-- Unread count -->
         <div v-if="unreadCount > 0" class="mb-md animate-float-up stagger-1">
           <span class="px-3 py-1 bg-primary/10 text-primary text-xs font-label-bold rounded-full">
-            {{ unreadCount }} 条未读通知
+            {{ t('notification.unreadCount', { count: unreadCount }) }}
           </span>
         </div>
 
@@ -160,7 +160,7 @@ const goBack = () => router.back()
         <!-- Empty -->
         <div v-if="notifications.length === 0" class="flex flex-col items-center justify-center py-20 animate-fade-in">
           <span class="material-symbols-outlined text-6xl text-on-surface-variant opacity-30">notifications_none</span>
-          <p class="mt-4 font-title-md text-on-surface-variant">暂无通知</p>
+          <p class="mt-4 font-title-md text-on-surface-variant">{{ t('notification.noNotifications') }}</p>
         </div>
       </div>
     </main>
@@ -202,7 +202,7 @@ const goBack = () => router.back()
 
                 <!-- Actions -->
                 <button @click="closeDetail" class="w-full py-3 bg-primary text-on-primary rounded-2xl font-label-bold text-label-bold btn-jelly shadow-md">
-                  我知道了
+                  {{ t('notification.gotIt') }}
                 </button>
               </template>
             </div>

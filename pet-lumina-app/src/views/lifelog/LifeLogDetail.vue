@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
+import { useToast } from '@/composables/useToast'
 import ShareModal from '@/components/common/ShareModal.vue'
 import type { LogEntry } from '@/types'
 import { logApi } from '@/api/log'
 
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
+const { showToast } = useToast()
 
 const logId = computed(() => String(route.params.id))
 
@@ -33,7 +37,9 @@ const toggleLike = async () => {
     const result = await logApi.toggleLike(logId.value) as any
     isLiked.value = !!result
     likeCount.value += result ? 1 : -1
-  } catch {}
+  } catch {
+    showToast(t('common.error'), 'error')
+  }
 }
 
 const goBack = () => {
@@ -75,7 +81,7 @@ const getTypeColor = (type: string) => {
           <button @click="goBack" class="active:scale-95 transition-transform p-2 rounded-full hover:bg-zinc-100">
             <span class="material-symbols-outlined text-emerald-700">arrow_back</span>
           </button>
-          <span class="font-title-sm text-on-surface">记录详情</span>
+          <span class="font-title-sm text-on-surface">{{ t('log.logDetail') }}</span>
           <button @click="openShare" class="active:scale-95 transition-transform p-2 rounded-full hover:bg-zinc-100">
             <span class="material-symbols-outlined text-emerald-700">more_vert</span>
           </button>
@@ -109,7 +115,7 @@ const getTypeColor = (type: string) => {
           </button>
           <button @click="openShare" class="flex items-center gap-2 px-4 py-2 rounded-full text-on-surface-variant hover:bg-surface-container transition-colors">
             <span class="material-symbols-outlined">share</span>
-            <span class="font-label-bold">分享</span>
+            <span class="font-label-bold">{{ t('log.share') }}</span>
           </button>
         </div>
       </div>
@@ -118,20 +124,20 @@ const getTypeColor = (type: string) => {
     <!-- Loading state -->
     <div v-else-if="loading" class="pt-20 px-container-padding flex flex-col items-center justify-center min-h-[60vh]">
       <div class="w-10 h-10 border-3 border-primary/30 border-t-primary rounded-full animate-spin"></div>
-      <p class="mt-4 text-tertiary">加载中...</p>
+      <p class="mt-4 text-tertiary">{{ t('common.loading') }}</p>
     </div>
 
     <!-- Not found state -->
     <div v-else class="pt-20 px-container-padding flex flex-col items-center justify-center min-h-[60vh]">
       <span class="material-symbols-outlined text-6xl text-on-surface-variant opacity-30">error_outline</span>
-      <p class="mt-4 font-title-md text-on-surface-variant">记录不存在</p>
-      <button @click="goBack" class="mt-4 px-6 py-2 bg-primary text-on-primary rounded-full font-label-bold">返回</button>
+      <p class="mt-4 font-title-md text-on-surface-variant">{{ t('log.logNotFound') }}</p>
+      <button @click="goBack" class="mt-4 px-6 py-2 bg-primary text-on-primary rounded-full font-label-bold">{{ t('common.back') }}</button>
     </div>
 
     <Teleport to="body">
-      <ShareModal 
-        v-model:visible="showShareModal" 
-        :post="log ? { title: log.title, image: (log.imageList && log.imageList[0]) || '', author: '我的宠物记录' } : null" 
+      <ShareModal
+        v-model:visible="showShareModal"
+        :post="log ? { title: log.title, image: (log.imageList && log.imageList[0]) || '', author: t('log.myPetRecords') } : null"
       />
     </Teleport>
   </div>

@@ -34,7 +34,6 @@ const handleSubmit = () => {
   if (commentText.value.trim()) {
     emit('submit', commentText.value)
     commentText.value = ''
-    showToast('评论成功', 'success')
   }
 }
 
@@ -52,7 +51,9 @@ const toggleLike = async (comment: CommentItem) => {
     const isLiked = await commentApi.toggleLike(comment.id) as any
     comment.isLiked = isLiked ? 1 : 0
     comment.likes += isLiked ? 1 : -1
-  } catch {}
+  } catch {
+    showToast('操作失败', 'error')
+  }
 }
 </script>
 

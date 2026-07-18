@@ -10,8 +10,8 @@ export const notificationApi = {
   unreadCount: () =>
     request.get('/notification/unread/count'),
 
-  markAsRead: (id: number) =>
-    request.post(`/notification/read/${id}`),
+  markAsRead: (id: number | string) =>
+    request.post(`/notification/read/${String(id)}`),
 
   markAllAsRead: () =>
     request.post('/notification/read/all'),

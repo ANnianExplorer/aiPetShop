@@ -2,8 +2,10 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast } from 'vant'
+import { useI18n } from 'vue-i18n'
 import { useUserStore } from '@/stores/user'
 
+const { t } = useI18n()
 const router = useRouter()
 const userStore = useUserStore()
 const showPassword = ref(false)
@@ -13,7 +15,7 @@ const loading = ref(false)
 
 const handleLogin = async () => {
   if (!phone.value || !password.value) {
-    showToast('请输入手机号和密码')
+    showToast(t('auth.fillComplete'))
     return
   }
   loading.value = true
@@ -59,12 +61,12 @@ const goToResetPassword = () => {
           <span class="material-symbols-outlined text-primary text-[28px] glow-icon">pets</span>
         </div>
         <h1 class="font-display-lg text-display-lg text-primary tracking-tighter mb-xs">PetLumina</h1>
-        <p class="font-body-md text-body-md text-primary/80">记录宠物的每一个精彩瞬间</p>
+        <p class="font-body-md text-body-md text-primary/80">{{ t('auth.tagline') }}</p>
       </header>
 
       <!-- Glassmorphism Card -->
       <section class="glass-panel-deep rounded-[32px] p-lg depth-3 animate-float-up stagger-1">
-        <h2 class="font-headline-md text-headline-md text-on-surface mb-lg text-center">欢迎回来</h2>
+        <h2 class="font-headline-md text-headline-md text-on-surface mb-lg text-center">{{ t('auth.welcomeBack') }}</h2>
 
         <form class="space-y-sm" @submit.prevent="handleLogin">
           <!-- Account Field -->
@@ -76,7 +78,7 @@ const goToResetPassword = () => {
               v-model="phone"
               type="text"
               class="glass-input w-full h-12 pl-12 pr-md rounded-xl font-body-md text-body-md placeholder-outline"
-              placeholder="手机号"
+              :placeholder="t('auth.phonePlaceholder')"
             />
           </div>
 
@@ -89,7 +91,7 @@ const goToResetPassword = () => {
               v-model="password"
               :type="showPassword ? 'text' : 'password'"
               class="glass-input w-full h-12 pl-12 pr-12 rounded-xl font-body-md text-body-md placeholder-outline"
-              placeholder="输入密码"
+              :placeholder="t('auth.passwordPlaceholder')"
             />
             <button
               type="button"
@@ -107,7 +109,7 @@ const goToResetPassword = () => {
               class="font-label-bold text-label-bold text-primary hover:opacity-70 transition-opacity"
               @click="goToResetPassword"
             >
-              忘记密码？
+              {{ t('auth.forgotPassword') }}
             </button>
           </div>
 
@@ -117,14 +119,14 @@ const goToResetPassword = () => {
             :disabled="loading"
             class="w-full h-12 bg-primary text-on-primary font-title-sm text-title-sm rounded-full shadow-lg shadow-primary/25 btn-jelly disabled:opacity-60"
           >
-            {{ loading ? '登录中...' : '立即登录' }}
+            {{ loading ? t('auth.loggingIn') : t('auth.loginNow') }}
           </button>
         </form>
 
         <!-- Terms -->
         <div class="mt-sm text-center">
           <p class="font-caption-sm text-caption-sm text-outline">
-            登录即代表您同意 <span class="text-primary font-medium">用户协议</span> 和 <span class="text-primary font-medium">隐私政策</span>
+            {{ t('auth.termsLogin') }} <span class="text-primary font-medium">{{ t('auth.userAgreement') }}</span> {{ t('common.confirm') }} <span class="text-primary font-medium">{{ t('auth.privacyPolicy') }}</span>
           </p>
         </div>
       </section>
@@ -135,7 +137,7 @@ const goToResetPassword = () => {
           class="font-body-md text-body-md text-on-surface-variant flex items-center justify-center gap-xs"
           @click="goToSignUp"
         >
-          还没有账号？ <span class="text-primary font-semibold">立即注册</span>
+          {{ t('auth.noAccount') }} <span class="text-primary font-semibold">{{ t('auth.registerNow') }}</span>
         </button>
 
         <div class="mt-lg flex items-center justify-center gap-xl opacity-60">

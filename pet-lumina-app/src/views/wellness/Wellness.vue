@@ -75,7 +75,7 @@ const switchPet = (petId: number) => {
             v-for="pet in pets"
             :key="pet.id"
             @click="switchPet(pet.id)"
-            class="flex items-center gap-3 p-3 hover:bg-white/40 cursor-pointer transition-all duration-200"
+            class="flex items-center gap-3 p-3 hover:bg-white/40 dark:hover:bg-surface-variant/30 cursor-pointer transition-all duration-200"
             :class="{ 'bg-primary/10': currentPet?.id === pet.id }"
           >
             <div class="w-10 h-10 rounded-full overflow-hidden shadow-sm">

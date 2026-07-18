@@ -22,6 +22,6 @@ export const reminderApi = {
     petId?: number; isCompleted?: number; startDate?: string; endDate?: string
   }) => request.post('/reminder/list/page', data),
 
-  toggleComplete: (id: number) =>
-    request.post(`/reminder/complete/${id}`),
+  toggleComplete: (id: number | string) =>
+    request.post(`/reminder/complete/${String(id)}`),
 }

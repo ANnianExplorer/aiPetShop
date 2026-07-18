@@ -2,6 +2,7 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
+import { useI18n } from 'vue-i18n'
 import { useUserStore } from '@/stores/user'
 import TrendingSlider from '@/components/community/TrendingSlider.vue'
 import PostFeed from '@/components/community/PostFeed.vue'
@@ -9,6 +10,7 @@ import type { Post, Topic } from '@/types'
 import { postApi } from '@/api/post'
 import { topicApi } from '@/api/topic'
 
+const { t } = useI18n()
 const router = useRouter()
 const userStore = useUserStore()
 const { currentUser } = storeToRefs(userStore)
@@ -21,14 +23,20 @@ const goToNewTopic = () => {
   router.push({ name: 'newTopic' })
 }
 
-const categories = ['全部', '猫咪', '狗狗', '异宠', '医疗健康']
-const activeCategory = ref('全部')
+const categories = computed(() => [
+  t('community.all'),
+  t('community.cat'),
+  t('community.dog'),
+  t('community.exotic'),
+  t('community.medical')
+])
+const activeCategory = ref('')
 const searchQuery = ref('')
 
 const filteredPosts = computed(() => {
   let result = posts.value
 
-  if (activeCategory.value !== '全部') {
+  if (activeCategory.value && activeCategory.value !== t('community.all')) {
     result = result.filter(p => p.category === activeCategory.value)
   }
 
@@ -37,7 +45,7 @@ const filteredPosts = computed(() => {
     result = result.filter(p =>
       p.content.toLowerCase().includes(query) ||
       p.user?.nickname?.toLowerCase().includes(query) ||
-      p.tagList?.some(t => t.toLowerCase().includes(query))
+      p.tagList?.some(tag => tag.toLowerCase().includes(query))
     )
   }
 
@@ -48,6 +56,7 @@ const topics = ref<Topic[]>([])
 const posts = ref<Post[]>([])
 
 onMounted(async () => {
+  activeCategory.value = t('community.all')
   try {
     const [topicRes, postRes] = await Promise.all([
       topicApi.listPage({ pageSize: 10 }),
@@ -82,7 +91,7 @@ onMounted(async () => {
       <!-- Search Bar -->
       <div class="relative flex items-center glass-panel rounded-full px-4 py-3 depth-1 group focus-within:ring-2 focus-within:ring-primary/20 transition-all animate-float-up stagger-1">
         <span class="material-symbols-outlined text-outline mr-3">search</span>
-        <input v-model="searchQuery" type="text" placeholder="搜索帖子、用户或话题..." class="bg-transparent border-none focus:ring-0 w-full text-body-md placeholder:text-outline-variant font-body-md outline-none" />
+        <input v-model="searchQuery" type="text" :placeholder="t('community.searchPlaceholder')" class="bg-transparent border-none focus:ring-0 w-full text-body-md placeholder:text-outline-variant font-body-md outline-none" />
       </div>
 
       <div class="animate-float-up stagger-2">
@@ -110,7 +119,7 @@ onMounted(async () => {
 
       <div v-if="filteredPosts.length === 0" class="flex flex-col items-center justify-center py-20 animate-fade-in">
         <span class="material-symbols-outlined text-6xl text-on-surface-variant opacity-30">groups</span>
-        <p class="mt-4 font-title-md text-on-surface-variant">暂无帖子</p>
+        <p class="mt-4 font-title-md text-on-surface-variant">{{ t('community.noPosts') }}</p>
       </div>
     </main>
 

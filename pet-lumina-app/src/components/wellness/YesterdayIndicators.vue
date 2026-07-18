@@ -51,7 +51,7 @@ const getStatusIcon = (status: string) => {
 </script>
 
 <template>
-  <section class="glass-card p-6 rounded-2xl border border-white/50 bg-white/60">
+  <section class="glass-card p-6 rounded-2xl border border-white/50 dark:border-surface-variant/20 bg-white/60 dark:bg-surface-container/60">
     <div class="flex justify-between items-center mb-6">
       <div class="flex items-center gap-2">
         <h3 class="text-on-surface font-title-sm text-title-sm">昨日健康指标</h3>

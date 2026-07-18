@@ -2,11 +2,13 @@
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
+import { useI18n } from 'vue-i18n'
 import { useUserStore } from '@/stores/user'
 import { logApi } from '@/api/log'
 import LogCard from '@/components/lifelog/LogCard.vue'
 import type { LogEntry } from '@/types'
 
+const { t } = useI18n()
 const router = useRouter()
 const userStore = useUserStore()
 const { currentUser, currentPet } = storeToRefs(userStore)
@@ -15,15 +17,20 @@ const goToNotifications = () => {
   router.push({ name: 'notifications' })
 }
 
-const categories = ['全部', '日常', '健康', '户外']
-const activeCategory = ref('全部')
+const categories = computed(() => [
+  t('log.all'),
+  t('log.daily'),
+  t('log.health'),
+  t('log.outdoor')
+])
+const activeCategory = ref('')
 const searchQuery = ref('')
 
 const filteredLogs = computed(() => {
   let result = logs.value
-  
-  if (activeCategory.value !== '全部') {
-    result = result.filter(l => (l.tagList || []).some(t => t.includes(activeCategory.value)))
+
+  if (activeCategory.value && activeCategory.value !== t('log.all')) {
+    result = result.filter(l => (l.tagList || []).some(tag => tag.includes(activeCategory.value)))
   }
 
   if (searchQuery.value.trim()) {
@@ -31,10 +38,10 @@ const filteredLogs = computed(() => {
     result = result.filter(l =>
       l.title.toLowerCase().includes(query) ||
       l.content.toLowerCase().includes(query) ||
-      (l.tagList || []).some(t => t.toLowerCase().includes(query))
+      (l.tagList || []).some(tag => tag.toLowerCase().includes(query))
     )
   }
-  
+
   return result
 })
 
@@ -43,13 +50,24 @@ const goToNewTopic = () => {
 }
 
 const logs = ref<LogEntry[]>([])
+const loading = ref(false)
 
 const fetchLogs = async () => {
-  const res = await logApi.listPage({ pageSize: 20 }) as any
-  logs.value = res?.records || []
+  loading.value = true
+  try {
+    const res = await logApi.listPage({ pageSize: 20 }) as any
+    logs.value = res?.records || []
+  } catch (e) {
+    console.error('Failed to fetch logs:', e)
+  } finally {
+    loading.value = false
+  }
 }
 
-onMounted(fetchLogs)
+onMounted(() => {
+  activeCategory.value = t('log.all')
+  fetchLogs()
+})
 </script>
 
 <template>
@@ -70,14 +88,14 @@ onMounted(fetchLogs)
       <div class="mt-4 mb-6">
         <div class="relative flex items-center bg-surface-container-low rounded-full px-4 py-3 shadow-sm group focus-within:ring-2 focus-within:ring-primary/20 transition-all">
           <span class="material-symbols-outlined text-outline mr-3">search</span>
-          <input v-model="searchQuery" type="text" placeholder="搜索记录、好友或动态..." class="bg-transparent border-none focus:ring-0 w-full text-body-md placeholder:text-outline-variant font-body-md outline-none" />
+          <input v-model="searchQuery" type="text" :placeholder="t('log.searchPlaceholder')" class="bg-transparent border-none focus:ring-0 w-full text-body-md placeholder:text-outline-variant font-body-md outline-none" />
         </div>
       </div>
 
       <!-- Category Tabs -->
       <div class="flex gap-3 overflow-x-auto pb-4 no-scrollbar">
-        <button 
-          v-for="cat in categories" 
+        <button
+          v-for="cat in categories"
           :key="cat"
           @click="activeCategory = cat"
           class="px-6 py-2 rounded-full font-label-bold whitespace-nowrap shadow-sm transition-colors"
@@ -89,16 +107,21 @@ onMounted(fetchLogs)
 
       <!-- Masonry Grid Layout -->
       <div class="columns-2 gap-card-gutter mt-2">
-        <LogCard 
-          v-for="log in filteredLogs" 
-          :key="log.id" 
-          :log="log" 
+        <LogCard
+          v-for="log in filteredLogs"
+          :key="log.id"
+          :log="log"
         />
       </div>
 
-      <div v-if="filteredLogs.length === 0" class="flex flex-col items-center justify-center py-20">
+      <div v-if="loading" class="flex flex-col items-center justify-center py-20">
+        <span class="material-symbols-outlined text-6xl text-primary animate-spin">progress_activity</span>
+        <p class="mt-4 font-title-md text-on-surface-variant">{{ t('common.loading') }}</p>
+      </div>
+
+      <div v-else-if="filteredLogs.length === 0" class="flex flex-col items-center justify-center py-20">
         <span class="material-symbols-outlined text-6xl text-on-surface-variant opacity-30">edit_note</span>
-        <p class="mt-4 font-title-md text-on-surface-variant">暂无记录</p>
+        <p class="mt-4 font-title-md text-on-surface-variant">{{ t('log.noRecords') }}</p>
       </div>
     </main>
 

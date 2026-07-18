@@ -2,9 +2,11 @@
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast } from 'vant'
+import { useI18n } from 'vue-i18n'
 import { useUserStore } from '@/stores/user'
 import { authApi } from '@/api/auth'
 
+const { t } = useI18n()
 const router = useRouter()
 const userStore = useUserStore()
 const showPassword = ref(false)
@@ -17,7 +19,7 @@ const countdown = ref(0)
 
 const handleSignUp = async () => {
   if (!phone.value || !code.value || !password.value) {
-    showToast('请填写完整信息')
+    showToast(t('auth.fillComplete'))
     return
   }
   loading.value = true
@@ -33,13 +35,13 @@ const handleSignUp = async () => {
 
 const sendCode = async () => {
   if (!phone.value) {
-    showToast('请先输入手机号')
+    showToast(t('auth.enterPhoneFirst'))
     return
   }
   codeLoading.value = true
   try {
     await authApi.sendCode(phone.value)
-    showToast('验证码已发送')
+    showToast(t('auth.codeSent'))
     countdown.value = 60
     const timer = setInterval(() => {
       countdown.value--
@@ -61,9 +63,9 @@ const goToLogin = () => {
   <div class="fixed inset-0 flex items-center justify-center bg-background overflow-hidden">
     <!-- Background Image -->
     <div class="absolute inset-0 z-0">
-      <img 
-        src="https://lh3.googleusercontent.com/aida-public/AB6AXuC4tKRCQtXUHxvAU4jCMAatjrjEDhlY4SQc6AIQXFy_z_sHvwyK9RJDeF3TXsvnVW2NsQ0JjRqnH7Oyn4F-duH9k499_ofjNrys2WaA9DevC9v8lOKM6-g9nGIxPAqaq5GZGVYC4fWEEWCTe1cxW8rSDQ61bZoa4GDV-lj5hR-GJq5ZdWR9oMRqZ2ExZKjE0dGIUAXP8rqAdXKLht2fsKL94MeK7w0_JvIIx6WDR8JTaZzCh-wTRcSnYuUUMdoN_5Tg8MuSu77UbqzL" 
-        class="w-full h-full object-cover scale-105 blur-sm" 
+      <img
+        src="https://lh3.googleusercontent.com/aida-public/AB6AXuC4tKRCQtXUHxvAU4jCMAatjrjEDhlY4SQc6AIQXFy_z_sHvwyK9RJDeF3TXsvnVW2NsQ0JjRqnH7Oyn4F-duH9k499_ofjNrys2WaA9DevC9v8lOKM6-g9nGIxPAqaq5GZGVYC4fWEEWCTe1cxW8rSDQ61bZoa4GDV-lj5hR-GJq5ZdWR9oMRqZ2ExZKjE0dGIUAXP8rqAdXKLht2fsKL94MeK7w0_JvIIx6WDR8JTaZzCh-wTRcSnYuUUMdoN_5Tg8MuSu77UbqzL"
+        class="w-full h-full object-cover scale-105 blur-sm"
       />
       <div class="absolute inset-0 bg-white/20"></div>
     </div>
@@ -80,13 +82,13 @@ const goToLogin = () => {
           <span class="material-symbols-outlined text-primary text-[28px]">pets</span>
         </div>
         <h1 class="font-display-lg text-display-lg text-primary tracking-tighter mb-xs">PetLumina</h1>
-        <p class="font-body-md text-body-md text-primary/80">开启您的宠物治愈之旅</p>
+        <p class="font-body-md text-body-md text-primary/80">{{ t('auth.startJourney') }}</p>
       </header>
 
       <!-- Glassmorphism Card -->
       <section class="glass-panel rounded-[32px] p-lg shadow-[0_8px_32px_rgba(0,0,0,0.08)]">
-        <h2 class="font-headline-md text-headline-md text-on-surface mb-lg text-center">新用户注册</h2>
-        
+        <h2 class="font-headline-md text-headline-md text-on-surface mb-lg text-center">{{ t('auth.newUserRegister') }}</h2>
+
         <form class="space-y-sm" @submit.prevent="handleSignUp">
           <!-- Mobile / Email Field -->
           <div class="relative">
@@ -97,7 +99,7 @@ const goToLogin = () => {
               v-model="phone"
               type="text"
               class="w-full h-12 pl-12 pr-md bg-white/40 border-none rounded-xl font-body-md text-body-md placeholder-outline focus:ring-2 focus:ring-primary/20 transition-all"
-              placeholder="手机号"
+              :placeholder="t('auth.phonePlaceholder')"
             />
           </div>
 
@@ -111,7 +113,7 @@ const goToLogin = () => {
                 v-model="code"
                 type="text"
                 class="w-full h-12 pl-12 pr-md bg-white/40 border-none rounded-xl font-body-md text-body-md placeholder-outline focus:ring-2 focus:ring-primary/20 transition-all"
-                placeholder="验证码"
+                :placeholder="t('auth.verifyCode')"
               />
             </div>
             <button
@@ -120,7 +122,7 @@ const goToLogin = () => {
               class="px-md h-12 bg-primary-container/30 text-on-primary-container font-label-bold text-label-bold rounded-xl whitespace-nowrap active:scale-95 transition-transform disabled:opacity-60"
               @click="sendCode"
             >
-              {{ countdown > 0 ? `${countdown}s` : '获取验证码' }}
+              {{ countdown > 0 ? `${countdown}s` : t('auth.getCode') }}
             </button>
           </div>
 
@@ -133,10 +135,10 @@ const goToLogin = () => {
               v-model="password"
               :type="showPassword ? 'text' : 'password'"
               class="w-full h-12 pl-12 pr-12 bg-white/40 border-none rounded-xl font-body-md text-body-md placeholder-outline focus:ring-2 focus:ring-primary/20 transition-all"
-              placeholder="设置密码"
+              :placeholder="t('auth.setPassword')"
             />
-            <button 
-              type="button" 
+            <button
+              type="button"
               class="absolute inset-y-0 right-md flex items-center text-primary/50"
               @click="showPassword = !showPassword"
             >
@@ -150,25 +152,25 @@ const goToLogin = () => {
             :disabled="loading"
             class="w-full h-12 bg-primary text-on-primary font-title-sm text-title-sm rounded-full shadow-lg shadow-primary/20 active:scale-95 transition-all duration-200 disabled:opacity-60"
           >
-            {{ loading ? '注册中...' : '立即注册' }}
+            {{ loading ? t('auth.registering') : t('auth.registerNow') }}
           </button>
         </form>
 
         <!-- Terms -->
         <div class="mt-sm text-center">
           <p class="font-caption-sm text-caption-sm text-outline">
-            注册即代表您同意 <span class="text-primary font-medium">用户协议</span> 和 <span class="text-primary font-medium">隐私政策</span>
+            {{ t('auth.termsRegister') }} <span class="text-primary font-medium">{{ t('auth.userAgreement') }}</span> {{ t('common.confirm') }} <span class="text-primary font-medium">{{ t('auth.privacyPolicy') }}</span>
           </p>
         </div>
       </section>
 
       <!-- Footer Actions -->
       <footer class="mt-lg text-center">
-        <button 
+        <button
           class="font-body-md text-body-md text-on-surface-variant flex items-center justify-center gap-xs"
           @click="goToLogin"
         >
-          已有账号？ <span class="text-primary font-semibold">前往登录</span>
+          {{ t('auth.hasAccount') }} <span class="text-primary font-semibold">{{ t('auth.goToLogin') }}</span>
         </button>
 
         <div class="mt-lg flex items-center justify-center gap-xl opacity-60">

@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useToast } from '@/composables/useToast'
 import { useUserStore } from '@/stores/user'
 import { fileApi } from '@/api/file'
 
+const { t } = useI18n()
 const router = useRouter()
 const { showToast } = useToast()
 const userStore = useUserStore()
@@ -18,13 +20,13 @@ const petAvatar = ref('')
 const petNotes = ref('')
 const avatarUploading = ref(false)
 
-const petTypes = [
-  { id: 'dog', name: '狗狗', icon: 'pets' },
-  { id: 'cat', name: '猫咪', icon: 'cat' },
-  { id: 'other', name: '其他', icon: 'paw' }
-]
+const petTypes = computed(() => [
+  { id: 'dog', name: t('pet.dog'), icon: 'pets' },
+  { id: 'cat', name: t('pet.cat'), icon: 'cat' },
+  { id: 'other', name: t('pet.other'), icon: 'paw' }
+])
 
-const typeLabel = computed(() => petTypes.find(t => t.id === petType.value)?.name || '未选择')
+const typeLabel = computed(() => petTypes.value.find(p => p.id === petType.value)?.name || t('pet.notSelected'))
 
 const avatarInput = ref<HTMLInputElement | null>(null)
 const handleAvatarClick = () => { avatarInput.value?.click() }
@@ -33,29 +35,29 @@ const handleFileChange = async (event: Event) => {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
   if (!file) return
-  if (file.size > 5 * 1024 * 1024) { showToast('图片大小不能超过5MB', 'error'); input.value = ''; return }
+  if (file.size > 5 * 1024 * 1024) { showToast(t('pet.imageTooLarge'), 'error'); input.value = ''; return }
   petAvatar.value = URL.createObjectURL(file)
   avatarUploading.value = true
   try {
     petAvatar.value = await fileApi.uploadImage(file, 'pet/image')
-    showToast('照片上传成功', 'success')
-  } catch { petAvatar.value = ''; showToast('照片上传失败', 'error') } finally { avatarUploading.value = false; input.value = '' }
+    showToast(t('pet.uploadSuccess'), 'success')
+  } catch { petAvatar.value = ''; showToast(t('pet.uploadFailed'), 'error') } finally { avatarUploading.value = false; input.value = '' }
 }
 
 const selectPetType = (type: string) => { petType.value = type }
 const goBack = () => router.back()
 
 const handleSubmit = async () => {
-  if (!petName.value || !petType.value || !petBreed.value) { showToast('请填写完整信息', 'error'); return }
+  if (!petName.value || !petType.value || !petBreed.value) { showToast(t('pet.fillRequired'), 'error'); return }
   submitting.value = true
   try {
     await userStore.addPet({
       name: petName.value, type: petType.value, breed: petBreed.value,
       age: petAge.value || undefined, notes: petNotes.value || undefined, avatar: petAvatar.value || undefined,
     })
-    showToast('宠物添加成功', 'success')
+    showToast(t('pet.addSuccess'), 'success')
     setTimeout(() => router.back(), 800)
-  } catch { showToast('添加失败，请重试', 'error') } finally { submitting.value = false }
+  } catch { showToast(t('pet.addFailed'), 'error') } finally { submitting.value = false }
 }
 </script>
 
@@ -67,7 +69,7 @@ const handleSubmit = async () => {
         <button @click="goBack" class="icon-btn p-2 rounded-full">
           <span class="material-symbols-outlined text-primary">arrow_back</span>
         </button>
-        <span class="font-title-sm text-on-surface">添加宠物</span>
+        <span class="font-title-sm text-on-surface">{{ t('pet.addPet') }}</span>
         <div class="w-10"></div>
       </div>
 
@@ -80,8 +82,8 @@ const handleSubmit = async () => {
           </div>
           <div class="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
           <div class="absolute bottom-3 left-4 text-white">
-            <h3 class="font-display-lg text-lg drop-shadow-lg">{{ petName || '宠物名称' }}</h3>
-            <p class="text-white/80 text-xs">{{ petBreed || '品种' }} · {{ typeLabel }}</p>
+            <h3 class="font-display-lg text-lg drop-shadow-lg">{{ petName || t('pet.petName') }}</h3>
+            <p class="text-white/80 text-xs">{{ petBreed || t('pet.breed') }} · {{ typeLabel }}</p>
           </div>
         </div>
       </div>
@@ -98,14 +100,14 @@ const handleSubmit = async () => {
             <span class="material-symbols-outlined text-[16px]">{{ avatarUploading ? 'hourglass_top' : 'edit' }}</span>
           </div>
         </div>
-        <p class="mt-2 text-sm text-tertiary">{{ avatarUploading ? '上传中...' : '点击上传宠物照片' }}</p>
+        <p class="mt-2 text-sm text-tertiary">{{ avatarUploading ? t('pet.uploading') : t('pet.clickToUpload') }}</p>
       </section>
 
       <!-- Pet Type -->
       <section class="mb-lg animate-float-up stagger-3">
         <div class="flex items-center gap-2 mb-3">
           <span class="material-symbols-outlined text-primary text-lg">category</span>
-          <label class="font-label-bold text-label-bold text-on-surface">宠物类型 *</label>
+          <label class="font-label-bold text-label-bold text-on-surface">{{ t('pet.petType') }} *</label>
         </div>
         <div class="grid grid-cols-3 gap-3">
           <button v-for="type in petTypes" :key="type.id" @click="selectPetType(type.id)"
@@ -121,20 +123,20 @@ const handleSubmit = async () => {
       <section class="mb-lg animate-float-up stagger-4">
         <div class="flex items-center gap-2 mb-3">
           <span class="material-symbols-outlined text-primary text-lg">pets</span>
-          <label class="font-label-bold text-label-bold text-on-surface">基本信息</label>
+          <label class="font-label-bold text-label-bold text-on-surface">{{ t('pet.basicInfo') }}</label>
         </div>
         <div class="space-y-4">
           <div>
-            <label class="font-label-bold text-label-bold text-on-surface mb-2 block">宠物名称 *</label>
-            <input v-model="petName" placeholder="例如：豆豆" class="w-full glass-input rounded-xl px-4 py-3 font-body-sm text-on-surface" />
+            <label class="font-label-bold text-label-bold text-on-surface mb-2 block">{{ t('pet.petName') }} *</label>
+            <input v-model="petName" :placeholder="t('pet.nameExample')" class="w-full glass-input rounded-xl px-4 py-3 font-body-sm text-on-surface" />
           </div>
           <div>
-            <label class="font-label-bold text-label-bold text-on-surface mb-2 block">品种 *</label>
-            <input v-model="petBreed" placeholder="例如：金毛寻回犬" class="w-full glass-input rounded-xl px-4 py-3 font-body-sm text-on-surface" />
+            <label class="font-label-bold text-label-bold text-on-surface mb-2 block">{{ t('pet.breed') }} *</label>
+            <input v-model="petBreed" :placeholder="t('pet.breedExample')" class="w-full glass-input rounded-xl px-4 py-3 font-body-sm text-on-surface" />
           </div>
           <div>
-            <label class="font-label-bold text-label-bold text-on-surface mb-2 block">年龄</label>
-            <input v-model="petAge" placeholder="例如：2岁" class="w-full glass-input rounded-xl px-4 py-3 font-body-sm text-on-surface" />
+            <label class="font-label-bold text-label-bold text-on-surface mb-2 block">{{ t('pet.age') }}</label>
+            <input v-model="petAge" :placeholder="t('pet.ageExample')" class="w-full glass-input rounded-xl px-4 py-3 font-body-sm text-on-surface" />
           </div>
         </div>
       </section>
@@ -143,16 +145,16 @@ const handleSubmit = async () => {
       <section class="mb-lg animate-float-up stagger-5">
         <div class="flex items-center gap-2 mb-3">
           <span class="material-symbols-outlined text-primary text-lg">medical_information</span>
-          <label class="font-label-bold text-label-bold text-on-surface">健康档案</label>
+          <label class="font-label-bold text-label-bold text-on-surface">{{ t('pet.healthProfile') }}</label>
         </div>
-        <textarea v-model="petNotes" placeholder="描述过敏、近期疫苗接种、特殊护理需求..." rows="3"
+        <textarea v-model="petNotes" :placeholder="t('pet.healthNotesPlaceholder')" rows="3"
           class="w-full glass-input rounded-xl px-4 py-3 font-body-sm text-on-surface resize-none"></textarea>
       </section>
 
       <!-- Submit -->
       <button @click="handleSubmit" :disabled="submitting || avatarUploading"
         class="w-full py-3.5 bg-primary text-on-primary rounded-2xl font-label-bold text-label-bold btn-jelly shadow-md disabled:opacity-50 animate-float-up stagger-6">
-        {{ submitting ? '保存中...' : '保存' }}
+        {{ submitting ? t('pet.saving') : t('common.save') }}
       </button>
     </main>
   </div>

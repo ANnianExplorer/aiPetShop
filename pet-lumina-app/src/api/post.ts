@@ -13,7 +13,7 @@ export const postApi = {
   getById: (id: number | string) =>
     request.get('/post/get/vo', { params: { id: String(id) } }),
 
-  listPage: (data: { current?: number; pageSize?: number; category?: string; searchText?: string; topicId?: number; authorId?: number }) =>
+  listPage: (data: { current?: number; pageSize?: number; category?: string; searchText?: string; topicId?: number | string; authorId?: number | string }) =>
     request.post('/post/list/page/vo', data),
 
   toggleLike: (id: number | string) =>

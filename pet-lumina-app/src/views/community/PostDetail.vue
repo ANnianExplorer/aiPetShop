@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { useToast } from '@/composables/useToast'
 import { postApi } from '@/api/post'
 import { formatDate } from '@/utils/format'
@@ -9,6 +10,7 @@ import ShareModal from '@/components/common/ShareModal.vue'
 import CommentModal from '@/components/common/CommentModal.vue'
 import type { Post, Comment } from '@/types'
 
+const { t } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const { showToast } = useToast()
@@ -27,7 +29,7 @@ const bookmarkAnimating = ref(false)
 const displayComments = computed(() =>
   comments.value.map(c => ({
     id: String(c.id),
-    author: c.user?.nickname ?? '匿名用户',
+    author: c.user?.nickname ?? t('community.anonymousUser'),
     avatar: c.user?.avatar ?? '',
     content: c.content,
     createdAt: c.createTime,
@@ -68,7 +70,7 @@ const toggleLike = async () => {
     const wasLiked = post.value.isLiked === 1
     post.value.isLiked = wasLiked ? 0 : 1
     post.value.likes += wasLiked ? -1 : 1
-    showToast(wasLiked ? '已取消点赞' : '已点赞', 'success')
+    showToast(wasLiked ? t('community.unliked') : t('community.liked'), 'success')
   } catch (e) {
     console.error('Failed to toggle like:', e)
   } finally {
@@ -85,7 +87,7 @@ const toggleFavorite = async () => {
     await postApi.toggleFavorite(postId.value)
     const wasFavorited = post.value.isFavorited === 1
     post.value.isFavorited = wasFavorited ? 0 : 1
-    showToast(wasFavorited ? '已取消收藏' : '已收藏', 'success')
+    showToast(wasFavorited ? t('community.unfavorited') : t('community.favorited'), 'success')
   } catch (e) {
     console.error('Failed to toggle favorite:', e)
   } finally {
@@ -99,7 +101,7 @@ const handleCommentSubmit = async (content: string) => {
   try {
     await commentApi.add({ postId: postId.value, content })
     await fetchComments()
-    showToast('评论成功', 'success')
+    showToast(t('community.commentSuccess'), 'success')
   } catch (e) {
     console.error('Failed to add comment:', e)
   }
@@ -132,7 +134,7 @@ const openComment = () => {
           <button @click="goBack" class="active:scale-95 transition-transform p-2 rounded-full hover:bg-zinc-100">
             <span class="material-symbols-outlined text-emerald-700">arrow_back</span>
           </button>
-          <span class="font-title-sm text-on-surface">帖子详情</span>
+          <span class="font-title-sm text-on-surface">{{ t('community.postDetail') }}</span>
           <button @click="openShare" class="active:scale-95 transition-transform p-2 rounded-full hover:bg-zinc-100">
             <span class="material-symbols-outlined text-emerald-700">share</span>
           </button>
@@ -153,7 +155,7 @@ const openComment = () => {
         <p class="font-body-md text-body-md text-on-surface leading-relaxed">{{ post.content }}</p>
 
         <div class="flex gap-sm flex-wrap">
-          <span v-for="tag in (post.tagList || []).filter(t => !t.startsWith('topic:'))" :key="tag" class="px-3 py-1 bg-primary-container text-primary rounded-full text-xs font-label-bold">
+          <span v-for="tag in (post.tagList || []).filter(tag => !tag.startsWith('topic:'))" :key="tag" class="px-3 py-1 bg-primary-container text-primary rounded-full text-xs font-label-bold">
             #{{ tag }}
           </span>
         </div>
@@ -177,14 +179,14 @@ const openComment = () => {
     <!-- Loading -->
     <div v-else-if="loading" class="pt-20 flex flex-col items-center justify-center min-h-[60vh]">
       <div class="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-      <p class="mt-4 text-on-surface-variant text-sm">加载中...</p>
+      <p class="mt-4 text-on-surface-variant text-sm">{{ t('common.loading') }}</p>
     </div>
 
     <!-- Not Found -->
     <div v-else class="pt-20 px-container-padding flex flex-col items-center justify-center min-h-[60vh]">
       <span class="material-symbols-outlined text-6xl text-on-surface-variant opacity-30">error_outline</span>
-      <p class="mt-4 font-title-md text-on-surface-variant">帖子不存在</p>
-      <button @click="goBack" class="mt-4 px-6 py-2 bg-primary text-on-primary rounded-full font-label-bold">返回</button>
+      <p class="mt-4 font-title-md text-on-surface-variant">{{ t('community.postNotFound') }}</p>
+      <button @click="goBack" class="mt-4 px-6 py-2 bg-primary text-on-primary rounded-full font-label-bold">{{ t('common.back') }}</button>
     </div>
 
     <Teleport to="body">

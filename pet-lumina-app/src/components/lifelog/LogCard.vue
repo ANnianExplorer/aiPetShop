@@ -32,7 +32,7 @@ const getTypeIcon = (type: string) => {
         :src="log.imageList[0]"
         class="w-full object-cover group-hover:scale-105 transition-transform duration-500"
       />
-      <div class="absolute top-2 left-2 w-8 h-8 bg-white/80 backdrop-blur-md rounded-full flex items-center justify-center">
+      <div class="absolute top-2 left-2 w-8 h-8 bg-white/80 dark:bg-surface-container/80 backdrop-blur-md rounded-full flex items-center justify-center">
         <span class="material-symbols-outlined text-sm text-primary">{{ getTypeIcon(log.type) }}</span>
       </div>
     </div>

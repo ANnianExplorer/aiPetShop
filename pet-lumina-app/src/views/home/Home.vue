@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
+import { useI18n } from 'vue-i18n'
 import { useUserStore } from '@/stores/user'
 import TodayReminders from '@/components/home/TodayReminders.vue'
 import PetStatusBento from '@/components/home/PetStatusBento.vue'
@@ -10,6 +11,7 @@ import { reminderApi } from '@/api/reminder'
 import { postApi } from '@/api/post'
 import type { Reminder, Post } from '@/types'
 
+const { t } = useI18n()
 const router = useRouter()
 const userStore = useUserStore()
 const { currentUser, currentPet, tasks, unreadNotifications } = storeToRefs(userStore)
@@ -52,7 +54,7 @@ onMounted(async () => {
 <template>
   <div class="pb-32">
     <!-- TopAppBar -->
-    <header class="fixed top-0 w-full z-50 bg-white/70 backdrop-blur-2xl border-b border-white/30 shadow-[0_4px_20px_rgba(75,100,85,0.04)]">
+    <header class="fixed top-0 w-full z-50 bg-white/70 dark:bg-surface-container/70 backdrop-blur-2xl border-b border-white/30 dark:border-surface-variant/20 shadow-[0_4px_20px_rgba(75,100,85,0.04)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.15)]">
       <div class="flex justify-between items-center px-5 py-3 w-full max-w-screen-xl mx-auto">
         <div class="flex items-center gap-3">
           <div @click="goToProfile" class="w-10 h-10 rounded-full overflow-hidden border-2 border-primary-fixed cursor-pointer active:scale-90 transition-all duration-300 shadow-md">
@@ -72,8 +74,8 @@ onMounted(async () => {
     <main class="pt-20 px-container-padding space-y-lg max-w-screen-xl mx-auto">
       <!-- Welcome Section -->
       <section class="mt-4 animate-float-up">
-        <h1 class="font-display-lg text-display-lg text-on-background">你好, {{ currentUser?.nickname }}</h1>
-        <p class="font-body-md text-body-md text-on-surface-variant opacity-70">今天也是充满活力的一天！</p>
+        <h1 class="font-display-lg text-display-lg text-on-background">{{ t('home.greeting', { name: currentUser?.nickname }) }}</h1>
+        <p class="font-body-md text-body-md text-on-surface-variant opacity-70">{{ t('home.todayVibrant') }}</p>
       </section>
 
       <!-- Extracted Components with stagger -->

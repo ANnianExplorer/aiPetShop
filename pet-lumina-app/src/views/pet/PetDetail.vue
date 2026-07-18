@@ -2,12 +2,14 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { storeToRefs } from 'pinia'
+import { useI18n } from 'vue-i18n'
 import { useUserStore } from '@/stores/user'
 import { useToast } from '@/composables/useToast'
 import { petApi } from '@/api/pet'
 import { healthApi } from '@/api/health'
 import type { Pet } from '@/types'
 
+const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
 const { showToast } = useToast()
@@ -24,24 +26,21 @@ const loadPet = async () => {
   loading.value = true
   errorMsg.value = ''
   const id = petId.value
-  if (!id) { pet.value = null; errorMsg.value = '无效的宠物ID'; loading.value = false; return }
+  if (!id) { pet.value = null; errorMsg.value = t('pet.invalidPetId'); loading.value = false; return }
 
-  // 1. store
   const storePet = getPetById.value(id)
   if (storePet) { pet.value = storePet as Pet; loading.value = false }
 
-  // 2. API
   try {
     const res = await petApi.getById(id)
     if (res) pet.value = res as unknown as Pet
-    else if (!storePet) errorMsg.value = '未找到该宠物'
+    else if (!storePet) errorMsg.value = t('pet.petNotFound')
   } catch (e: any) {
-    if (!storePet) { pet.value = null; errorMsg.value = e?.message || '获取宠物信息失败' }
+    if (!storePet) { pet.value = null; errorMsg.value = e?.message || t('pet.fetchFailed') }
   } finally { loading.value = false }
 
-  // 3. health records
   try {
-    const hRes = await healthApi.listRecords({ petId: id, pageSize: 5 }) as any
+    const hRes = await healthApi.recordListPage({ petId: id as any, pageSize: 5 }) as any
     healthRecords.value = hRes?.records || []
   } catch {}
 }
@@ -50,7 +49,7 @@ onMounted(loadPet)
 watch(() => route.params.id, loadPet)
 
 const isEditing = ref(false)
-const editForm = ref({ name: '', breed: '', type: '', age: '', notes: '', avatar: '' })
+const editForm = ref<{ name: string; breed: string; type: 'dog' | 'cat' | 'other' | ''; age: string; notes: string; avatar: string }>({ name: '', breed: '', type: '', age: '', notes: '', avatar: '' })
 const avatarInput = ref<HTMLInputElement | null>(null)
 const avatarUploading = ref(false)
 
@@ -76,30 +75,31 @@ const handleFileChange = async (event: Event) => {
   const input = event.target as HTMLInputElement
   const file = input.files?.[0]
   if (!file) return
-  if (file.size > 5 * 1024 * 1024) { showToast('图片大小不能超过5MB', 'error'); input.value = ''; return }
+  if (file.size > 5 * 1024 * 1024) { showToast(t('pet.imageTooLarge'), 'error'); input.value = ''; return }
   avatarUploading.value = true
   try {
     const { fileApi } = await import('@/api/file')
     editForm.value.avatar = await fileApi.uploadImage(file, 'avatar/pet')
-    showToast('头像上传成功', 'success')
-  } catch { showToast('头像上传失败', 'error') } finally { avatarUploading.value = false; input.value = '' }
+    showToast(t('pet.avatarUploadSuccess'), 'success')
+  } catch { showToast(t('pet.avatarUploadFailed'), 'error') } finally { avatarUploading.value = false; input.value = '' }
 }
 
 const saveEdit = async () => {
-  if (!editForm.value.name || !editForm.value.breed) { showToast('请填写完整信息', 'error'); return }
+  if (!editForm.value.name || !editForm.value.breed) { showToast(t('pet.fillRequired'), 'error'); return }
   try {
-    await userStore.updatePet(petId.value, editForm.value)
+    const { type, ...rest } = editForm.value
+    await userStore.updatePet(petId.value as any, { ...rest, type: type || undefined } as any)
     await loadPet()
-    showToast('保存成功', 'success')
+    showToast(t('pet.saveSuccess'), 'success')
     isEditing.value = false
-  } catch { showToast('保存失败', 'error') }
+  } catch { showToast(t('pet.saveFailed'), 'error') }
 }
 
 const getHealthLevel = (score: number) => {
-  if (score >= 90) return { text: '优秀', color: 'text-emerald-500', bg: 'bg-emerald-50' }
-  if (score >= 70) return { text: '良好', color: 'text-blue-500', bg: 'bg-blue-50' }
-  if (score >= 50) return { text: '一般', color: 'text-amber-500', bg: 'bg-amber-50' }
-  return { text: '需关注', color: 'text-rose-500', bg: 'bg-rose-50' }
+  if (score >= 90) return { text: t('pet.excellent'), color: 'text-emerald-500', bg: 'bg-emerald-50' }
+  if (score >= 70) return { text: t('pet.good'), color: 'text-blue-500', bg: 'bg-blue-50' }
+  if (score >= 50) return { text: t('pet.fair'), color: 'text-amber-500', bg: 'bg-amber-50' }
+  return { text: t('pet.needsAttention'), color: 'text-rose-500', bg: 'bg-rose-50' }
 }
 
 const healthLevel = computed(() => {
@@ -107,7 +107,16 @@ const healthLevel = computed(() => {
   return getHealthLevel(pet.value.healthScore)
 })
 
-const typeLabel = (type: string) => ({ dog: '狗狗', cat: '猫咪', other: '其他' }[type] || type)
+const typeLabel = (type: string) => {
+  const labels: Record<string, string> = { dog: t('pet.dog'), cat: t('pet.cat'), other: t('pet.other') }
+  return labels[type] || type
+}
+
+const editTypeOptions = computed(() => [
+  { id: 'dog' as const, name: t('pet.dog') },
+  { id: 'cat' as const, name: t('pet.cat') },
+  { id: 'other' as const, name: t('pet.other') }
+])
 </script>
 
 <template>
@@ -118,22 +127,22 @@ const typeLabel = (type: string) => ({ dog: '狗狗', cat: '猫咪', other: '其
         <button @click="goBack" class="icon-btn p-2 rounded-full">
           <span class="material-symbols-outlined text-primary">arrow_back</span>
         </button>
-        <span class="font-title-sm text-on-surface">宠物详情</span>
-        <button v-if="pet" @click="startEdit" class="text-primary font-label-bold text-label-bold active:opacity-50">编辑</button>
+        <span class="font-title-sm text-on-surface">{{ t('pet.petDetail') }}</span>
+        <button v-if="pet" @click="startEdit" class="text-primary font-label-bold text-label-bold active:opacity-50">{{ t('common.edit') }}</button>
         <div v-else class="w-10"></div>
       </div>
 
       <!-- Loading -->
       <div v-if="loading" class="flex flex-col items-center justify-center py-20">
         <div class="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
-        <p class="mt-4 text-on-surface-variant text-sm">加载中...</p>
+        <p class="mt-4 text-on-surface-variant text-sm">{{ t('common.loading') }}</p>
       </div>
 
       <!-- Error -->
       <div v-else-if="errorMsg" class="flex flex-col items-center justify-center py-20 animate-fade-in">
         <span class="material-symbols-outlined text-6xl text-on-surface-variant opacity-30">error_outline</span>
         <p class="mt-4 text-on-surface-variant">{{ errorMsg }}</p>
-        <button @click="loadPet" class="mt-4 px-6 py-2 bg-primary text-on-primary rounded-full text-sm btn-jelly">重试</button>
+        <button @click="loadPet" class="mt-4 px-6 py-2 bg-primary text-on-primary rounded-full text-sm btn-jelly">{{ t('common.confirm') }}</button>
       </div>
 
       <!-- Pet Content -->
@@ -160,40 +169,40 @@ const typeLabel = (type: string) => ({ dog: '狗狗', cat: '猫咪', other: '其
         <section class="grid grid-cols-4 gap-3 mb-lg animate-float-up stagger-2">
           <div class="glass-card rounded-xl p-3 text-center ripple-card">
             <p class="text-xl font-display-lg text-on-surface">{{ pet.todaySteps ?? 0 }}</p>
-            <p class="text-xs text-tertiary mt-1">今日步数</p>
+            <p class="text-xs text-tertiary mt-1">{{ t('pet.todaySteps') }}</p>
           </div>
           <div class="glass-card rounded-xl p-3 text-center ripple-card">
             <p class="text-xl font-display-lg text-on-surface">{{ pet.feedingCount ?? 0 }}/{{ pet.feedingTotal ?? 0 }}</p>
-            <p class="text-xs text-tertiary mt-1">今日喂食</p>
+            <p class="text-xs text-tertiary mt-1">{{ t('pet.todayFeeding') }}</p>
           </div>
           <div class="glass-card rounded-xl p-3 text-center ripple-card">
             <p class="text-xl font-display-lg text-on-surface">{{ pet.healthScore ?? '-' }}</p>
-            <p class="text-xs text-tertiary mt-1">健康评分</p>
+            <p class="text-xs text-tertiary mt-1">{{ t('pet.healthScore') }}</p>
           </div>
           <div class="glass-card rounded-xl p-3 text-center ripple-card">
             <p class="text-xl font-display-lg text-on-surface">{{ pet.age ?? '-' }}</p>
-            <p class="text-xs text-tertiary mt-1">年龄</p>
+            <p class="text-xs text-tertiary mt-1">{{ t('pet.age') }}</p>
           </div>
         </section>
 
         <!-- Basic Info -->
         <section class="mb-lg animate-float-up stagger-3">
-          <h3 class="font-label-bold text-label-bold text-on-surface mb-3">基本信息</h3>
+          <h3 class="font-label-bold text-label-bold text-on-surface mb-3">{{ t('pet.basicInfo') }}</h3>
           <div class="glass-card rounded-xl p-4 space-y-3">
-            <div class="flex justify-between"><span class="text-sm text-on-surface-variant">类型</span><span class="text-sm font-label-bold text-on-surface">{{ typeLabel(pet.type) }}</span></div>
-            <div class="flex justify-between"><span class="text-sm text-on-surface-variant">品种</span><span class="text-sm font-label-bold text-on-surface">{{ pet.breed }}</span></div>
-            <div class="flex justify-between"><span class="text-sm text-on-surface-variant">年龄</span><span class="text-sm font-label-bold text-on-surface">{{ pet.age ?? '-' }}</span></div>
-            <div class="flex justify-between"><span class="text-sm text-on-surface-variant">备注</span><span class="text-sm font-label-bold text-on-surface">{{ pet.notes || '无' }}</span></div>
+            <div class="flex justify-between"><span class="text-sm text-on-surface-variant">{{ t('pet.petType') }}</span><span class="text-sm font-label-bold text-on-surface">{{ typeLabel(pet.type) }}</span></div>
+            <div class="flex justify-between"><span class="text-sm text-on-surface-variant">{{ t('pet.breed') }}</span><span class="text-sm font-label-bold text-on-surface">{{ pet.breed }}</span></div>
+            <div class="flex justify-between"><span class="text-sm text-on-surface-variant">{{ t('pet.age') }}</span><span class="text-sm font-label-bold text-on-surface">{{ pet.age ?? '-' }}</span></div>
+            <div class="flex justify-between"><span class="text-sm text-on-surface-variant">{{ t('pet.notes') }}</span><span class="text-sm font-label-bold text-on-surface">{{ pet.notes || '-' }}</span></div>
           </div>
         </section>
 
         <!-- Feeding Record -->
         <section class="mb-lg animate-float-up stagger-4">
-          <h3 class="font-label-bold text-label-bold text-on-surface mb-3">喂食记录</h3>
+          <h3 class="font-label-bold text-label-bold text-on-surface mb-3">{{ t('pet.feedingRecord') }}</h3>
           <div class="glass-card rounded-xl p-4 flex justify-between items-center">
             <div>
-              <p class="text-sm font-label-bold text-on-surface">今日已喂食 {{ pet.feedingCount ?? 0 }} 次</p>
-              <p class="text-xs text-tertiary">计划 {{ pet.feedingTotal ?? 0 }} 次</p>
+              <p class="text-sm font-label-bold text-on-surface">{{ t('pet.fedToday', { count: pet.feedingCount ?? 0 }) }}</p>
+              <p class="text-xs text-tertiary">{{ t('pet.plannedTimes', { count: pet.feedingTotal ?? 0 }) }}</p>
             </div>
             <span class="text-sm font-label-bold text-primary">{{ (pet.feedingTotal ?? 0) > 0 ? Math.round((pet.feedingCount ?? 0) / pet.feedingTotal * 100) : 0 }}%</span>
           </div>
@@ -202,8 +211,8 @@ const typeLabel = (type: string) => ({ dog: '狗狗', cat: '猫咪', other: '其
         <!-- Health Records -->
         <section class="mb-lg animate-float-up stagger-5">
           <div class="flex justify-between items-center mb-3">
-            <h3 class="font-label-bold text-label-bold text-on-surface">健康记录</h3>
-            <span @click="router.push({ path: '/wellness' })" class="text-primary text-xs font-label-bold active:opacity-50">查看全部</span>
+            <h3 class="font-label-bold text-label-bold text-on-surface">{{ t('pet.healthRecord') }}</h3>
+            <span @click="router.push({ path: '/wellness' })" class="text-primary text-xs font-label-bold active:opacity-50">{{ t('pet.viewAll') }}</span>
           </div>
           <div v-if="healthRecords.length > 0" class="space-y-2">
             <div v-for="record in healthRecords" :key="record.id" class="glass-card rounded-xl p-4 flex items-center gap-3">
@@ -212,14 +221,14 @@ const typeLabel = (type: string) => ({ dog: '狗狗', cat: '猫咪', other: '其
               </div>
               <div class="flex-1 min-w-0">
                 <p class="text-sm font-label-bold text-on-surface">{{ record.date || '-' }}</p>
-                <p class="text-xs text-tertiary">心率 {{ record.heartRate ?? '-' }} · 步数 {{ record.steps ?? '-' }} · 睡眠 {{ record.sleepHours ?? '-' }}h</p>
+                <p class="text-xs text-tertiary">{{ t('health.heartRate') }} {{ record.heartRate ?? '-' }} · {{ t('health.steps') }} {{ record.steps ?? '-' }} · {{ t('health.sleepHours') }} {{ record.sleepHours ?? '-' }}h</p>
               </div>
-              <span class="text-xs font-label-bold text-primary shrink-0">{{ record.mood || '正常' }}</span>
+              <span class="text-xs font-label-bold text-primary shrink-0">{{ record.mood || t('pet.normal') }}</span>
             </div>
           </div>
           <div v-else class="glass-card rounded-xl p-6 text-center">
             <span class="material-symbols-outlined text-3xl text-on-surface-variant opacity-30">medical_services</span>
-            <p class="text-xs text-tertiary mt-2">暂无健康记录</p>
+            <p class="text-xs text-tertiary mt-2">{{ t('pet.noHealthRecords') }}</p>
           </div>
         </section>
       </template>
@@ -237,7 +246,7 @@ const typeLabel = (type: string) => ({ dog: '狗狗', cat: '猫咪', other: '其
                 </div>
 
                 <div class="flex justify-between items-center mb-6">
-                  <h3 class="font-title-sm text-title-sm text-on-surface">编辑宠物信息</h3>
+                  <h3 class="font-title-sm text-title-sm text-on-surface">{{ t('pet.editPetInfo') }}</h3>
                   <button @click="cancelEdit" class="p-2 rounded-full active:bg-surface-container-high transition-colors">
                     <span class="material-symbols-outlined text-on-surface-variant">close</span>
                   </button>
@@ -257,37 +266,37 @@ const typeLabel = (type: string) => ({ dog: '狗狗', cat: '猫咪', other: '其
 
                 <div class="space-y-3">
                   <div>
-                    <label class="font-label-bold text-label-bold text-on-surface mb-2 block">宠物名称</label>
+                    <label class="font-label-bold text-label-bold text-on-surface mb-2 block">{{ t('pet.petName') }}</label>
                     <input v-model="editForm.name" class="w-full bg-surface-container rounded-xl px-4 py-3 font-body-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary" />
                   </div>
                   <div>
-                    <label class="font-label-bold text-label-bold text-on-surface mb-2 block">品种</label>
+                    <label class="font-label-bold text-label-bold text-on-surface mb-2 block">{{ t('pet.breed') }}</label>
                     <input v-model="editForm.breed" class="w-full bg-surface-container rounded-xl px-4 py-3 font-body-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary" />
                   </div>
                   <div>
-                    <label class="font-label-bold text-label-bold text-on-surface mb-2 block">类型</label>
+                    <label class="font-label-bold text-label-bold text-on-surface mb-2 block">{{ t('pet.petType') }}</label>
                     <div class="grid grid-cols-3 gap-2">
-                      <button v-for="t in [{id:'dog',name:'狗狗'},{id:'cat',name:'猫咪'},{id:'other',name:'其他'}]" :key="t.id" type="button"
-                        @click="editForm.type = t.id"
+                      <button v-for="t2 in editTypeOptions" :key="t2.id" type="button"
+                        @click="editForm.type = t2.id"
                         class="py-2 rounded-xl text-xs font-label-bold transition-all"
-                        :class="editForm.type === t.id ? 'bg-primary text-on-primary' : 'bg-surface-container text-on-surface-variant'">
-                        {{ t.name }}
+                        :class="editForm.type === t2.id ? 'bg-primary text-on-primary' : 'bg-surface-container text-on-surface-variant'">
+                        {{ t2.name }}
                       </button>
                     </div>
                   </div>
                   <div>
-                    <label class="font-label-bold text-label-bold text-on-surface mb-2 block">年龄</label>
+                    <label class="font-label-bold text-label-bold text-on-surface mb-2 block">{{ t('pet.age') }}</label>
                     <input v-model="editForm.age" class="w-full bg-surface-container rounded-xl px-4 py-3 font-body-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary" />
                   </div>
                   <div>
-                    <label class="font-label-bold text-label-bold text-on-surface mb-2 block">备注</label>
+                    <label class="font-label-bold text-label-bold text-on-surface mb-2 block">{{ t('pet.notes') }}</label>
                     <textarea v-model="editForm.notes" rows="2" class="w-full bg-surface-container rounded-xl px-4 py-3 font-body-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary resize-none"></textarea>
                   </div>
                 </div>
 
                 <div class="flex gap-3 mt-8">
-                  <button @click="cancelEdit" class="flex-1 py-3.5 bg-surface-container text-on-surface rounded-xl font-label-bold text-label-bold active:scale-95 transition-transform">取消</button>
-                  <button @click="saveEdit" class="flex-1 py-3.5 bg-primary text-on-primary rounded-xl font-label-bold text-label-bold btn-jelly shadow-md">保存</button>
+                  <button @click="cancelEdit" class="flex-1 py-3.5 bg-surface-container text-on-surface rounded-xl font-label-bold text-label-bold active:scale-95 transition-transform">{{ t('common.cancel') }}</button>
+                  <button @click="saveEdit" class="flex-1 py-3.5 bg-primary text-on-primary rounded-xl font-label-bold text-label-bold btn-jelly shadow-md">{{ t('common.save') }}</button>
                 </div>
               </div>
             </div>

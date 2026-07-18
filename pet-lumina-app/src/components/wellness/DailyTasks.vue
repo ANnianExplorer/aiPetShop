@@ -95,7 +95,7 @@ const getStandardLabel = (standard: string) => {
       <div 
         v-for="task in tasks" 
         :key="task.id"
-        class="flex items-center justify-between p-4 bg-white/50 border border-surface-variant rounded-xl group hover:border-primary/30 transition-all cursor-pointer active:scale-[0.98]"
+        class="flex items-center justify-between p-4 bg-white/50 dark:bg-surface-container/50 border border-surface-variant dark:border-surface-variant/50 rounded-xl group hover:border-primary/30 transition-all cursor-pointer active:scale-[0.98]"
         :class="{ 'opacity-60': task.isActive }"
       >
         <div class="flex items-center gap-4">

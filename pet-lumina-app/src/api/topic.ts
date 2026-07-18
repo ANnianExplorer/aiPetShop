@@ -16,9 +16,9 @@ export const topicApi = {
   listPage: (data: { current?: number; pageSize?: number; category?: string; searchText?: string }) =>
     request.post('/topic/list/page/vo', data),
 
-  toggleFollow: (id: number) =>
-    request.post(`/topic/follow/${id}`),
+  toggleFollow: (id: number | string) =>
+    request.post(`/topic/follow/${String(id)}`),
 
-  listTopicPosts: (data: { topicId: number; current?: number; pageSize?: number }) =>
+  listTopicPosts: (data: { topicId: number | string; current?: number; pageSize?: number }) =>
     request.post('/topic/list/page/vo/posts', data),
 }

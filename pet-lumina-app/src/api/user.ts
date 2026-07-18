@@ -2,7 +2,7 @@ import request from './request'
 
 export const userApi = {
   getById: (id: string | number) =>
-    request.get('/user/get/vo', { params: { id } }),
+    request.get('/user/get/vo', { params: { id: String(id) } }),
 
   getLoginUser: () =>
     request.get('/user/get/login'),

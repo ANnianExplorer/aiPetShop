@@ -30,7 +30,7 @@ const goToPetDetail = (petId: number | string) => {
         v-for="pet in pets" 
         :key="pet.id"
         @click="goToPetDetail(pet.id)"
-        class="bg-white rounded-xl p-3 shadow-[0_4px_20px_rgba(0,0,0,0.03)] border border-white/50 hover:scale-[1.02] transition-transform cursor-pointer"
+        class="bg-white dark:bg-surface-container rounded-xl p-3 shadow-[0_4px_20px_rgba(0,0,0,0.03)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.15)] border border-white/50 dark:border-surface-variant/30 hover:scale-[1.02] transition-transform cursor-pointer"
       >
         <div class="aspect-square rounded-lg overflow-hidden bg-surface-container mb-3">
           <img class="w-full h-full object-cover" :src="pet.avatar" />

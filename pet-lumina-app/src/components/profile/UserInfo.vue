@@ -48,7 +48,7 @@ const handleFileChange = async (event: Event) => {
 <template>
   <section class="mt-8 flex flex-col items-center text-center">
     <div class="relative group cursor-pointer" @click="handleAvatarClick">
-      <div class="w-24 h-24 rounded-full border-4 border-white shadow-xl overflow-hidden">
+      <div class="w-24 h-24 rounded-full border-4 border-white dark:border-surface-container shadow-xl overflow-hidden">
         <img class="w-full h-full object-cover" :src="user.avatar" />
       </div>
       <div class="absolute bottom-0 right-0 bg-primary p-1.5 rounded-full text-white shadow-md transition-transform group-active:scale-90">

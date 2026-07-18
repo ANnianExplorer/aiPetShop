@@ -29,7 +29,9 @@ onMounted(async () => {
     try {
       const topic = await topicApi.getById(topicId) as any
       topicTitle.value = topic?.title || ''
-    } catch {}
+    } catch (e) {
+      console.error('Failed to fetch topic:', e)
+    }
   }
 })
 

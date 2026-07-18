@@ -11,3 +11,4 @@ backend/target/
 .claude/
 z-plan/.playwright-cli/
 test-screenshots/
+/backend/.playwright-cli/

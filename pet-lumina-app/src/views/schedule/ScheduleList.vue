@@ -1,13 +1,20 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import type { Reminder } from '@/types'
 import { reminderApi } from '@/api/reminder'
 
+const { t } = useI18n()
 const router = useRouter()
 
-const filterTabs = ['全部', '今日', '本周', '已完成']
-const activeTab = ref('全部')
+const filterTabs = computed(() => [
+  { key: 'all', label: t('reminder.filterAll') },
+  { key: 'today', label: t('reminder.filterToday') },
+  { key: 'week', label: t('reminder.filterWeek') },
+  { key: 'completed', label: t('reminder.filterCompleted') }
+])
+const activeTab = ref('all')
 
 const reminders = ref<Reminder[]>([])
 
@@ -26,11 +33,11 @@ onMounted(() => {
 
 const filteredReminders = computed(() => {
   switch (activeTab.value) {
-    case '今日':
+    case 'today':
       return reminders.value.filter(r => r.remindTime.includes('今天') || r.remindTime.includes('上午') || r.remindTime.includes('下午') || r.remindTime.includes('早上'))
-    case '本周':
+    case 'week':
       return reminders.value.filter(r => r.isCompleted === 0)
-    case '已完成':
+    case 'completed':
       return reminders.value.filter(r => r.isCompleted === 1)
     default:
       return reminders.value
@@ -81,32 +88,32 @@ const addNewReminder = () => {
           <button @click="goBack" class="active:scale-95 transition-transform p-2 rounded-full hover:bg-zinc-100">
             <span class="material-symbols-outlined text-emerald-700">arrow_back</span>
           </button>
-          <span class="font-title-sm text-on-surface">全部日程</span>
+          <span class="font-title-sm text-on-surface">{{ t('reminder.allSchedules') }}</span>
           <button @click="addNewReminder" class="active:scale-95 transition-transform p-2 rounded-full hover:bg-zinc-100">
             <span class="material-symbols-outlined text-emerald-700">add</span>
           </button>
         </div>
         <div class="flex gap-sm overflow-x-auto no-scrollbar py-md">
-          <button 
-            v-for="tab in filterTabs" 
-            :key="tab"
-            @click="activeTab = tab"
+          <button
+            v-for="tab in filterTabs"
+            :key="tab.key"
+            @click="activeTab = tab.key"
             class="px-4 py-2 rounded-full font-label-bold whitespace-nowrap transition-colors"
-            :class="activeTab === tab ? 'bg-primary text-white' : 'bg-surface-container-high text-on-surface-variant hover:bg-primary-fixed'"
+            :class="activeTab === tab.key ? 'bg-primary text-white' : 'bg-surface-container-high text-on-surface-variant hover:bg-primary-fixed'"
           >
-            {{ tab }}
+            {{ tab.label }}
           </button>
         </div>
 
         <div class="space-y-md">
-          <div 
-            v-for="reminder in filteredReminders" 
+          <div
+            v-for="reminder in filteredReminders"
             :key="reminder.id"
             @click="toggleReminder(reminder)"
-            class="glass-card bg-white/70 p-container-padding rounded-xl shadow-sm border border-white/40 flex items-center gap-4 cursor-pointer transition-all duration-200 active:scale-[0.98] hover:shadow-md"
+            class="glass-card bg-white/70 dark:bg-surface-container/70 p-container-padding rounded-xl shadow-sm border border-white/40 dark:border-surface-variant/20 flex items-center gap-4 cursor-pointer transition-all duration-200 active:scale-[0.98] hover:shadow-md"
             :class="{ 'opacity-60': reminder.isCompleted === 1 }"
           >
-            <div 
+            <div
               class="w-12 h-12 rounded-full flex items-center justify-center transition-all flex-shrink-0"
               :class="getTypeColor(reminder.type)"
             >
@@ -125,9 +132,9 @@ const addNewReminder = () => {
 
         <div v-if="filteredReminders.length === 0" class="flex flex-col items-center justify-center py-20">
           <span class="material-symbols-outlined text-6xl text-on-surface-variant opacity-30">event_available</span>
-          <p class="mt-4 font-title-md text-on-surface-variant">暂无日程</p>
+          <p class="mt-4 font-title-md text-on-surface-variant">{{ t('reminder.noSchedule') }}</p>
           <button @click="addNewReminder" class="mt-4 px-6 py-2 bg-primary text-on-primary rounded-full font-label-bold active:scale-95 transition-transform">
-            新增提醒
+            {{ t('reminder.addReminder') }}
           </button>
         </div>
       </div>

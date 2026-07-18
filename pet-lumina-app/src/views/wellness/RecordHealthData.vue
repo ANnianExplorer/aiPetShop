@@ -329,7 +329,7 @@ const goBack = () => {
         {{ submitting ? '保存中...' : '提交分析' }}
       </button>
 
-      <section v-if="analysisResult" class="glass-card p-6 rounded-2xl border border-white/50 bg-white/60">
+      <section v-if="analysisResult" class="glass-card p-6 rounded-2xl border border-white/50 dark:border-surface-variant/20 bg-white/60 dark:bg-surface-container/60">
         <div class="flex items-center justify-between mb-4">
           <h3 class="font-title-sm text-title-sm text-on-surface">分析结果</h3>
           <div class="flex items-center gap-2">
