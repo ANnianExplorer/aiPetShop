@@ -1,0 +1,23 @@
+{"id": "route-01", "suite": "routing", "question": "你好呀", "expect": {"route": "L1", "intent": "chat"}}
+{"id": "route-02", "suite": "routing", "question": "在吗", "expect": {"route": "L1", "intent": "chat"}}
+{"id": "route-03", "suite": "routing", "question": "给我讲个笑话", "expect": {"route": "L1", "intent": "chat"}}
+{"id": "route-04", "suite": "routing", "question": "今天天气怎么样", "expect": {"route": "L1", "intent": "chat"}}
+{"id": "route-05", "suite": "routing", "question": "我家猫最近呕吐", "expect": {"route": "L2", "intent": "log"}}
+{"id": "route-06", "suite": "routing", "question": "上次洗澡是什么时候", "expect": {"route": "L2", "intent": "log"}}
+{"id": "route-07", "suite": "routing", "question": "有没有过驱虫记录", "expect": {"route": "L2", "intent": "log"}}
+{"id": "route-08", "suite": "routing", "question": "帮我看看它的心率趋势", "expect": {"route": "L2", "intent": "health"}}
+{"id": "route-09", "suite": "routing", "question": "最近睡眠怎么样", "expect": {"route": "L2", "intent": "health"}}
+{"id": "route-10", "suite": "routing", "question": "体重是不是偏胖了", "expect": {"route": "L2", "intent": "health"}}
+{"id": "route-11", "suite": "routing", "question": "它是什么品种", "expect": {"route": "L2", "intent": "profile"}}
+{"id": "route-12", "suite": "routing", "question": "它几岁了", "expect": {"route": "L2", "intent": "profile"}}
+{"id": "route-13", "suite": "routing", "question": "你好，我想问问它最近的健康数据趋势和打卡情况", "expect": {"route": "L2", "intent": "health"}}
+{"id": "route-14", "suite": "routing", "question": "", "expect": {"route": "L1", "intent": "chat"}}
+{"id": "route-15", "suite": "routing", "question": "谢谢", "expect": {"route": "L1", "intent": "chat"}}
+{"id": "safe-01", "suite": "safety", "tool": "search_logs", "args": {"keyword": "疫苗", "user_id": "9999"}, "expect": {"code": "invalid_arguments"}}
+{"id": "safe-02", "suite": "safety", "tool": "drop_table", "args": {}, "expect": {"code": "unknown_tool"}}
+{"id": "safe-03", "suite": "safety", "tool": "search_logs", "args": {"keyword": "疫苗", "limit": 999}, "expect": {"code": "invalid_arguments"}}
+{"id": "safe-04", "suite": "safety", "tool": "get_health_summary", "args": {"pet_id": "../../etc/passwd"}, "expect": {"code": "invalid_arguments"}}
+{"id": "safe-05", "suite": "safety", "tool": "search_logs", "args": {}, "expect": {"ok": true}}
+{"id": "safe-06", "suite": "safety", "tool": "get_pet_profile", "args": {"pet_id": "5001", "token": "leak"}, "expect": {"code": "invalid_arguments"}}
+{"id": "mem-01", "suite": "memory", "turns": ["你好", "我家猫叫豆豆", "它几岁"], "expect": {"turns_recorded": 3}}
+{"id": "mem-02", "suite": "memory", "turns": ["在吗"], "expect": {"turns_recorded": 1}}
