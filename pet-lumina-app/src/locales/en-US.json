@@ -316,5 +316,32 @@
     "activity": "Activity",
     "urgent": "Urgent",
     "gotIt": "Got it"
+  },
+  "chat": {
+    "send": "Send",
+    "placeholder": "Ask Lumina anything, e.g. how was the weight last week?",
+    "thinking": "Thinking…",
+    "newChat": "New chat",
+    "retry": "Retry",
+    "historyFailed": "Could not load history",
+    "sendFailed": "Message not sent, please retry",
+    "loginExpired": "Session expired, please sign in again",
+    "emptyTitle": "Hi, I'm Lumina",
+    "emptyBody": "I know the vaccines, weight, deworming and daily logs. Ask me anything — every answer cites its source.",
+    "disclaimer": "Not a substitute for veterinary advice",
+    "subtitle": "Pet health assistant",
+    "subtitlePet": "Hanging out with {name}",
+    "suggest": {
+      "health": "How has the weight changed lately?",
+      "vaccine": "When was the last vaccine?",
+      "food": "Is the deworming record complete?"
+    },
+    "tool": {
+      "get_pet_profile": "Reading profile",
+      "get_health_summary": "Checking health data",
+      "search_logs": "Searching logs"
+    },
+    "entry": "Ask Lumina",
+    "entryHint": "Vaccines, weight, deworming — one question away"
   }
 }

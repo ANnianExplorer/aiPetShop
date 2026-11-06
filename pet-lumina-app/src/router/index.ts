@@ -48,6 +48,11 @@ const router = createRouter({
           component: () => import('@/views/home/Home.vue')
         },
         {
+          path: '/chat',
+          name: 'chat',
+          component: () => import('@/views/chat/ChatView.vue')
+        },
+        {
           path: '/community',
           name: 'community',
           component: () => import('@/views/community/Community.vue')

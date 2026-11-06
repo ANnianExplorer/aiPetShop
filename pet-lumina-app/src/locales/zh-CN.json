@@ -316,5 +316,32 @@
     "activity": "活动",
     "urgent": "紧急",
     "gotIt": "我知道了"
+  },
+  "chat": {
+    "send": "发送",
+    "placeholder": "问问 Lumina 吧，比如「上周体重怎么样」",
+    "thinking": "正在想想……",
+    "newChat": "新会话",
+    "retry": "重试",
+    "historyFailed": "历史记录加载失败",
+    "sendFailed": "消息没有发出去，请重试",
+    "loginExpired": "登录已过期，请重新登录",
+    "emptyTitle": "嗨，我是 Lumina",
+    "emptyBody": "我知道毛孩子的疫苗、体重、驱虫和日常记录。问我点什么吧——答案都会标出依据。",
+    "disclaimer": "建议不能替代兽医诊断",
+    "subtitle": "宠物健康助理",
+    "subtitlePet": "正在陪 {name}",
+    "suggest": {
+      "health": "最近体重有什么变化？",
+      "vaccine": "上次打疫苗是什么时候？",
+      "food": "它的驱虫记录还全吗？"
+    },
+    "tool": {
+      "get_pet_profile": "查看档案",
+      "get_health_summary": "查询健康数据",
+      "search_logs": "翻找记录"
+    },
+    "entry": "问 Lumina",
+    "entryHint": "疫苗、体重、驱虫，一句话就能查"
   }
 }

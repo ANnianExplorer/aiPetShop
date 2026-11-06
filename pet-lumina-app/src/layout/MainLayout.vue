@@ -31,6 +31,9 @@ const navigate = (tab: { name: string; path: string; icon: string; labelKey: str
     router.push(tab.path)
   }
 }
+
+// 对话页是沉浸式全屏：底部导航会让输入框无处安放，这里直接收起来
+const showNav = computed(() => route.name !== 'chat')
 </script>
 
 <template>
@@ -43,7 +46,7 @@ const navigate = (tab: { name: string; path: string; icon: string; labelKey: str
     <RouterView />
 
     <!-- 全局底部导航 - 胶囊样式 -->
-    <nav class="fixed bottom-3 left-4 right-4 z-50 pb-safe">
+    <nav v-if="showNav" class="fixed bottom-3 left-4 right-4 z-50 pb-safe">
       <div class="bg-white/80 dark:bg-surface-container/80 backdrop-blur-2xl rounded-[28px] shadow-[0_8px_32px_rgba(75,100,85,0.12),0_0_0_1px_rgba(255,255,255,0.5)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.2),0_0_0_1px_rgba(255,255,255,0.08)] px-2 py-2">
         <div class="flex justify-around items-center max-w-screen-xl mx-auto">
           <div

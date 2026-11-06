@@ -31,6 +31,10 @@ const goToNotifications = () => {
   router.push({ name: 'notifications' })
 }
 
+const goToChat = () => {
+  router.push({ name: 'chat' })
+}
+
 onMounted(async () => {
   try {
     const now = new Date()
@@ -76,6 +80,24 @@ onMounted(async () => {
       <section class="mt-4 animate-float-up">
         <h1 class="font-display-lg text-display-lg text-on-background">{{ t('home.greeting', { name: currentUser?.nickname }) }}</h1>
         <p class="font-body-md text-body-md text-on-surface-variant opacity-70">{{ t('home.todayVibrant') }}</p>
+      </section>
+
+      <!-- Chat entry -->
+      <section class="animate-float-up">
+        <button class="w-full text-left" @click="goToChat">
+          <div class="flex items-center gap-3 rounded-3xl bg-primary-container/80 px-container-padding py-4 shadow-sm transition-transform active:scale-[0.98] dark:bg-primary/15">
+            <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/15">
+              <span class="material-symbols-outlined text-primary">chat_bubble</span>
+            </div>
+            <div class="flex-1 leading-tight">
+              <p class="font-title-sm text-title-sm text-on-primary-container dark:text-on-surface">{{ t('chat.entry') }}</p>
+              <p class="mt-0.5 text-xs text-on-primary-container/70 dark:text-on-surface-variant">
+                {{ t('chat.entryHint') }}
+              </p>
+            </div>
+            <span class="material-symbols-outlined text-on-primary-container/60 dark:text-on-surface-variant">chevron_right</span>
+          </div>
+        </button>
       </section>
 
       <!-- Extracted Components with stagger -->

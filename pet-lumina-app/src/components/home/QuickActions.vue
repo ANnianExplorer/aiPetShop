@@ -4,10 +4,10 @@ import { useRouter } from 'vue-router'
 const router = useRouter()
 
 const actions = [
+  { icon: 'chat_bubble', label: '问 Lumina', path: '/chat' },
   { icon: 'edit_note', label: '生活记录', path: '/life-log' },
   { icon: 'notifications_active', label: '健康提醒', path: '/wellness' },
   { icon: 'fitness_center', label: '训练计划', path: '/wellness' },
-  { icon: 'more_horiz', label: '更多', path: '/app' },
 ]
 </script>
 

@@ -1,4 +1,4 @@
-﻿# PetLumina Pet-Agent 架构设计（v0.1 草稿）
+# PetLumina Pet-Agent 架构设计（v0.1 草稿）
 
 > 目标：把现有的「宠物健康管理 + 社区」三端系统，升级为「有记忆、能动手、有形象」的宠物智能体平台。
 > 读者：产品 / 后端 / 前端 / 算法。本文只给架构与取舍，不含实现代码。
@@ -441,4 +441,46 @@ DSH 本身就是一个 harness（本仓库的会话就跑在它上面：skills /
 模型第一次被调用时 `messages` 是空的——测试用脚本模型看不出来，只有接真 SSE 才暴露。
 现在 `route → prepare` 是必经边，并加了那条回归断言。**这就是"能跑"和"对"的差别。**
 
-**S1 未做**（下一步）：App 聊天页接入、管理端会话工作台、Langfuse 追踪、`agent_run` 与 trace 对齐的自动化校验。
+**S1 未做**（下一步）：管理端会话工作台、Langfuse 追踪、`agent_run` 与 trace 对齐的自动化校验。
+
+---
+
+## 13. Web 端接入（`pet-lumina-app` 聊天页）
+
+S1 的运行时是一堆 HTTP 接口，用户看不见。这一节记录把它接进 App 网页端的过程与验收证据。
+
+### 13.1 前端分层（与新分层对齐的最小集合）
+
+| 文件 | 职责 | 为什么不塞进组件 |
+| --- | --- | --- |
+| `src/api/sse.ts` | 纯 SSE 文本解析（`push`/`flush`、多行 data、`\r\n`、注释行） | 不碰网络才能单测逐块喂数据 |
+| `src/api/agent.ts` | `streamChat` / `replayRun` / `fetchSessionMessages` + 五个类型守卫 | 传输层只做传输；UI 不写 `as any` |
+| `src/utils/chatStream.ts` | `applyAgentEvent(bubble, event)` 归约器 + `historyToBubbles` | 事件→界面是纯函数，可被 10 条单测钉死 |
+| `src/views/chat/ChatView.vue` | 只负责渲染、滚动、输入法、错误重试、401 跳登录 | 组件里没有业务判断 |
+
+**为什么不用 `EventSource`**：它不能带 `satoken` 请求头、不支持 POST 请求体、续传只会重连同一 URL。
+所以走 `fetch + ReadableStream`，自己按 `id:` 游标续传——和后端 `/agent/runs/{run_id}/events?after=` 正好对上。
+
+### 13.2 交互约定
+
+- 会话 id 存 `localStorage['petlumina-agent-session']`，进页面先 `fetchSessionMessages` 回放历史；服务端 404（内存模式重启）就静默换新会话；
+- 流式期间气泡带 `▍` 光标，工具调用显示成 chip（`chat.tool.<name>`），引用 chip 可点，`kind=log` 跳 `/log/{id}`；
+- 401/`unauthorized` 清 `satoken` 并跳登录；其余错误保留最后一条用户消息给"重试"；
+- Enter 发送、Shift+Enter 换行，`event.isComposing` 保护中文输入法；
+- 对话页是全屏沉浸式，`MainLayout` 在 `route.name === 'chat'` 时收起底部导航（否则输入框被胶囊导航压住）。
+
+### 13.3 验证证据
+
+| 手段 | 命令 | 结果 |
+| --- | --- | --- |
+| 类型检查 + 构建 | `npm run build`（`vue-tsc -b && vite build`） | 通过，产出 `ChatView-*.js` 10.9 kB |
+| 单测 | `npx vitest run` | 20 passed（`sse.spec.ts` 10 + `chatStream.spec.ts` 10） |
+| 浏览器端到端 | stub_java:8097 + stub_llm:8098 + uvicorn:8099 + vite:5173 | 登录 → 首页 → 问 Lumina → 流式回答 + 「翻找记录」工具 chip + 「疫苗记录」引用 chip |
+
+### 13.4 这轮抓到的两个真 bug
+
+1. **首页白屏**：`PetStatusBento.vue` 直接 `pet.todaySteps.toLocaleString()`，接口少一个字段就是整页渲染崩溃（Vue 的渲染异常会把整棵树带走）。已改成 `?? 0` 兜底——接口字段永远可能缺，模板不能假设。
+2. **输入框被导航盖住**：`ChatView` 用了 `fixed bottom-0`，而 `MainLayout` 的胶囊导航是 `fixed bottom-3 z-50`，两者重叠且导航在上层。改成对话页隐藏导航，比"算 100px 偏移"更可靠。
+
+> 这两个都不是"agent 的问题"，但都是"接进去才会发现的问题"——所以端到端验证不能省。
+

@@ -11,7 +11,7 @@ const props = defineProps<{
 const { showToast } = useToast()
 
 const stepPercentage = computed(() => {
-  return Math.min((props.pet.todaySteps / 10000) * 100, 100)
+  return Math.min(((props.pet.todaySteps ?? 0) / 10000) * 100, 100)
 })
 
 const showDetail = (type: string) => {
@@ -26,7 +26,7 @@ const showDetail = (type: string) => {
       <div @click="showDetail('今日运动')" class="col-span-2 bg-primary-container text-on-primary-container p-container-padding rounded-2xl relative overflow-hidden h-40 cursor-pointer card-lift ripple-card anim-shadow-breathe">
         <div class="relative z-10">
           <p class="font-label-bold text-label-bold opacity-80 uppercase">今日运动</p>
-          <p class="font-display-lg text-display-lg mt-2">{{ pet.todaySteps.toLocaleString() }} <span class="text-sm font-normal">步</span></p>
+          <p class="font-display-lg text-display-lg mt-2">{{ (pet.todaySteps ?? 0).toLocaleString() }} <span class="text-sm font-normal">步</span></p>
           <div class="w-full bg-on-primary-container/20 h-1.5 rounded-full mt-4">
             <div class="bg-on-primary-container h-full rounded-full transition-all duration-1000" :style="{ width: `${stepPercentage}%` }"></div>
           </div>

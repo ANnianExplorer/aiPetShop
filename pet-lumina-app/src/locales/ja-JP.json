@@ -316,5 +316,32 @@
     "activity": "アクティビティ",
     "urgent": "緊急",
     "gotIt": "了解"
+  },
+  "chat": {
+    "send": "送信",
+    "placeholder": "Lumina に聞いてみて。例：先週の体重は？",
+    "thinking": "考え中…",
+    "newChat": "新しい会話",
+    "retry": "再試行",
+    "historyFailed": "履歴を読み込めませんでした",
+    "sendFailed": "送信できませんでした。もう一度お試しください",
+    "loginExpired": "ログインの有効期限が切れました",
+    "emptyTitle": "こんにちは、Lumina です",
+    "emptyBody": "ワクチン・体重・駆虫・毎日の記録を把握しています。根拠付きで答えます。",
+    "disclaimer": "獣医師の診断の代わりにはなりません",
+    "subtitle": "ペット健康アシスタント",
+    "subtitlePet": "{name} と一緒",
+    "suggest": {
+      "health": "最近の体重の変化は？",
+      "vaccine": "前回のワクチンはいつ？",
+      "food": "駆虫の記録は揃っていますか？"
+    },
+    "tool": {
+      "get_pet_profile": "プロフィール確認",
+      "get_health_summary": "健康データ照会",
+      "search_logs": "記録を検索"
+    },
+    "entry": "Lumina に聞く",
+    "entryHint": "ワクチン・体重・駆虫を一言で確認"
   }
 }
