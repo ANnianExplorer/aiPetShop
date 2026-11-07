@@ -13,6 +13,7 @@ import com.petlumina.backend.model.dto.user.UserQueryRequest;
 import com.petlumina.backend.model.entity.User;
 import com.petlumina.backend.model.vo.LoginUserVO;
 import com.petlumina.backend.service.user.UserService;
+import com.petlumina.backend.utils.SortUtils;
 import com.petlumina.backend.utils.ThrowUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -41,7 +42,9 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         queryWrapper.like(StrUtil.isNotBlank(email), "email", email);
         queryWrapper.eq(StrUtil.isNotBlank(role), "role", role);
         queryWrapper.eq(status != null, "status", status);
-        queryWrapper.orderByDesc("create_time");
+        // 接口字段白名单：sortField 只认这些，列名不来自用户输入
+        SortUtils.apply(queryWrapper, request, java.util.Map.of(
+                "createTime", "create_time", "nickname", "nickname", "status", "status"), "create_time");
         return queryWrapper;
     }
 

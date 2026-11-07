@@ -55,6 +55,21 @@ request.interceptors.response.use(
     return res.data
   },
   (error) => {
+    // 后端按业务语义返回真实 HTTP 状态（400/401/403/404/429/500），axios 走这里；
+    // 仍然优先展示业务码里的 message，避免统一退化成“网络错误”。
+    const data = (error as any)?.response?.data
+    if (data && typeof data.code === 'number') {
+      if (data.code === 42900) {
+        ElMessage.warning(data.message || '操作过于频繁，请稍后再试')
+      } else {
+        ElMessage.error(data.message || '请求失败')
+      }
+      if (data.code === 40100) {
+        localStorage.removeItem('satoken')
+        router.push('/login')
+      }
+      return Promise.reject(new Error(data.message || '请求失败'))
+    }
     ElMessage.error('网络错误，请稍后重试')
     return Promise.reject(error)
   }

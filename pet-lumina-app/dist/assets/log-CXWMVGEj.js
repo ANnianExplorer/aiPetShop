@@ -1,0 +1,1 @@
+import{J as e}from"./index-BcO7Nz9F.js";const g={add:t=>e.post("/log/add",t),edit:t=>e.post("/log/edit",t),delete:t=>e.post("/log/delete",{id:t}),getById:t=>e.get("/log/get/vo",{params:{id:String(t)}}),listPage:t=>e.post("/log/list/page/vo",t),toggleLike:t=>e.post(`/log/like/${String(t)}`)};export{g as l};

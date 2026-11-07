@@ -12,6 +12,7 @@ import com.petlumina.backend.service.user.FavoriteRecordService;
 import com.petlumina.backend.service.user.LikeRecordService;
 import com.petlumina.backend.service.user.PostService;
 import com.petlumina.backend.service.user.UserService;
+import com.petlumina.backend.utils.SortUtils;
 import com.petlumina.backend.utils.ThrowUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -65,7 +66,9 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post>
                 queryWrapper.eq("author_id", -1);
             }
         }
-        queryWrapper.orderByDesc("create_time");
+        // 接口字段白名单：sortField 只认这些，列名不来自用户输入
+        SortUtils.apply(queryWrapper, request, java.util.Map.of(
+                "createTime", "create_time", "likes", "likes", "comments", "comments"), "create_time");
         return queryWrapper;
     }
 

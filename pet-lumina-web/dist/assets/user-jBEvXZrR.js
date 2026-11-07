@@ -1,0 +1,1 @@
+import{j as s}from"./index-9Pt_gtkL.js";const a={listPage:t=>s.post("/admin/user/list/page/vo",t),getDetail:t=>s.get("/admin/user/get/vo",{params:{id:String(t)}}),updateStatus:t=>s.post("/admin/user/update/status",t)};export{a as u};

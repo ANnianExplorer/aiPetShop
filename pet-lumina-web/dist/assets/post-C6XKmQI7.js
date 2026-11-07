@@ -1,1 +1,0 @@
-import{j as e}from"./index-B2qS77S-.js";const o={listPage:t=>e.post("/admin/post/list/page/vo",t),getDetail:t=>e.get("/post/get/vo",{params:{id:String(t)}}),delete:t=>e.post("/admin/post/delete",{id:t})};export{o as p};

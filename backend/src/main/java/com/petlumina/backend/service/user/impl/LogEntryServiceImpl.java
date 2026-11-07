@@ -10,6 +10,7 @@ import com.petlumina.backend.model.entity.LogEntry;
 import com.petlumina.backend.model.entity.User;
 import com.petlumina.backend.service.user.LogEntryService;
 import com.petlumina.backend.service.user.UserService;
+import com.petlumina.backend.utils.SortUtils;
 import com.petlumina.backend.utils.ThrowUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -44,7 +45,9 @@ public class LogEntryServiceImpl extends ServiceImpl<LogEntryMapper, LogEntry>
                     .or()
                     .like("content", searchText));
         }
-        queryWrapper.orderByDesc("create_time");
+        // 接口字段白名单：sortField 只认这些，列名不来自用户输入
+        SortUtils.apply(queryWrapper, request, java.util.Map.of(
+                "createTime", "create_time", "type", "type"), "create_time");
         return queryWrapper;
     }
 
