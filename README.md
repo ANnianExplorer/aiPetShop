@@ -435,7 +435,8 @@ cd pet-lumina-web && npm run build                # 管理端类型检查
 ```
 
 文档入口：[`docs/README.md`](./docs/README.md)（四类文档职责 + 索引），
-面向决策的背景见 [`docs/pet-agent-architecture.md`](./docs/pet-agent-architecture.md)。
+面向决策的背景见 [`docs/pet-agent-architecture.md`](./docs/pet-agent-architecture.md)，
+**还差什么**见 [`docs/BACKLOG.md`](./docs/BACKLOG.md)（42 条，按优先级/验收标准列）。
 
 ## 更新日志
 
