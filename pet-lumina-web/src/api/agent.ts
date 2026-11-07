@@ -1,0 +1,159 @@
+/**
+ * Agent 管理端接口：走独立的 axios 实例。
+ *
+ * 为什么不复用 `request.ts`：那边绑定的是 Java 业务后端的 `{code,data,message}` 信封，
+ * 而 Agent 运行时是纯 REST（直接返回资源对象、用 HTTP 状态码表达错误）。
+ * 硬塞进同一个拦截器会让 403/404 被当成"业务码异常"，错误信息也拿不到。
+ */
+import axios from 'axios'
+
+const baseURL = (import.meta.env.VITE_AGENT_BASE_URL || 'http://localhost:8099').replace(/\/+$/, '')
+
+const agent = axios.create({ baseURL, timeout: 20000 })
+
+agent.interceptors.request.use((config) => {
+  const token = localStorage.getItem('satoken')
+  if (token) {
+    config.headers['satoken'] = token
+  }
+  return config
+})
+
+export class AgentApiError extends Error {
+  code: string
+  status: number
+
+  constructor(message: string, code: string, status: number) {
+    super(message)
+    this.name = 'AgentApiError'
+    this.code = code
+    this.status = status
+  }
+}
+
+agent.interceptors.response.use(
+  (response) => response.data,
+  (error) => {
+    const status: number = error.response?.status ?? 0
+    const body = error.response?.data ?? {}
+    const message =
+      typeof body?.message === 'string'
+        ? body.message
+        : status === 403
+          ? '当前账号没有管理员权限'
+          : status === 0
+            ? 'Agent 服务不可达'
+            : 'Agent 服务返回异常'
+    return Promise.reject(new AgentApiError(message, body?.code || 'unknown', status))
+  },
+)
+
+export interface AdminSessionItem {
+  id: string
+  user_id: string
+  pet_id: string | null
+  channel: string
+  title: string
+  message_count: number
+  create_time: string | null
+}
+
+export interface AdminSessionList {
+  total: number
+  page: number
+  page_size: number
+  items: AdminSessionItem[]
+}
+
+export interface AdminMessage {
+  id: string
+  role: string
+  content: string
+  run_id: string | null
+  citations: { kind: string; id: string; label: string; locator: string }[]
+  create_time: string | null
+}
+
+export interface AdminStep {
+  seq: number
+  kind: string
+  name: string
+  status: string
+  latency_ms: number
+  error: string | null
+}
+
+export interface AdminRun {
+  id: string
+  route: string
+  intent: string
+  status: string
+  prompt_tokens: number
+  completion_tokens: number
+  total_tokens: number
+  latency_ms: number
+  error: string | null
+  steps: AdminStep[]
+}
+
+export interface AdminSessionDetail {
+  session: AdminSessionItem
+  messages: AdminMessage[]
+  runs: AdminRun[]
+}
+
+export interface AdminDayUsage {
+  day: string
+  runs: number
+  tokens: number
+}
+
+export interface AdminUsage {
+  days: number
+  runs: number
+  users: number
+  prompt_tokens: number
+  completion_tokens: number
+  total_tokens: number
+  avg_latency_ms: number
+  by_day: AdminDayUsage[]
+}
+
+export interface AdminMemoryFact {
+  id: string
+  key: string
+  label: string
+  value: string
+  confidence: number
+  update_time: string | null
+}
+
+export interface AdminMemory {
+  pet_id: string | null
+  facts: AdminMemoryFact[]
+}
+
+export function listAdminSessions(params: {
+  page: number
+  page_size: number
+  user_id?: string
+  q?: string
+}): Promise<AdminSessionList> {
+  return agent.get('/agent/admin/sessions', { params })
+}
+
+export function getAdminSessionDetail(sessionId: string): Promise<AdminSessionDetail> {
+  return agent.get(`/agent/admin/sessions/${encodeURIComponent(sessionId)}`)
+}
+
+export function getAdminUsage(days = 7): Promise<AdminUsage> {
+  return agent.get('/agent/admin/usage', { params: { days } })
+}
+
+export function getAdminMemory(userId: string, petId?: string | null): Promise<AdminMemory> {
+  return agent.get('/agent/admin/memory', {
+    params: { user_id: userId, ...(petId ? { pet_id: petId } : {}) },
+  })
+}
+
+export default agent

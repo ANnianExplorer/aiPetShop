@@ -1,1 +1,0 @@
-import{j as s}from"./index-DIJdwEB9.js";const a={listPage:t=>s.post("/admin/user/list/page/vo",t),getDetail:t=>s.get("/admin/user/get/vo",{params:{id:t}}),updateStatus:t=>s.post("/admin/user/update/status",t)};export{a as u};

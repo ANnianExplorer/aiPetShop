@@ -1,4 +1,4 @@
-# 规格：Agent Runtime HTTP/SSE 契约 v1.2
+# 规格：Agent Runtime HTTP/SSE 契约 v1.3
 
 - 状态：Frozen（实现已按此验收；破坏性变更需升 v2）
 - 日期：2026-11-07（v1.2 更新 2026-11-08）
@@ -186,6 +186,19 @@ data: {"text":"9月1日打过疫苗，"}
 
 200：`{days, runs, prompt_tokens, completion_tokens, total_tokens, avg_latency_ms}`，只统计 `status='succeeded'` 的 run。
 
+## 6.3 管理端只读接口（S1.7）
+
+前缀 `/agent/admin/`，**全部要求 token 解析出的 `role == "admin"`**；非管理员 `403 forbidden`（`{"code":"forbidden","message":"需要管理员权限"}`），无 token `401`。角色只来自 `GET /api/v1/auth/current` 的 `role` 字段——**请求头里的 `x-user-role` 在 backend 模式下被忽略**（header 模式仅 dev 可用，见 `config.auth_mode`）。
+
+| 接口 | 参数 | 200 返回 |
+| --- | --- | --- |
+| `GET /agent/admin/sessions` | `page`(1) / `page_size`(10, ≤50) / `user_id?` / `q?`（标题包含，忽略大小写） | `{total, page, page_size, items:[{id,user_id,pet_id,channel,title,message_count,create_time}]}`，按最后活跃时间倒序 |
+| `GET /agent/admin/sessions/{id}` | — | `{session, messages:[{id,role,content,run_id,citations,create_time}], runs:[{id,route,intent,status,prompt_tokens,completion_tokens,total_tokens,latency_ms,error,steps:[{seq,kind,name,status,latency_ms,error}]}]}`；未知会话 `404` |
+| `GET /agent/admin/memory` | `user_id`（必填）/ `pet_id?` | `{pet_id, facts:[{id,key,label,value,confidence,update_time}]}` |
+| `GET /agent/admin/usage` | `days`(7, 1–90) | `{days, runs, users, prompt_tokens, completion_tokens, total_tokens, avg_latency_ms, by_day:[{day,runs,tokens}]}` |
+
+审计：每次读取**他人**会话或记忆都写一条 `admin.access` 日志，字段 `admin_id`、`target_user`、`session_id`（记忆为 `scope=memory`），**不记录消息正文与记忆值**。
+
 ## 7. 不变量（必须永远成立）
 
 | 编号 | 断言 | 验证 |
@@ -203,15 +216,18 @@ data: {"text":"9月1日打过疫苗，"}
 | I11 | 超配额返回 `429 rate_limited` + `Retry-After`，且**不产生** run/消息（不落库、不计费） | `test_api.py::test_rate_limit_returns_429_with_retry_after` |
 | I12 | 记忆只从**本人**对话抽取，只能被本人召回；同一 `(user, pet, key)` 只有一条 | `test_memory.py::test_memory_is_isolated_by_pet_and_user`、`test_memory_fact_upsert_dedupes_by_key` |
 | I13 | 记忆写入/召回失败不影响本轮回答（降级为无记忆） | `app/runtime/runner.py` 的 `_recall`/`_observe` 兜底；`test_api.py::test_recalled_memory_is_injected_into_system_prompt` |
+| I14 | `/agent/admin/**` 只有 `role == "admin"` 可访问；伪造 `x-user-role` 在 backend 模式无效 | `test_admin.py::test_forged_role_header_is_ignored` |
+| I15 | 管理端读取他人数据必留 `admin.access` 审计，且不落正文 | `test_admin.py::test_admin_detail_audit_log` |
 
 ## 8. 验收用例（可执行）
 
 ```powershell
 cd backend-agent
-.\.venv\Scripts\python -m pytest          # 92 passed
+.\.venv\Scripts\python -m pytest          # 101 passed
 .\.venv\Scripts\python -m evals.run       # routing 15/15, safety 6/6, memory 2/2
 .\.venv\Scripts\python -m scripts.e2e_smoke   # 10/10
 .\.venv\Scripts\python -m scripts.p1_smoke    # 9/9（配额/用量/记忆）
+.\.venv\Scripts\python -m scripts.admin_smoke # 6/6（管理端权限与列表/详情/用量）
 .\.venv\Scripts\ruff.exe check .          # All checks passed
 ```
 
@@ -222,3 +238,4 @@ cd backend-agent
 | v1.0 | 2026-11-07 | 初版：从 S1.5 实现反推并冻结，含 I1–I8 不变量 |
 | v1.1 | 2026-11-07 | 增 `/readyz`、`x-request-id`、日志字段约定与 I9–I10（S1.6 P0） |
 | v1.2 | 2026-11-08 | 增 `/agent/memory/me`、`/agent/usage/me`、429 与配额头、I11–I13（S1.6 P1） |
+| v1.3 | 2026-11-08 | 增 6.3 管理端只读接口、`admin.access` 审计、I14–I15（S1.7） |

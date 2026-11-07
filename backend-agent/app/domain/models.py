@@ -129,6 +129,74 @@ class Session:
     pet_id: str | None = None
     title: str = ""
     create_time: str | None = None
+    message_count: int = 0
+
+
+@dataclass(frozen=True)
+class SessionSummary:
+    """管理端列表用的会话摘要：只带列表需要的字段，不把整条消息流拖出来。"""
+
+    id: str
+    user_id: str
+    pet_id: str | None
+    channel: str
+    title: str
+    message_count: int
+    create_time: str | None
+
+    @classmethod
+    def of(cls, session: Session) -> SessionSummary:
+        return cls(
+            id=session.id,
+            user_id=session.user_id,
+            pet_id=session.pet_id,
+            channel=session.channel,
+            title=session.title,
+            message_count=session.message_count,
+            create_time=session.create_time,
+        )
+
+
+@dataclass(frozen=True)
+class RunDetail:
+    """一次运行的完整轨迹：管理端"它到底做了什么"就靠这个。"""
+
+    id: str
+    route: Route
+    intent: Intent
+    status: RunStatus
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    latency_ms: int = 0
+    error: str | None = None
+    steps: list[Step] = field(default_factory=list)
+
+    @property
+    def total_tokens(self) -> int:
+        return self.prompt_tokens + self.completion_tokens
+
+
+@dataclass(frozen=True)
+class DayUsage:
+    day: str
+    runs: int
+    tokens: int
+
+
+@dataclass(frozen=True)
+class UsageOverview:
+    """全局用量：管理端看"今天花了多少、谁在用"。"""
+
+    runs: int = 0
+    users: int = 0
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    avg_latency_ms: int = 0
+    by_day: list[DayUsage] = field(default_factory=list)
+
+    @property
+    def total_tokens(self) -> int:
+        return self.prompt_tokens + self.completion_tokens
 
 
 @dataclass

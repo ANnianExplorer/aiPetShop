@@ -116,6 +116,18 @@ const routes = [
         meta: { title: '违规管理' },
       },
       {
+        path: 'agent/sessions',
+        name: 'agentSessions',
+        component: () => import('@/views/agent/SessionList.vue'),
+        meta: { title: '会话工作台' },
+      },
+      {
+        path: 'agent/sessions/:id',
+        name: 'agentSessionDetail',
+        component: () => import('@/views/agent/SessionDetail.vue'),
+        meta: { title: '会话详情', parent: '会话工作台' },
+      },
+      {
         path: 'settings',
         name: 'systemSettings',
         component: () => import('@/views/settings/SystemSettings.vue'),

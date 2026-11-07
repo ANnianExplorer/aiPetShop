@@ -18,6 +18,7 @@ const menuItems = [
   { path: '/health', icon: 'monitor_heart', label: '健康数据' },
   { path: '/notification', icon: 'notifications', label: '通知管理' },
   { path: '/violation', icon: 'gpp_maybe', label: '违规管理' },
+  { path: '/agent/sessions', icon: 'forum', label: '会话工作台' },
 ]
 
 const bottomMenuItems = [

@@ -68,3 +68,68 @@ class ErrorOut(BaseModel):
     message: str
     retryable: bool = False
     detail: dict[str, Any] | None = None
+
+
+# ---------------------------------------------------------------- 管理端（只读）
+
+
+class AdminSessionItem(BaseModel):
+    id: str
+    user_id: str
+    pet_id: str | None = None
+    channel: str
+    title: str
+    message_count: int
+    create_time: str | None = None
+
+
+class AdminSessionList(BaseModel):
+    total: int
+    page: int
+    page_size: int
+    items: list[AdminSessionItem]
+
+
+class AdminStepOut(BaseModel):
+    seq: int
+    kind: str
+    name: str
+    status: str
+    latency_ms: int
+    error: str | None = None
+
+
+class AdminRunOut(BaseModel):
+    id: str
+    route: str
+    intent: str
+    status: str
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+    latency_ms: int
+    error: str | None = None
+    steps: list[AdminStepOut]
+
+
+class AdminSessionDetail(BaseModel):
+    session: AdminSessionItem
+    messages: list[MessageOut]
+    runs: list[AdminRunOut]
+
+
+class AdminDayUsage(BaseModel):
+    day: str
+    runs: int
+    tokens: int
+
+
+class AdminUsageOut(BaseModel):
+    days: int
+    runs: int
+    users: int
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+    avg_latency_ms: int
+    by_day: list[AdminDayUsage]

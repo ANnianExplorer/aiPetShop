@@ -59,7 +59,7 @@ copy .env.example .env          # 填 PET_AGENT_LLM_API_KEY
 ```bash
 curl http://localhost:8099/healthz    # 进程活着
 curl http://localhost:8099/readyz     # 能接流量（存储+模型都 ok 才是 200）
-.venv\Scripts\python -m pytest        # 92 passed
+.venv\Scripts\python -m pytest        # 101 passed
 .venv\Scripts\python -m evals.run     # routing/safety/memory 三套件，硬阈值
 .venv\Scripts\ruff.exe check .        # 静态检查
 ```
@@ -120,6 +120,15 @@ mysql -u root -p < backend/sql/v2.11-agent-memory.sql  # 长期记忆两表
 | GET | `/agent/sessions/{id}/messages` | 历史消息（App 进聊天页） |
 | GET | `/agent/memory/me` | 我这个账号（可带 `pet_id`）记住的事实：`{id,key,label,value,confidence,update_time}` |
 | GET | `/agent/usage/me?days=7` | 用量聚合：`runs / prompt_tokens / completion_tokens / total_tokens / avg_latency_ms` |
+| GET | `/agent/admin/sessions?page=&page_size=&user_id=&q=` | **管理员**：全部会话（按最后活跃时间倒序，带 `message_count`） |
+| GET | `/agent/admin/sessions/{id}` | **管理员**：会话详情 = 消息 + 每轮 run + 每步 step |
+| GET | `/agent/admin/memory?user_id=&pet_id=` | **管理员**：看某个账号记住了什么 |
+| GET | `/agent/admin/usage?days=7` | **管理员**：全局用量 + 按天趋势 + 活跃用户数 |
+
+管理端权限只认 token 换来的 `role`（来自 Java `/auth/current`），请求头 `x-user-role` 在生产
+（`AUTH_MODE=backend`）**一律忽略**；非管理员 `403 forbidden`。每次读他人数据打一条
+`admin.access` 日志（`admin_id`/`target_user`/`session_id`），不记正文。管理端刻意只读：
+不让管理员代发消息，否则"这句话是谁说的"和记忆归属都会失真。
 
 超配额不建 SSE，直接 `429`：`{code:"rate_limited", detail:{retry_after_s,scope,limit}}` + `Retry-After` 头；
 正常对话响应头带 `X-RateLimit-Limit` / `X-RateLimit-Remaining`。
@@ -152,7 +161,7 @@ event: error   data: {code, message, retryable}
 ## 测试与评测
 
 - `ruff check .` → 静态检查（配置在 `pyproject.toml`，CI 第一道门）。
-- `pytest` → 92 项：路由、网关六道防线、存储契约（内存/MySQL 同一套断言）、图（L1/L2/hop 上限/坏参数）、API（SSE 事件序列、续传三种方式等价、越权、失败收敛、429 与配额头、记忆注入与用量聚合）、配额（分钟/日窗口、用户隔离、Redis fail-open、`Retry-After`）、事件存储（两实现同契约：序号、游标、裁剪、坏数据跳过）、记忆（抽取规则、ADD/UPDATE/NOOP、隔离、低置信度过滤）、可观测（request_id/日志字段/readyz 降级）。
+- `pytest` → 101 项：路由、网关六道防线、存储契约（内存/MySQL 同一套断言）、图（L1/L2/hop 上限/坏参数）、API（SSE 事件序列、续传三种方式等价、越权、失败收敛、429 与配额头、记忆注入与用量聚合）、配额（分钟/日窗口、用户隔离、Redis fail-open、`Retry-After`）、事件存储（两实现同契约：序号、游标、裁剪、坏数据跳过）、记忆（抽取规则、ADD/UPDATE/NOOP、隔离、低置信度过滤）、可观测（request_id/日志字段/readyz 降级）、管理端（403/401、列表筛选、详情含 steps、审计不含正文、伪造 header 无效）。
 - `python -m evals.run` → 三套件、阈值硬卡：`routing ≥ 95%`、`safety = 100%`、`memory = 100%`。
   用例在 `evals/cases.jsonl`，加一行就是加一条回归；报告落 `evals/reports/latest.json`。
 - 三者都不需要真模型：`ScriptedModel` 把模型的输出变成脚本，测的是**我们的编排**，不是模型的智商。
@@ -180,6 +189,12 @@ P1 专项（配额/用量/记忆，用独立账号 `token-7007`，限流放最�
 
 检查：记忆初始为空 → 说一句「它叫 Lumina，对牛奶过敏」→ 接口里能查到 `allergy=牛奶`（含标签与置信度）→
 重复同一句话不产生第二条 → 用量按账号聚合 → 打满配额后 `429 + Retry-After`。
+
+管理端专项（普通用户 403 / 造一条会话 / 管理员列表与详情 / 全局用量 / 无 token 401）：
+
+```bash
+.venv\Scripts\python -m scripts.admin_smoke   # 6/6
+```
 
 ## 记忆是怎么工作的
 

@@ -62,8 +62,10 @@ async def current(request: Request):
     token = request.headers.get("satoken") or ""
     if not token:
         return fail(40100, "未登录")
-    # token-<uid> 约定：让端到端测试能造出"另一个用户"
+    # token-<uid> 约定：让端到端测试能造出"另一个用户"；token-admin 是管理员
     suffix = token.rsplit("-", 1)[-1]
+    if suffix == "admin":
+        return ok({"id": "9001", "role": "admin", "nickname": "管理员"})
     user_id = suffix if suffix.isdigit() else "1001"
     return ok({"id": user_id, "role": "user", "nickname": "测试用户"})
 
@@ -74,7 +76,9 @@ async def login(request: Request):
     phone = str(body.get("phone") or "").strip()
     if not phone or not body.get("password"):
         return fail(40000, "手机号或密码不能为空")
-    # 手机尾号决定测试用户，便于端到端构造不同身份
+    # 139 开头登录管理员，其余按手机尾号区分测试用户，便于端到端构造不同身份
+    if phone.startswith("139"):
+        return ok({"token": "token-admin"})
     return ok({"token": f"token-{phone[-4:]}"})
 
 

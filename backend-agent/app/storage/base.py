@@ -15,10 +15,13 @@ from ..domain.models import (
     MemoryFact,
     Message,
     Run,
+    RunDetail,
     RunStatus,
     Session,
+    SessionSummary,
     Step,
     Usage,
+    UsageOverview,
     UsageSummary,
 )
 
@@ -83,5 +86,29 @@ class AgentRepository(Protocol):
 
     # ---- 用量 ----
     async def usage_summary(self, user_id: str, since: str | None = None) -> UsageSummary: ...
+
+    # ---- 管理端只读（调用方必须先校验 admin 角色，仓储层不做权限判断） ----
+    async def list_sessions(
+        self,
+        *,
+        page: int,
+        page_size: int,
+        user_id: str | None = None,
+        query: str | None = None,
+    ) -> tuple[int, list[SessionSummary]]:
+        """分页列出会话：返回 (总数, 当前页)。排序固定为最近活跃在前。"""
+        ...
+
+    async def get_session_any(self, session_id: str) -> Session | None:
+        """无条件按 id 取会话（管理员视角）；普通用户路径不要用这个。"""
+        ...
+
+    async def list_runs(self, session_id: str) -> list[RunDetail]:
+        """某会话的全部运行轨迹（含 steps），按时间正序。"""
+        ...
+
+    async def usage_overview(self, since: str | None = None) -> UsageOverview:
+        """全局用量：总量 + 按天趋势，只统计 succeeded 的 run。"""
+        ...
 
     async def aclose(self) -> None: ...

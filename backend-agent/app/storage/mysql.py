@@ -17,16 +17,22 @@ from ..core.errors import Forbidden, NotFound
 from ..core.ids import new_id
 from ..domain.models import (
     Citation,
+    DayUsage,
     Intent,
     MemoryFact,
     Message,
     Role,
     Route,
     Run,
+    RunDetail,
     RunStatus,
     Session,
+    SessionSummary,
     Step,
+    StepKind,
+    StepStatus,
     Usage,
+    UsageOverview,
     UsageSummary,
 )
 
@@ -403,24 +409,151 @@ class MySqlRepository:
             avg_latency_ms=int(row[3]),
         )
 
+    # ------------------------------------------------------------ 管理端只读
+    async def list_sessions(
+        self,
+        *,
+        page: int,
+        page_size: int,
+        user_id: str | None = None,
+        query: str | None = None,
+    ) -> tuple[int, list[SessionSummary]]:
+        where = ["is_delete=0"]
+        params: list[Any] = []
+        if user_id:
+            where.append("user_id=%s")
+            params.append(int(user_id))
+        if query:
+            where.append("title LIKE %s")
+            params.append(f"%{query.strip()}%")
+        clause = " AND ".join(where)
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn, conn.cursor() as cur:
+            await cur.execute(f"SELECT COUNT(*) FROM agent_session WHERE {clause}", tuple(params))
+            row = await cur.fetchone()
+            total = int(row[0]) if row else 0
+            await cur.execute(
+                "SELECT id,user_id,pet_id,channel,title,message_count,create_time"
+                f" FROM agent_session WHERE {clause}"
+                " ORDER BY last_message_time DESC, id DESC LIMIT %s OFFSET %s",
+                (*params, int(page_size), int((page - 1) * page_size)),
+            )
+            rows = await cur.fetchall()
+        items = [
+            SessionSummary(
+                id=str(rid),
+                user_id=str(uid),
+                pet_id=str(pid) if pid else None,
+                channel=channel,
+                title=title or "",
+                message_count=int(count or 0),
+                create_time=str(created) if created else None,
+            )
+            for rid, uid, pid, channel, title, count, created in rows
+        ]
+        return total, items
+
+    async def get_session_any(self, session_id: str) -> Session | None:
+        return await self._fetch_session(await self._ensure_pool(), session_id)
+
+    async def list_runs(self, session_id: str) -> list[RunDetail]:
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn, conn.cursor() as cur:
+            await cur.execute(
+                "SELECT id,intent,route,status,prompt_tokens,completion_tokens,latency_ms,error"
+                " FROM agent_run WHERE session_id=%s ORDER BY create_time ASC, id ASC",
+                (int(session_id),),
+            )
+            rows = await cur.fetchall()
+            run_ids = [str(r[0]) for r in rows]
+            steps: dict[str, list[Step]] = {}
+            if run_ids:
+                placeholders = ",".join(["%s"] * len(run_ids))
+                await cur.execute(
+                    "SELECT run_id,seq,kind,name,status,latency_ms,error FROM agent_step"
+                    f" WHERE run_id IN ({placeholders}) ORDER BY run_id ASC, seq ASC",
+                    tuple(int(x) for x in run_ids),
+                )
+                for rid, seq, kind, name, status, latency, error in await cur.fetchall():
+                    steps.setdefault(str(rid), []).append(
+                        Step(
+                            seq=int(seq),
+                            kind=StepKind(kind),
+                            name=name,
+                            status=StepStatus(status),
+                            latency_ms=int(latency or 0),
+                            error=error,
+                        )
+                    )
+        return [
+            RunDetail(
+                id=str(rid),
+                route=Route(route),
+                intent=Intent(intent or "chat"),
+                status=RunStatus(status),
+                prompt_tokens=int(prompt or 0),
+                completion_tokens=int(completion or 0),
+                latency_ms=int(latency or 0),
+                error=error,
+                steps=steps.get(str(rid), []),
+            )
+            for rid, intent, route, status, prompt, completion, latency, error in rows
+        ]
+
+    async def usage_overview(self, since: str | None = None) -> UsageOverview:
+        pool = await self._ensure_pool()
+        where = "r.status='succeeded'"
+        params: list[Any] = []
+        if since:
+            where += " AND r.create_time>=%s"
+            params.append(since)
+        async with pool.acquire() as conn, conn.cursor() as cur:
+            await cur.execute(
+                "SELECT COUNT(*), COUNT(DISTINCT s.user_id),"
+                " COALESCE(SUM(r.prompt_tokens),0), COALESCE(SUM(r.completion_tokens),0),"
+                " COALESCE(AVG(r.latency_ms),0)"
+                " FROM agent_run r JOIN agent_session s ON s.id=r.session_id"
+                f" WHERE {where}",
+                tuple(params),
+            )
+            row = await cur.fetchone()
+            await cur.execute(
+                "SELECT DATE(r.create_time) AS d, COUNT(*),"
+                " COALESCE(SUM(r.prompt_tokens+r.completion_tokens),0)"
+                " FROM agent_run r JOIN agent_session s ON s.id=r.session_id"
+                f" WHERE {where} GROUP BY d ORDER BY d ASC",
+                tuple(params),
+            )
+            day_rows = await cur.fetchall()
+        runs, users, prompt, completion, avg = row if row else (0, 0, 0, 0, 0)
+        return UsageOverview(
+            runs=int(runs or 0),
+            users=int(users or 0),
+            prompt_tokens=int(prompt or 0),
+            completion_tokens=int(completion or 0),
+            avg_latency_ms=int(avg or 0),
+            by_day=[
+                DayUsage(day=str(d), runs=int(c or 0), tokens=int(t or 0)) for d, c, t in day_rows
+            ],
+        )
+
     async def aclose(self) -> None:
         if self._pool is not None:
             self._pool.close()
             await self._pool.wait_closed()
             self._pool = None
-
     # ------------------------------------------------------------ 内部
     async def _fetch_session(self, pool: Any, session_id: str) -> Session | None:
         async with pool.acquire() as conn, conn.cursor() as cur:
             await cur.execute(
-                "SELECT id,user_id,pet_id,channel,title,create_time FROM agent_session"
+                "SELECT id,user_id,pet_id,channel,title,create_time,message_count FROM agent_session"
                 " WHERE id=%s AND is_delete=0",
                 (int(session_id),),
             )
             row = await cur.fetchone()
         if row is None:
             return None
-        sid, uid, pid, channel, title, created = row
+        sid, uid, pid, channel, title, created, count = row
         return Session(
             id=str(sid),
             user_id=str(uid),
@@ -428,6 +561,7 @@ class MySqlRepository:
             channel=channel,
             title=title,
             create_time=str(created),
+            message_count=int(count or 0),
         )
 
     @staticmethod

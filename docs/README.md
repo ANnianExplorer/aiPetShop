@@ -37,7 +37,7 @@
 
 | 文档 | 版本 | 内容 |
 | --- | --- | --- |
-| [spec/agent-runtime-api.md](spec/agent-runtime-api.md) | v1.1 | `/healthz`、`/readyz`、`POST /agent/chat`、事件续传、消息回读的请求/响应/事件/错误码/不变量 |
+| [spec/agent-runtime-api.md](spec/agent-runtime-api.md) | v1.3 | `/healthz`、`/readyz`、`POST /agent/chat`、事件续传、消息回读、记忆/用量、管理端只读接口的请求/响应/事件/错误码/不变量 |
 | [spec/web-chat-ui.md](spec/web-chat-ui.md) | v1.0 | 对话页状态机、交互、持久化键、错误映射、布局约束、i18n 键、非目标 |
 
 ### ADR
@@ -58,6 +58,7 @@
 | 文档 | 范围 | 状态 |
 | --- | --- | --- |
 | [plans/s1.6-production-hardening.md](plans/s1.6-production-hardening.md) | S1.6 生产化加固：P0 工程基线 → P3 记忆扩展，每阶段带可执行验收 | P0、P1 已完成，P2 待启动 |
+| [plans/s1.7-admin-workbench.md](plans/s1.7-admin-workbench.md) | S1.7 管理端「会话工作台」：权限模型、4 个只读接口、两个页面 | 已完成 |
 
 ### REPORT
 
@@ -67,6 +68,7 @@
 | [reports/2026-11-07-web-chat.md](reports/2026-11-07-web-chat.md) | App 聊天页接入 | build 通过、20 前端单测、浏览器端到端走通 |
 | [reports/2026-11-07-s1.6-p0.md](reports/2026-11-07-s1.6-p0.md) | S1.6 P0 工程基线 | ruff/pytest 59/evals/e2e 10-10 全绿；抓到 4 个真实缺陷；docker 未本机验证（无 docker） |
 | [reports/2026-11-08-s1.6-p1.md](reports/2026-11-08-s1.6-p1.md) | S1.6 P1 配额/事件总线/记忆/用量 | 92 单测 + 23 评测 + e2e 10/10 + P1 冒烟 9/9 + Edge 浏览器端到端；Redis/MySQL 未真机联调 |
+| [reports/2026-11-08-s1.7-admin.md](reports/2026-11-08-s1.7-admin.md) | S1.7 管理端会话工作台 | 101 单测 + 管理端冒烟 6/6 + vue-tsc/build 通过 + Edge 浏览器端到端；MySQL 版查询仅契约测试 |
 
 ## 3. 新增文档怎么起头
 

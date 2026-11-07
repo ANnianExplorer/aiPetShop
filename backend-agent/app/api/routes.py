@@ -18,6 +18,13 @@ from ..runtime import AgentRunner, Caller, ChatCommand
 from ..runtime.eventlog import EventStore
 from ..storage.base import AgentRepository
 from .schemas import (
+    AdminDayUsage,
+    AdminRunOut,
+    AdminSessionDetail,
+    AdminSessionItem,
+    AdminSessionList,
+    AdminStepOut,
+    AdminUsageOut,
     ChatRequest,
     HealthOut,
     MemoryFactOut,
@@ -51,12 +58,22 @@ async def _identity(request: Request):
     resolver = request.app.state.identity
     try:
         return await resolver.resolve(
-            _token(request), header_user_id=request.headers.get("x-user-id")
+            _token(request),
+            header_user_id=request.headers.get("x-user-id"),
+            header_role=request.headers.get("x-user-role"),
         )
     except Unauthorized:
         raise
     except Exception as exc:  # 后端不可达时不能伪装成"未登录"
         raise InvalidRequest(f"身份校验失败：{type(exc).__name__}") from exc
+
+
+async def _admin_identity(request: Request):
+    """管理员判定只认后端返回的 role；请求头伪造 role 在 backend 模式下无效。"""
+    identity = await _identity(request)
+    if not identity.is_admin:
+        raise Forbidden("需要管理员权限")
+    return identity
 
 
 def _repo(request: Request) -> AgentRepository:
@@ -248,5 +265,168 @@ async def session_messages(
                 create_time=m.create_time,
             )
             for m in messages
+        ],
+    )
+
+
+# ---------------------------------------------------------------- 管理端（只读）
+admin_log = logging.getLogger("agent.admin")
+
+
+@router.get("/agent/admin/sessions", response_model=AdminSessionList)
+async def admin_sessions(
+    request: Request,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=50),
+    user_id: str | None = Query(default=None, max_length=32),
+    q: str | None = Query(default=None, max_length=64),
+) -> AdminSessionList:
+    """全部会话列表：运营/客服排查的第一入口。"""
+    await _admin_identity(request)
+    total, items = await _repo(request).list_sessions(
+        page=page, page_size=page_size, user_id=user_id, query=q
+    )
+    return AdminSessionList(
+        total=total,
+        page=page,
+        page_size=page_size,
+        items=[
+            AdminSessionItem(
+                id=s.id,
+                user_id=s.user_id,
+                pet_id=s.pet_id,
+                channel=s.channel,
+                title=s.title,
+                message_count=s.message_count,
+                create_time=s.create_time,
+            )
+            for s in items
+        ],
+    )
+
+
+@router.get("/agent/admin/sessions/{session_id}", response_model=AdminSessionDetail)
+async def admin_session_detail(session_id: str, request: Request) -> AdminSessionDetail:
+    """一个会话的全貌：消息流 + 每次运行的步骤轨迹。"""
+    admin = await _admin_identity(request)
+    repo = _repo(request)
+    session = await repo.get_session_any(session_id)
+    if session is None:
+        raise NotFound("会话不存在")
+
+    # 管理员看别人数据必须留痕：只记关系，不记内容
+    log_event(
+        admin_log,
+        logging.INFO,
+        "admin.access",
+        admin_id=admin.user_id,
+        target_user=session.user_id,
+        session_id=session_id,
+    )
+
+    messages = await repo.list_messages(session_id, 200)
+    runs = await repo.list_runs(session_id)
+    return AdminSessionDetail(
+        session=AdminSessionItem(
+            id=session.id,
+            user_id=session.user_id,
+            pet_id=session.pet_id,
+            channel=session.channel,
+            title=session.title,
+            message_count=session.message_count,
+            create_time=session.create_time,
+        ),
+        messages=[
+            MessageOut(
+                id=m.id,
+                role=m.role.value,
+                content=m.content,
+                run_id=m.run_id,
+                citations=[c.to_dict() for c in m.citations],
+                create_time=m.create_time,
+            )
+            for m in messages
+        ],
+        runs=[
+            AdminRunOut(
+                id=r.id,
+                route=r.route.value,
+                intent=r.intent.value,
+                status=r.status.value,
+                prompt_tokens=r.prompt_tokens,
+                completion_tokens=r.completion_tokens,
+                total_tokens=r.total_tokens,
+                latency_ms=r.latency_ms,
+                error=r.error,
+                steps=[
+                    AdminStepOut(
+                        seq=s.seq,
+                        kind=s.kind.value,
+                        name=s.name,
+                        status=s.status.value,
+                        latency_ms=s.latency_ms,
+                        error=s.error,
+                    )
+                    for s in r.steps
+                ],
+            )
+            for r in runs
+        ],
+    )
+
+
+@router.get("/agent/admin/memory", response_model=MemoryOut)
+async def admin_memory(
+    request: Request,
+    user_id: str = Query(..., min_length=1, max_length=32),
+    pet_id: str | None = Query(default=None, max_length=32),
+    limit: int = Query(default=20, ge=1, le=50),
+) -> MemoryOut:
+    """管理员视角看某个账号记住了什么：抽取错了能当场发现。"""
+    admin = await _admin_identity(request)
+    log_event(
+        admin_log,
+        logging.INFO,
+        "admin.access",
+        admin_id=admin.user_id,
+        target_user=user_id,
+        scope="memory",
+    )
+    facts = await _repo(request).list_memory_facts(user_id, pet_id, limit)
+    return MemoryOut(
+        pet_id=pet_id,
+        facts=[
+            MemoryFactOut(
+                id=f.id,
+                key=f.key,
+                label=label_of(f.key),
+                value=f.value,
+                confidence=f.confidence,
+                update_time=f.update_time,
+            )
+            for f in facts
+        ],
+    )
+
+
+@router.get("/agent/admin/usage", response_model=AdminUsageOut)
+async def admin_usage(
+    request: Request,
+    days: int = Query(default=7, ge=1, le=90),
+) -> AdminUsageOut:
+    """全局用量与按天趋势：成本排查与容量预估用。"""
+    await _admin_identity(request)
+    since = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
+    overview = await _repo(request).usage_overview(since)
+    return AdminUsageOut(
+        days=days,
+        runs=overview.runs,
+        users=overview.users,
+        prompt_tokens=overview.prompt_tokens,
+        completion_tokens=overview.completion_tokens,
+        total_tokens=overview.total_tokens,
+        avg_latency_ms=overview.avg_latency_ms,
+        by_day=[
+            AdminDayUsage(day=d.day, runs=d.runs, tokens=d.tokens) for d in overview.by_day
         ],
     )

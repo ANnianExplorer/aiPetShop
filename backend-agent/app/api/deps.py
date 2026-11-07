@@ -27,6 +27,11 @@ _MAX_CACHE = 512
 class Identity:
     user_id: str
     token: str
+    role: str = "user"
+
+    @property
+    def is_admin(self) -> bool:
+        return self.role == "admin"
 
 
 class IdentityResolver:
@@ -35,13 +40,19 @@ class IdentityResolver:
         self._http = http
         self._cache: dict[str, tuple[Identity, float]] = {}
 
-    async def resolve(self, token: str, *, header_user_id: str | None = None) -> Identity:
+    async def resolve(
+        self,
+        token: str,
+        *,
+        header_user_id: str | None = None,
+        header_role: str | None = None,
+    ) -> Identity:
         if not token:
             raise Unauthorized("缺少登录凭证")
         if self._settings.auth_mode == "header":
             if not header_user_id:
                 raise Unauthorized("header 认证模式需要 X-User-Id 请求头")
-            return Identity(user_id=header_user_id, token=token)
+            return Identity(user_id=header_user_id, token=token, role=header_role or "user")
 
         key = hashlib.sha256(token.encode("utf-8")).hexdigest()[:16]
         now = time.monotonic()
@@ -60,7 +71,8 @@ class IdentityResolver:
         if not user_id:
             raise Unauthorized("无法从登录态解析用户身份")
 
-        identity = Identity(user_id=user_id, token=token)
+        # 角色同样只信后端：请求头里的 role 一律忽略（header 模式除外，且仅 dev 可用）
+        identity = Identity(user_id=user_id, token=token, role=str((data or {}).get("role") or "user"))
         if len(self._cache) > _MAX_CACHE:
             self._cache.clear()
         self._cache[key] = (identity, now + self._settings.identity_cache_ttl_s)

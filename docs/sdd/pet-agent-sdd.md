@@ -202,6 +202,19 @@ cd ..\pet-lumina-app; npm run dev
 
 记忆不进向量的边界：`memory_episode` 只存摘要与向量 ID，检索走外部向量库（S2）；事实记忆用精确键查询，不用语义检索——记错比记不住更贵。
 
+### 8.4 管理端只读接入（S1.7）
+
+| 关注点 | 落点 | 约定 |
+| --- | --- | --- |
+| 角色来源 | `app/api/deps.py` 的 `IdentityResolver` | 只信 `GET /api/v1/auth/current` 的 `role`；`x-user-role` 仅 `auth_mode=header`（dev）可用，生产忽略 |
+| 授权点 | `app/api/routes.py::_admin_identity` | 统一 403 `需要管理员权限`；仓储层**不做权限判断**（协议注释写死"调用方必须先校验"） |
+| 查询 | `app/storage/{memory,mysql}.py` | 四个只读方法：`list_sessions` / `get_session_any` / `list_runs` / `usage_overview`；MySQL 版 `list_runs` 用 `WHERE run_id IN (...)` 批量取 step，避免 N+1 |
+| 分页 | `list_sessions` | `LIMIT/OFFSET` + `COUNT(*)` 同条件；排序按最后活跃时间，其次 id |
+| 审计 | `agent.access` 日志 | 只记 `admin_id`/`target_user`/`session_id`，不记消息正文与记忆值 |
+| 前端 | `pet-lumina-web/src/api/agent.ts` | 独立 axios 实例（Agent 是纯 REST，不是 Java 的 `{code,data,message}` 信封）；403/404 直接按 HTTP 状态处理 |
+
+管理端只读是刻意的：**不允许管理员代发消息**。代发会污染用户会话与记忆归属，需要单独的产品与审计设计（S3 再议）。
+
 ## 9. 质量属性
 
 | 属性 | 设计手段 | 验收 |
@@ -213,6 +226,7 @@ cd ..\pet-lumina-app; npm run dev
 | 可审计 | `agent_run/step` + `tool_call_log(args_digest)` | 审计只存摘要的断言 |
 | 可替换 | 分层 + 依赖注入 | 换 `ChatModel`/`AgentRepository` 不改业务 |
 | 可观测 | `x-request-id` + 单行 JSON 日志 + `/readyz` | `test_observability.py`（10 例）；真进程日志实测含 `request_id/user_id/run_id` |
+| 可追溯 | `agent.admin` 只读接口 + `admin.access` 审计 | `test_admin.py`（9 例）+ `scripts.admin_smoke`（6/6）+ 浏览器实测 |
 
 ## 10. 扩展点
 

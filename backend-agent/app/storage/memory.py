@@ -8,14 +8,18 @@ from typing import Any
 from ..core.errors import Forbidden, NotFound
 from ..core.ids import new_id
 from ..domain.models import (
+    DayUsage,
     MemoryFact,
     Message,
     Role,
     Run,
+    RunDetail,
     RunStatus,
     Session,
+    SessionSummary,
     Step,
     Usage,
+    UsageOverview,
     UsageSummary,
 )
 
@@ -64,12 +68,65 @@ class InMemoryRepository:
             return None
         return session
 
+    async def list_sessions(
+        self,
+        *,
+        page: int,
+        page_size: int,
+        user_id: str | None = None,
+        query: str | None = None,
+    ) -> tuple[int, list[SessionSummary]]:
+        items = list(self._sessions.values())
+        if user_id:
+            items = [s for s in items if s.user_id == user_id]
+        if query:
+            q = query.strip().lower()
+            items = [s for s in items if q in (s.title or "").lower()]
+
+        def last_active(s: Session) -> str:
+            msgs = self._messages.get(s.id) or []
+            return (msgs[-1].create_time or "") if msgs else (s.create_time or "")
+
+        items.sort(key=last_active, reverse=True)
+        total = len(items)
+        start = max(0, (page - 1) * page_size)
+        return total, [SessionSummary.of(s) for s in items[start : start + page_size]]
+
+    async def get_session_any(self, session_id: str) -> Session | None:
+        return self._sessions.get(session_id)
+
+    async def list_runs(self, session_id: str) -> list[RunDetail]:
+        out: list[RunDetail] = []
+        for record in self._runs.values():
+            run: Run = record["run"]
+            if run.session_id != session_id:
+                continue
+            usage: Usage = record["usage"]
+            out.append(
+                RunDetail(
+                    id=run.id,
+                    route=run.route,
+                    intent=run.intent,
+                    status=record["status"],
+                    prompt_tokens=usage.prompt_tokens,
+                    completion_tokens=usage.completion_tokens,
+                    latency_ms=int(record["latency_ms"]),
+                    error=record["error"],
+                    steps=list(self._steps.get(run.id, [])),
+                )
+            )
+        out.sort(key=lambda r: r.id)
+        return out
+
     # ------------------------------------------------------------ 消息
     async def add_message(self, msg: Message) -> Message:
         if not msg.id:
             msg.id = new_id()
         msg.create_time = msg.create_time or _now()
         self._messages.setdefault(msg.session_id, []).append(msg)
+        session = self._sessions.get(msg.session_id)
+        if session is not None:
+            session.message_count += 1
         return msg
 
     async def history(self, session_id: str, limit: int) -> list[dict[str, Any]]:
@@ -95,6 +152,7 @@ class InMemoryRepository:
             "error": None,
             "usage": Usage(),
             "latency_ms": 0,
+            "created": _now(),
         }
         self._steps.setdefault(run.id, [])
         return run
@@ -219,9 +277,43 @@ class InMemoryRepository:
             avg_latency_ms=avg,
         )
 
+    async def usage_overview(self, since: str | None = None) -> UsageOverview:
+        runs = 0
+        prompt = 0
+        completion = 0
+        latencies: list[int] = []
+        users: set[str] = set()
+        days: dict[str, list[int]] = {}
+        for record in self._runs.values():
+            if record["status"] is not RunStatus.SUCCEEDED:
+                continue
+            created: str = record.get("created") or ""
+            if since and created < since:
+                continue
+            run: Run = record["run"]
+            session = self._sessions.get(run.session_id)
+            usage: Usage = record["usage"]
+            runs += 1
+            prompt += usage.prompt_tokens
+            completion += usage.completion_tokens
+            latencies.append(int(record["latency_ms"]))
+            if session is not None:
+                users.add(session.user_id)
+            bucket = days.setdefault(created[:10], [0, 0])
+            bucket[0] += 1
+            bucket[1] += usage.total
+        avg = int(sum(latencies) / len(latencies)) if latencies else 0
+        return UsageOverview(
+            runs=runs,
+            users=len(users),
+            prompt_tokens=prompt,
+            completion_tokens=completion,
+            avg_latency_ms=avg,
+            by_day=[DayUsage(day=d, runs=v[0], tokens=v[1]) for d, v in sorted(days.items())],
+        )
+
     async def aclose(self) -> None:
         return None
-
 
 def _now() -> str:
     return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
