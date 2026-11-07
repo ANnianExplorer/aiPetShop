@@ -1,9 +1,11 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { healthApi } from '@/api/health'
 import { useUserStore } from '@/stores/user'
+import { formatDateShort } from '@/utils/format'
+import type { PetHealthData } from '@/types'
 
 const router = useRouter()
 const userStore = useUserStore()
@@ -14,13 +16,13 @@ const goBack = () => {
   router.back()
 }
 
-const weeklyData = ref<any[]>([])
+const weeklyData = ref<PetHealthData[]>([])
 
 onMounted(async () => {
   if (!currentPet.value) return
   try {
     loading.value = true
-    const data = await healthApi.weekly(currentPet.value.id) as any
+    const data = await healthApi.weekly(currentPet.value.id)
     weeklyData.value = Array.isArray(data) ? data : []
   } catch (e) {
     weeklyData.value = []
@@ -37,13 +39,45 @@ const targets = {
   exercise: { min: 30, max: 60, unit: 'min' }
 }
 
-const getIndicatorStatus = (value: number, min: number, max: number) => {
+const hasData = computed(() => weeklyData.value.length > 0)
+
+const average = (pick: (record: PetHealthData) => number | undefined): number | null => {
+  const values = weeklyData.value
+    .map(pick)
+    .filter((value): value is number => typeof value === 'number' && Number.isFinite(value))
+  if (values.length === 0) return null
+  return values.reduce((sum, value) => sum + value, 0) / values.length
+}
+
+const formatNumber = (value: number | null, digits = 0) => {
+  if (value === null) return '--'
+  return digits > 0 ? value.toFixed(digits) : String(Math.round(value))
+}
+
+const formatSteps = (value: number | null) => {
+  if (value === null) return '--'
+  return value >= 1000 ? `${(value / 1000).toFixed(1)}k` : String(Math.round(value))
+}
+
+// 概览全部由后端 weekly 接口的真实记录计算，没有记录时显示 "--"
+const overview = computed(() => [
+  { label: '平均心率', value: formatNumber(average(r => r.heartRate)) },
+  { label: '平均睡眠', value: formatNumber(average(r => r.sleepHours), 1) },
+  { label: '日均步数', value: formatSteps(average(r => r.steps)) },
+  { label: '日均消耗', value: formatNumber(average(r => r.calories)) },
+  { label: '日均运动', value: formatNumber(average(r => r.exercise)) }
+])
+
+type IndicatorStatus = 'good' | 'low' | 'high' | 'unknown'
+
+const getIndicatorStatus = (value: number | undefined, min: number, max: number): IndicatorStatus => {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return 'unknown'
   if (value >= min && value <= max) return 'good'
   if (value < min) return 'low'
   return 'high'
 }
 
-const getStatusColor = (status: string) => {
+const getStatusColor = (status: IndicatorStatus) => {
   switch (status) {
     case 'good': return 'text-emerald-500'
     case 'low': return 'text-amber-500'
@@ -52,16 +86,7 @@ const getStatusColor = (status: string) => {
   }
 }
 
-const getStatusBg = (status: string) => {
-  switch (status) {
-    case 'good': return 'bg-emerald-50'
-    case 'low': return 'bg-amber-50'
-    case 'high': return 'bg-rose-50'
-    default: return 'bg-surface-container'
-  }
-}
-
-const getStatusIcon = (status: string) => {
+const getStatusIcon = (status: IndicatorStatus) => {
   switch (status) {
     case 'good': return 'check_circle'
     case 'low': return 'arrow_downward'
@@ -70,13 +95,22 @@ const getStatusIcon = (status: string) => {
   }
 }
 
-const getStatusText = (status: string) => {
-  switch (status) {
-    case 'good': return '达标'
-    case 'low': return '偏低'
-    case 'high': return '偏高'
-    default: return '正常'
-  }
+const getDayLabel = (record: PetHealthData) => {
+  const formatted = formatDateShort(record.date)
+  return formatted || '--'
+}
+
+// 未填写运动数据时不要显示"运动不足"，避免把缺失当成不达标
+const getExerciseBadge = (value?: number) => {
+  const status = getIndicatorStatus(value, targets.exercise.min, targets.exercise.max)
+  if (status === 'unknown') return { text: '未记录', cls: 'bg-surface-container text-on-surface-variant' }
+  return status === 'good'
+    ? { text: '运动达标', cls: 'bg-emerald-100 text-emerald-700' }
+    : { text: '运动不足', cls: 'bg-amber-100 text-amber-700' }
+}
+
+const goToRecord = () => {
+  router.push({ name: 'recordHealthData' })
 }
 </script>
 
@@ -91,97 +125,99 @@ const getStatusText = (status: string) => {
         <div class="w-10"></div>
       </div>
 
-      <section class="mb-6">
-        <h3 class="font-label-bold text-label-bold text-on-surface mb-3">本周数据概览</h3>
-        <div class="grid grid-cols-5 gap-3">
-          <div class="bg-surface-container-low rounded-xl p-3 text-center">
-            <p class="text-2xl font-display-lg text-on-surface">78</p>
-            <p class="text-xs text-tertiary mt-1">平均心率</p>
-          </div>
-          <div class="bg-surface-container-low rounded-xl p-3 text-center">
-            <p class="text-2xl font-display-lg text-on-surface">9.2</p>
-            <p class="text-xs text-tertiary mt-1">平均睡眠</p>
-          </div>
-          <div class="bg-surface-container-low rounded-xl p-3 text-center">
-            <p class="text-2xl font-display-lg text-on-surface">6.9k</p>
-            <p class="text-xs text-tertiary mt-1">日均步数</p>
-          </div>
-          <div class="bg-surface-container-low rounded-xl p-3 text-center">
-            <p class="text-2xl font-display-lg text-on-surface">434</p>
-            <p class="text-xs text-tertiary mt-1">日均消耗</p>
-          </div>
-          <div class="bg-surface-container-low rounded-xl p-3 text-center">
-            <p class="text-2xl font-display-lg text-on-surface">43</p>
-            <p class="text-xs text-tertiary mt-1">日均运动</p>
-          </div>
-        </div>
-      </section>
+      <div v-if="loading" class="flex flex-col items-center justify-center py-20">
+        <div class="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+        <p class="mt-4 text-on-surface-variant text-sm">加载中…</p>
+      </div>
 
-      <section class="mb-6">
-        <h3 class="font-label-bold text-label-bold text-on-surface mb-3">每日详细数据</h3>
-        <div class="space-y-3">
-          <div 
-            v-for="day in weeklyData" 
-            :key="day.day"
-            class="bg-surface-container-low rounded-xl p-4"
-          >
-            <div class="flex items-center justify-between mb-3">
-              <span class="font-label-bold text-label-bold text-on-surface">{{ day.day }}</span>
-              <div class="flex items-center gap-2">
-                <span class="text-xs px-2 py-0.5 rounded-full" :class="getIndicatorStatus(day.exercise, targets.exercise.min, targets.exercise.max) === 'good' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700'">
-                  {{ getIndicatorStatus(day.exercise, targets.exercise.min, targets.exercise.max) === 'good' ? '运动达标' : '运动不足' }}
-                </span>
-              </div>
+      <template v-else-if="hasData">
+        <section class="mb-6">
+          <h3 class="font-label-bold text-label-bold text-on-surface mb-3">本周数据概览</h3>
+          <div class="grid grid-cols-5 gap-3">
+            <div v-for="item in overview" :key="item.label" class="bg-surface-container-low rounded-xl p-3 text-center">
+              <p class="text-2xl font-display-lg text-on-surface">{{ item.value }}</p>
+              <p class="text-xs text-tertiary mt-1">{{ item.label }}</p>
             </div>
-            <div class="grid grid-cols-5 gap-3">
-              <div class="text-center">
-                <div class="flex items-center justify-center gap-1 mb-1">
-                  <span class="material-symbols-outlined text-sm" :class="getStatusColor(getIndicatorStatus(day.heartRate, targets.heartRate.min, targets.heartRate.max))">
-                    {{ getStatusIcon(getIndicatorStatus(day.heartRate, targets.heartRate.min, targets.heartRate.max)) }}
+          </div>
+        </section>
+
+        <section class="mb-6">
+          <h3 class="font-label-bold text-label-bold text-on-surface mb-3">每日详细数据</h3>
+          <div class="space-y-3">
+            <div
+              v-for="(day, index) in weeklyData"
+              :key="day.date || day.id || index"
+              class="bg-surface-container-low rounded-xl p-4"
+            >
+              <div class="flex items-center justify-between mb-3">
+                <span class="font-label-bold text-label-bold text-on-surface">{{ getDayLabel(day) }}</span>
+                <div class="flex items-center gap-2">
+                  <span
+                    class="text-xs px-2 py-0.5 rounded-full"
+                    :class="getExerciseBadge(day.exercise).cls"
+                  >
+                    {{ getExerciseBadge(day.exercise).text }}
                   </span>
-                  <span class="text-sm font-label-bold text-on-surface">{{ day.heartRate }}</span>
                 </div>
-                <p class="text-[10px] text-tertiary">心率</p>
               </div>
-              <div class="text-center">
-                <div class="flex items-center justify-center gap-1 mb-1">
-                  <span class="material-symbols-outlined text-sm" :class="getStatusColor(getIndicatorStatus(day.sleep, targets.sleep.min, targets.sleep.max))">
-                    {{ getStatusIcon(getIndicatorStatus(day.sleep, targets.sleep.min, targets.sleep.max)) }}
-                  </span>
-                  <span class="text-sm font-label-bold text-on-surface">{{ day.sleep }}</span>
+              <div class="grid grid-cols-5 gap-3">
+                <div class="text-center">
+                  <div class="flex items-center justify-center gap-1 mb-1">
+                    <span class="material-symbols-outlined text-sm" :class="getStatusColor(getIndicatorStatus(day.heartRate, targets.heartRate.min, targets.heartRate.max))">
+                      {{ getStatusIcon(getIndicatorStatus(day.heartRate, targets.heartRate.min, targets.heartRate.max)) }}
+                    </span>
+                    <span class="text-sm font-label-bold text-on-surface">{{ day.heartRate ?? '--' }}</span>
+                  </div>
+                  <p class="text-[10px] text-tertiary">心率</p>
                 </div>
-                <p class="text-[10px] text-tertiary">睡眠</p>
-              </div>
-              <div class="text-center">
-                <div class="flex items-center justify-center gap-1 mb-1">
-                  <span class="material-symbols-outlined text-sm" :class="getStatusColor(getIndicatorStatus(day.steps, targets.steps.min, targets.steps.max))">
-                    {{ getStatusIcon(getIndicatorStatus(day.steps, targets.steps.min, targets.steps.max)) }}
-                  </span>
-                  <span class="text-sm font-label-bold text-on-surface">{{ (day.steps / 1000).toFixed(1) }}k</span>
+                <div class="text-center">
+                  <div class="flex items-center justify-center gap-1 mb-1">
+                    <span class="material-symbols-outlined text-sm" :class="getStatusColor(getIndicatorStatus(day.sleepHours, targets.sleep.min, targets.sleep.max))">
+                      {{ getStatusIcon(getIndicatorStatus(day.sleepHours, targets.sleep.min, targets.sleep.max)) }}
+                    </span>
+                    <span class="text-sm font-label-bold text-on-surface">{{ day.sleepHours ?? '--' }}</span>
+                  </div>
+                  <p class="text-[10px] text-tertiary">睡眠</p>
                 </div>
-                <p class="text-[10px] text-tertiary">步数</p>
-              </div>
-              <div class="text-center">
-                <div class="flex items-center justify-center gap-1 mb-1">
-                  <span class="material-symbols-outlined text-sm" :class="getStatusColor(getIndicatorStatus(day.calories, targets.calories.min, targets.calories.max))">
-                    {{ getStatusIcon(getIndicatorStatus(day.calories, targets.calories.min, targets.calories.max)) }}
-                  </span>
-                  <span class="text-sm font-label-bold text-on-surface">{{ day.calories }}</span>
+                <div class="text-center">
+                  <div class="flex items-center justify-center gap-1 mb-1">
+                    <span class="material-symbols-outlined text-sm" :class="getStatusColor(getIndicatorStatus(day.steps, targets.steps.min, targets.steps.max))">
+                      {{ getStatusIcon(getIndicatorStatus(day.steps, targets.steps.min, targets.steps.max)) }}
+                    </span>
+                    <span class="text-sm font-label-bold text-on-surface">{{ typeof day.steps === 'number' ? (day.steps / 1000).toFixed(1) + 'k' : '--' }}</span>
+                  </div>
+                  <p class="text-[10px] text-tertiary">步数</p>
                 </div>
-                <p class="text-[10px] text-tertiary">消耗</p>
-              </div>
-              <div class="text-center">
-                <div class="flex items-center justify-center gap-1 mb-1">
-                  <span class="material-symbols-outlined text-sm" :class="getStatusColor(getIndicatorStatus(day.exercise, targets.exercise.min, targets.exercise.max))">
-                    {{ getStatusIcon(getIndicatorStatus(day.exercise, targets.exercise.min, targets.exercise.max)) }}
-                  </span>
-                  <span class="text-sm font-label-bold text-on-surface">{{ day.exercise }}</span>
+                <div class="text-center">
+                  <div class="flex items-center justify-center gap-1 mb-1">
+                    <span class="material-symbols-outlined text-sm" :class="getStatusColor(getIndicatorStatus(day.calories, targets.calories.min, targets.calories.max))">
+                      {{ getStatusIcon(getIndicatorStatus(day.calories, targets.calories.min, targets.calories.max)) }}
+                    </span>
+                    <span class="text-sm font-label-bold text-on-surface">{{ day.calories ?? '--' }}</span>
+                  </div>
+                  <p class="text-[10px] text-tertiary">消耗</p>
                 </div>
-                <p class="text-[10px] text-tertiary">运动</p>
+                <div class="text-center">
+                  <div class="flex items-center justify-center gap-1 mb-1">
+                    <span class="material-symbols-outlined text-sm" :class="getStatusColor(getIndicatorStatus(day.exercise, targets.exercise.min, targets.exercise.max))">
+                      {{ getStatusIcon(getIndicatorStatus(day.exercise, targets.exercise.min, targets.exercise.max)) }}
+                    </span>
+                    <span class="text-sm font-label-bold text-on-surface">{{ day.exercise ?? '--' }}</span>
+                  </div>
+                  <p class="text-[10px] text-tertiary">运动</p>
+                </div>
               </div>
             </div>
           </div>
-        </div>
+        </section>
+      </template>
+
+      <section v-else class="flex flex-col items-center justify-center py-20">
+        <span class="material-symbols-outlined text-6xl text-on-surface-variant opacity-30">monitor_heart</span>
+        <p class="mt-4 font-title-md text-on-surface-variant">本周还没有健康记录</p>
+        <button @click="goToRecord" class="mt-4 px-6 py-2 bg-primary text-on-primary rounded-full font-label-bold">
+          去录入
+        </button>
       </section>
 
       <section>

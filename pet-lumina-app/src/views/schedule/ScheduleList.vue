@@ -21,7 +21,7 @@ const reminders = ref<Reminder[]>([])
 
 const fetchReminders = async () => {
   try {
-    const res = await reminderApi.listPage({ pageSize: 50 }) as any
+    const res = await reminderApi.listPage({ pageSize: 50 })
     reminders.value = res?.records ?? []
   } catch (e) {
     console.error('Failed to fetch reminders:', e)

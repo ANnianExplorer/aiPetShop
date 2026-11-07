@@ -19,7 +19,7 @@ const detailLoading = ref(false)
 
 const fetchNotifications = async () => {
   try {
-    const res = await notificationApi.listPage({ pageSize: 20 }) as any
+    const res = await notificationApi.listPage({ pageSize: 20 })
     notifications.value = res?.records || []
   } catch (e) {
     console.error('Failed to fetch notifications:', e)
@@ -28,7 +28,7 @@ const fetchNotifications = async () => {
 
 const fetchUnreadCount = async () => {
   try {
-    unreadCount.value = await notificationApi.unreadCount() as any || 0
+    unreadCount.value = await notificationApi.unreadCount() || 0
   } catch {}
 }
 
@@ -47,7 +47,7 @@ const openDetail = async (notification: Notification) => {
   detailLoading.value = true
   showDetail.value = true
   try {
-    const detail = await notificationApi.getDetail(notification.id) as any
+    const detail = await notificationApi.getDetail(notification.id)
     selectedNotification.value = detail || notification
   } catch {
     selectedNotification.value = notification

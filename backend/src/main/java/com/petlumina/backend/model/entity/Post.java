@@ -28,6 +28,9 @@ public class Post implements Serializable {
 
     private String category;
 
+    /** 所属话题 ID（E12：从 tags 里的 "topic:<id>" 隐式约定改成显式列） */
+    private Long topicId;
+
     private Integer likes;
 
     private Integer comments;

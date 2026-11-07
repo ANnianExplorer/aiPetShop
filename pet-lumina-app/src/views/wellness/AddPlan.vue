@@ -56,6 +56,11 @@ const goBack = () => {
 }
 
 const handleSubmit = async () => {
+  const pet = currentPet.value
+  if (!pet) {
+    showToast('请先选择宠物', 'error')
+    return
+  }
   if (!planType.value || !planTitle.value || !planTime.value) {
     showToast('请填写完整信息', 'error')
     return
@@ -63,7 +68,7 @@ const handleSubmit = async () => {
   try {
     submitting.value = true
     await healthApi.addPlan({
-      petId: currentPet.value!.id,
+      petId: pet.id,
       type: planType.value,
       title: planTitle.value,
       time: planTime.value,

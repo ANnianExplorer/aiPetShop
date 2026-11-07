@@ -23,6 +23,7 @@ public class PostVO implements Serializable {
     private List<String> imageList;
     private List<String> tagList;
     private String category;
+    private Long topicId;
     private Integer likes;
     private Integer comments;
     private Integer isLiked;

@@ -10,7 +10,7 @@ const topics = ref<Topic[]>([])
 
 onMounted(async () => {
   try {
-    const res = await topicApi.listPage({ pageSize: 20 }) as any
+    const res = await topicApi.listPage({ pageSize: 20 })
     topics.value = res?.records || []
   } catch (error) {
     console.error('Failed to fetch topics:', error)

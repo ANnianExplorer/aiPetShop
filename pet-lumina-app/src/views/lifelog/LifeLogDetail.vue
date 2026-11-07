@@ -22,7 +22,7 @@ const showShareModal = ref(false)
 
 onMounted(async () => {
   try {
-    log.value = await logApi.getById(logId.value) as any
+    log.value = await logApi.getById(logId.value)
     likeCount.value = log.value?.likes || 0
   } catch (e) {
     console.error('Failed to fetch log:', e)
@@ -34,7 +34,7 @@ onMounted(async () => {
 
 const toggleLike = async () => {
   try {
-    const result = await logApi.toggleLike(logId.value) as any
+    const result = await logApi.toggleLike(logId.value)
     isLiked.value = !!result
     likeCount.value += result ? 1 : -1
   } catch {

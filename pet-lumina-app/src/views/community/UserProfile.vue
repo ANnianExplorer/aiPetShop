@@ -21,7 +21,7 @@ const followingCount = ref(0)
 
 const fetchUser = async () => {
   try {
-    const res = await userApi.getById(userId.value) as any
+    const res = await userApi.getById(userId.value)
     user.value = res
   } catch (e) {
     console.error('Failed to fetch user:', e)
@@ -30,7 +30,7 @@ const fetchUser = async () => {
 
 const fetchPosts = async () => {
   try {
-    const res = await postApi.listPage({ authorId: userId.value, pageSize: 20 }) as any
+    const res = await postApi.listPage({ authorId: userId.value, pageSize: 20 })
     userPosts.value = res?.records || []
   } catch (e) {
     console.error('Failed to fetch posts:', e)
@@ -43,8 +43,8 @@ const fetchFollowData = async () => {
       followApi.listFollowers({ pageSize: 1 }),
       followApi.listFollowing({ pageSize: 1 }),
     ])
-    followersCount.value = (followersRes as any)?.total ?? 0
-    followingCount.value = (followingRes as any)?.total ?? 0
+    followersCount.value = followersRes?.total ?? 0
+    followingCount.value = followingRes?.total ?? 0
   } catch (e) {
     console.error('Failed to fetch follow data:', e)
   }
@@ -72,7 +72,7 @@ const toggleFollow = async () => {
   }
 }
 
-const goToPostDetail = (postId: number) => {
+const goToPostDetail = (postId: string) => {
   router.push({ name: 'postDetail', params: { id: postId } })
 }
 </script>

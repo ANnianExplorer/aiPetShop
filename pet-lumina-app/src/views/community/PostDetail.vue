@@ -28,19 +28,19 @@ const bookmarkAnimating = ref(false)
 
 const displayComments = computed(() =>
   comments.value.map(c => ({
-    id: String(c.id),
+    id: c.id,
     author: c.user?.nickname ?? t('community.anonymousUser'),
     avatar: c.user?.avatar ?? '',
     content: c.content,
     createdAt: c.createTime,
     likes: c.likes,
-    isLiked: (c as any).isLiked ?? 0
+    isLiked: c.isLiked ?? 0
   }))
 )
 
 const fetchPost = async () => {
   try {
-    const res = await postApi.getById(postId.value) as any
+    const res = await postApi.getById(postId.value)
     post.value = res
   } catch (e) {
     console.error('Failed to fetch post:', e)
@@ -49,7 +49,7 @@ const fetchPost = async () => {
 
 const fetchComments = async () => {
   try {
-    const res = await commentApi.listPage({ postId: postId.value, pageSize: 50 }) as any
+    const res = await commentApi.listPage({ postId: postId.value, pageSize: 50 })
     comments.value = res?.records || []
   } catch (e) {
     console.error('Failed to fetch comments:', e)
@@ -111,9 +111,9 @@ const goBack = () => {
   router.back()
 }
 
-const goToUserProfile = (userId?: number) => {
+const goToUserProfile = (userId?: string) => {
   if (userId != null) {
-    router.push({ name: 'userProfile', params: { id: String(userId) } })
+    router.push({ name: 'userProfile', params: { id: userId } })
   }
 }
 

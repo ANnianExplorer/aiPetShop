@@ -166,6 +166,12 @@ const generateSuggestions = () => {
 }
 
 const handleSubmit = async () => {
+  const pet = currentPet.value
+  if (!pet) {
+    showToast('请先选择宠物', 'error')
+    return
+  }
+
   const filledFields = Object.values(healthData.value).filter(v => v !== '').length
   if (filledFields === 0) {
     showToast('请至少填写一项健康数据', 'error')
@@ -184,7 +190,7 @@ const handleSubmit = async () => {
   try {
     submitting.value = true
     await healthApi.addRecord({
-      petId: currentPet.value!.id,
+      petId: pet.id,
       date: formatDate(new Date()),
       heartRate: healthData.value.heartRate ? Number(healthData.value.heartRate) : undefined,
       sleepHours: healthData.value.sleepHours ? Number(healthData.value.sleepHours) : undefined,

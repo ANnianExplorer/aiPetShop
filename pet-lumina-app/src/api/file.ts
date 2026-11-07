@@ -9,7 +9,7 @@ export const fileApi = {
   uploadImage(file: File, category: string = 'common'): Promise<string> {
     const formData = new FormData()
     formData.append('file', file)
-    return request.post('/file/upload/image', formData, {
+    return request.post<string>('/file/upload/image', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
       params: { category },
     })
@@ -21,7 +21,7 @@ export const fileApi = {
   upload(file: File, category: string = 'common'): Promise<string> {
     const formData = new FormData()
     formData.append('file', file)
-    return request.post('/file/upload', formData, {
+    return request.post<string>('/file/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
       params: { category },
     })

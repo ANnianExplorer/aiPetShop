@@ -453,6 +453,7 @@ DSH 本身就是一个 harness（本仓库的会话就跑在它上面：skills /
 | S1.8 P2 | 真机联调（MySQL 8.0.29 + Redis 5.0.14）、Redis 客户端固定 RESP2、用户维度幂等键（重试回放不重跑）、LLM/后端双熔断 + `/readyz` 联动 | `docs/reports/2026-11-08-s1.8-p2.md`：122 passed、四个冒烟 10/9/6/8、真机 `/readyz` 四项 check |
 | S1.9-a | 旁路任务队列 `TaskQueue`（内存/Redis 两实现、`BRPOPLPUSH` 在途恢复、死信与重试）：记忆抽取与工具审计移出请求路径，队列满退回同步 | `docs/reports/2026-11-08-s1.9-task-queue.md`：134 passed、四个冒烟 10/9/6/8、真机 Redis 队列 `LLEN=0` + `task memory observed` 日志 |
 | S1.9-b | 队列运维闭环：启动时先把在途消息搬回队列（崩溃不丢任务）、死信重放（`attempt` 归零）、`GET /agent/admin/tasks` 现场接口，两项均 admin-only + 审计 | `docs/reports/2026-11-08-s1.9b-deadletter.md`：142 passed、五个冒烟 10/9/6/8/8、真机"在途 1 → 重启回收 → `tool_call_log` 落库" |
+| S1.10–S1.14 | 补 App 历史会话（`GET /agent/sessions` + 抽屉面板）、真实模型冒烟，并把原项目 13 笔卫生债清零：验证码随机化、管理端类型门禁、社区分类/今日提醒、广播已读独立表、排序白名单、真实 HTTP 状态码、仪表盘聚合、数据库口令出仓库、违规管理真实化、管理端用户增改、App 类型收紧、话题归属 `post.topic_id` | `docs/reports/2026-11-08-a2-session-list.md`、`…-a1-real-model-smoke.md`、`…-s1.11…`–`…-s1.14-e9-e12.md`：后端 27 单测、App 37 单测、三端构建、Edge 三页实点 |
 
 **S1 未做**（下一步）：Langfuse 追踪、`agent_run` 与 trace 对齐的自动化校验、多副本熔断共享状态（Redis）、并发压测、RocketMQ 实现（S1.9-c，需 broker）、长运行进程的在途泄漏定期扫描。
 

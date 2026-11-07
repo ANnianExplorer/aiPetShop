@@ -13,31 +13,31 @@ export const useUserStore = defineStore('user', () => {
   const pets = ref<Pet[]>([])
   const tasks = ref<Reminder[]>([])
   const healthPlans = ref<HealthPlan[]>([])
-  const petHealthData = ref<Record<number, PetHealthData>>({})
+  const petHealthData = ref<Record<string, PetHealthData>>({})
   const loading = ref(false)
   const unreadNotifications = ref(0)
 
-  const getPetById = computed(() => (id: number | string) => {
-    // 用 == 而非 ===，避免大数字ID因精度丢失导致字符串/数字不匹配
-    return pets.value.find(pet => String(pet.id) === String(id))
+  const getPetById = computed(() => (id: string | number) => {
+    // 后端 id 是字符串化的雪花号，这里统一按字符串比较
+    return pets.value.find(pet => pet.id === String(id))
   })
 
-  const getTasksByPetId = computed(() => (petId: number) => {
+  const getTasksByPetId = computed(() => (petId: string) => {
     return tasks.value.filter(task => task.petId === petId)
   })
 
-  const getHealthDataByPetId = computed(() => (petId: number) => {
+  const getHealthDataByPetId = computed(() => (petId: string) => {
     return petHealthData.value[petId] || null
   })
 
-  const getHealthPlansByPetId = computed(() => (petId: number) => {
+  const getHealthPlansByPetId = computed(() => (petId: string) => {
     return healthPlans.value.filter(plan => plan.petId === petId)
   })
 
   // 获取当前登录用户
   const fetchCurrentUser = async () => {
     try {
-      const user = await authApi.getCurrentUser() as any
+      const user = await authApi.getCurrentUser()
       currentUser.value = user
       return user
     } catch (e) {
@@ -49,7 +49,7 @@ export const useUserStore = defineStore('user', () => {
   // 获取宠物列表
   const fetchPets = async () => {
     try {
-      const list = await petApi.list() as any
+      const list = await petApi.list()
       pets.value = list || []
       if (pets.value.length > 0 && !currentPet.value) {
         currentPet.value = pets.value[0]
@@ -60,9 +60,9 @@ export const useUserStore = defineStore('user', () => {
   }
 
   // 获取当前宠物的健康数据
-  const fetchHealthData = async (petId: number) => {
+  const fetchHealthData = async (petId: string) => {
     try {
-      const data = await healthApi.dashboard(petId) as any
+      const data = await healthApi.dashboard(petId)
       petHealthData.value[petId] = data
     } catch (e) {
       // ignore
@@ -70,11 +70,11 @@ export const useUserStore = defineStore('user', () => {
   }
 
   // 获取当前宠物的提醒列表
-  const fetchTasks = async (petId?: number) => {
+  const fetchTasks = async (petId?: string) => {
     try {
-      const params: Record<string, any> = { pageSize: 50 }
+      const params: { pageSize: number; petId?: string } = { pageSize: 50 }
       if (petId) params.petId = petId
-      const res = await reminderApi.listPage(params) as any
+      const res = await reminderApi.listPage(params)
       tasks.value = res?.records || []
     } catch (e) {
       tasks.value = []
@@ -82,9 +82,9 @@ export const useUserStore = defineStore('user', () => {
   }
 
   // 获取当前宠物的健康计划
-  const fetchHealthPlans = async (petId: number) => {
+  const fetchHealthPlans = async (petId: string) => {
     try {
-      const res = await healthApi.planListPage({ petId, pageSize: 50 }) as any
+      const res = await healthApi.planListPage({ petId, pageSize: 50 })
       healthPlans.value = res?.records || []
     } catch (e) {
       healthPlans.value = []
@@ -94,7 +94,7 @@ export const useUserStore = defineStore('user', () => {
   // 初始化加载
   const fetchUnreadNotifications = async () => {
     try {
-      unreadNotifications.value = (await notificationApi.unreadCount() as any) || 0
+      unreadNotifications.value = (await notificationApi.unreadCount()) || 0
     } catch {}
   }
 
@@ -122,7 +122,7 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
-  const updatePet = async (petId: number, updates: Partial<Pet>) => {
+  const updatePet = async (petId: string, updates: Partial<Pet>) => {
     await petApi.edit({ id: petId, ...updates })
     await fetchPets()
     if (currentPet.value?.id === petId) {
@@ -135,7 +135,7 @@ export const useUserStore = defineStore('user', () => {
     await fetchPets()
   }
 
-  const switchCurrentPet = (petId: number) => {
+  const switchCurrentPet = (petId: string) => {
     const pet = pets.value.find(p => p.id === petId)
     if (pet) {
       currentPet.value = pet
@@ -145,7 +145,7 @@ export const useUserStore = defineStore('user', () => {
     }
   }
 
-  const updateTaskCompletion = async (taskId: number) => {
+  const updateTaskCompletion = async (taskId: string) => {
     await reminderApi.toggleComplete(taskId)
     const task = tasks.value.find(t => t.id === taskId)
     if (task) {
@@ -156,7 +156,7 @@ export const useUserStore = defineStore('user', () => {
   // 登录
   const login = async (phone: string, password: string) => {
     const res = await authApi.login({ phone, password })
-    localStorage.setItem('satoken', (res as any).token || '')
+    localStorage.setItem('satoken', res.token || '')
     await init()
     return res
   }
@@ -164,7 +164,7 @@ export const useUserStore = defineStore('user', () => {
   // 注册
   const register = async (phone: string, code: string, password: string) => {
     const res = await authApi.register({ phone, code, password })
-    localStorage.setItem('satoken', (res as any).token || '')
+    localStorage.setItem('satoken', res.token || '')
     await init()
     return res
   }

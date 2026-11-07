@@ -1,27 +1,28 @@
 import request from './request'
+import type { PageResult, Reminder } from '@/types'
 
 export const reminderApi = {
   add: (data: {
-    petId?: number; title: string; type?: string; remindTime?: string;
+    petId?: string | number; title: string; type?: string; remindTime?: string;
     location?: string; repeatType?: string; notes?: string
-  }) => request.post('/reminder/add', data),
+  }): Promise<string> => request.post<string>('/reminder/add', data),
 
   edit: (data: {
-    id: number; title?: string; type?: string; remindTime?: string;
+    id: string | number; title?: string; type?: string; remindTime?: string;
     location?: string; repeatType?: string; notes?: string
-  }) => request.post('/reminder/edit', data),
+  }): Promise<boolean> => request.post<boolean>('/reminder/edit', data),
 
-  delete: (id: number) =>
-    request.post('/reminder/delete', { id }),
+  delete: (id: string | number): Promise<boolean> =>
+    request.post<boolean>('/reminder/delete', { id }),
 
-  getById: (id: number | string) =>
-    request.get('/reminder/get/vo', { params: { id: String(id) } }),
+  getById: (id: string | number): Promise<Reminder> =>
+    request.get<Reminder>('/reminder/get/vo', { params: { id: String(id) } }),
 
   listPage: (data: {
     current?: number; pageSize?: number; type?: string;
-    petId?: number; isCompleted?: number; startDate?: string; endDate?: string
-  }) => request.post('/reminder/list/page', data),
+    petId?: string | number; isCompleted?: number; startDate?: string; endDate?: string
+  }): Promise<PageResult<Reminder>> => request.post<PageResult<Reminder>>('/reminder/list/page', data),
 
-  toggleComplete: (id: number | string) =>
-    request.post(`/reminder/complete/${String(id)}`),
+  toggleComplete: (id: string | number): Promise<boolean> =>
+    request.post<boolean>(`/reminder/complete/${String(id)}`),
 }

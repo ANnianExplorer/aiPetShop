@@ -90,7 +90,7 @@ const submitForm = async () => {
   loading.value = true
   try {
     await logApi.add({
-      petId: currentPet.value.id as any,
+      petId: currentPet.value.id,
       type: form.value.type,
       title: form.value.title,
       content: form.value.description || form.value.title,

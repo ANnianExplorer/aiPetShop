@@ -14,6 +14,7 @@ import com.petlumina.backend.model.vo.CommentVO;
 import com.petlumina.backend.service.user.CommentService;
 import com.petlumina.backend.service.user.LikeRecordService;
 import com.petlumina.backend.service.user.UserService;
+import com.petlumina.backend.service.violation.SensitiveWordService;
 import com.petlumina.backend.utils.ThrowUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
@@ -38,6 +39,9 @@ public class CommentController {
     @Resource
     private LikeRecordService likeRecordService;
 
+    @Resource
+    private SensitiveWordService sensitiveWordService;
+
     /**
      * 发表评论
      */
@@ -51,6 +55,9 @@ public class CommentController {
                 ErrorCode.PARAMS_ERROR, "评论内容不能为空");
 
         User loginUser = userService.getLoginUser(httpRequest);
+
+        // 敏感词检测：命中会记录违规并抛出业务异常，阻止本次评论
+        sensitiveWordService.checkAndRecord(request.getContent(), "comment", loginUser.getId());
 
         Comment comment = new Comment();
         comment.setPostId(request.getPostId());

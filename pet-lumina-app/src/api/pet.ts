@@ -1,21 +1,22 @@
 import request from './request'
+import type { PageResult, Pet } from '@/types'
 
 export const petApi = {
-  add: (data: { name: string; type: string; breed?: string; age?: string; notes?: string; avatar?: string }) =>
-    request.post('/pet/add', data),
+  add: (data: { name: string; type: string; breed?: string; age?: string; notes?: string; avatar?: string }): Promise<string> =>
+    request.post<string>('/pet/add', data),
 
-  edit: (data: { id: number; name?: string; breed?: string; age?: string; notes?: string; avatar?: string }) =>
-    request.post('/pet/edit', data),
+  edit: (data: { id: string | number; name?: string; breed?: string; age?: string; notes?: string; avatar?: string }): Promise<boolean> =>
+    request.post<boolean>('/pet/edit', data),
 
-  delete: (id: number) =>
-    request.post('/pet/delete', { id }),
+  delete: (id: string | number): Promise<boolean> =>
+    request.post<boolean>('/pet/delete', { id }),
 
-  getById: (id: number | string) =>
-    request.get('/pet/get/vo', { params: { id: String(id) } }),
+  getById: (id: string | number): Promise<Pet> =>
+    request.get<Pet>('/pet/get/vo', { params: { id: String(id) } }),
 
-  list: () =>
-    request.get('/pet/list'),
+  list: (): Promise<Pet[]> =>
+    request.get<Pet[]>('/pet/list'),
 
-  listPage: (data: { current?: number; pageSize?: number; name?: string; type?: string }) =>
-    request.post('/pet/list/page/vo', data),
+  listPage: (data: { current?: number; pageSize?: number; name?: string; type?: string }): Promise<PageResult<Pet>> =>
+    request.post<PageResult<Pet>>('/pet/list/page/vo', data),
 }

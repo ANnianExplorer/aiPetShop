@@ -3,14 +3,19 @@ import { ref, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { fileApi } from '@/api/file'
+import { userApi } from '@/api/user'
 
 const route = useRoute()
 const router = useRouter()
 const loading = ref(false)
+const submitting = ref(false)
 
 const form = ref({
-  username: '森林语者',
-  phone: '138-xxxx-8888',
+  id: '' as string,
+  nickname: '',
+  phone: '',
+  email: '',
+  role: 'user' as 'user' | 'admin',
   status: true,
 })
 
@@ -32,17 +37,60 @@ const onAvatarChange = async (e: Event) => {
 }
 
 onMounted(async () => {
-  loading.value = true
-  try { /* const res = await userApi.getDetail(route.params.id) */ } catch (e) { console.error(e) } finally { loading.value = false }
-})
-
-const handleSubmit = () => {
-  if (!form.value.username || !form.value.phone) {
-    ElMessage.warning('请填写必填项')
+  const id = String(route.params.id || '')
+  if (!id) {
+    ElMessage.error('缺少用户 ID')
+    router.replace('/user')
     return
   }
-  ElMessage.success('用户信息已更新')
-  router.push('/user')
+  loading.value = true
+  try {
+    const detail: any = await userApi.getDetail(id)
+    // /admin/user/get/vo 返回 { user, pets, posts }，这里只取用户主体
+    const user = detail?.user ?? detail ?? {}
+    form.value = {
+      id: String(user.id ?? id),
+      nickname: user.nickname || '',
+      phone: user.phone || '',
+      email: user.email || '',
+      role: user.role === 'admin' ? 'admin' : 'user',
+      status: user.status !== 0,
+    }
+    avatarUrl.value = user.avatar || ''
+  } catch (e: any) {
+    ElMessage.error(e?.message || '加载用户失败')
+  } finally {
+    loading.value = false
+  }
+})
+
+const handleSubmit = async () => {
+  if (!form.value.nickname.trim() || !form.value.phone.trim()) {
+    ElMessage.warning('昵称和手机号不能为空')
+    return
+  }
+  if (!/^1\d{10}$/.test(form.value.phone.trim())) {
+    ElMessage.warning('手机号格式不正确')
+    return
+  }
+  submitting.value = true
+  try {
+    await userApi.update({
+      id: form.value.id,
+      nickname: form.value.nickname.trim(),
+      phone: form.value.phone.trim(),
+      email: form.value.email.trim(),
+      role: form.value.role,
+      status: form.value.status ? 1 : 0,
+      avatar: avatarUrl.value || undefined,
+    })
+    ElMessage.success('用户信息已更新')
+    router.push('/user')
+  } catch (e: any) {
+    ElMessage.error(e?.message || '更新失败')
+  } finally {
+    submitting.value = false
+  }
 }
 </script>
 
@@ -79,7 +127,7 @@ const handleSubmit = () => {
               <div class="relative group">
                 <div class="w-32 h-32 rounded-full border-4 border-white/50 shadow-xl overflow-hidden glass-panel">
                   <div v-if="!avatarPreview && !avatarUrl" class="w-full h-full bg-gradient-to-br from-primary-container to-primary flex items-center justify-center text-white text-4xl font-bold font-[Plus_Jakarta_Sans]">
-                    {{ form.username.charAt(0) }}
+                    {{ (form.nickname || '?').charAt(0) }}
                   </div>
                   <img v-else :src="avatarPreview || avatarUrl" class="w-full h-full object-cover" />
                 </div>
@@ -95,10 +143,10 @@ const handleSubmit = () => {
             <!-- Input Grid -->
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div class="space-y-2">
-                <label class="text-xs text-on-surface-variant font-[Plus_Jakarta_Sans] font-semibold uppercase tracking-widest ml-1">用户名</label>
+                <label class="text-xs text-on-surface-variant font-[Plus_Jakarta_Sans] font-semibold uppercase tracking-widest ml-1">昵称</label>
                 <div class="relative">
                   <span class="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400">person</span>
-                  <input v-model="form.username" class="glass-input w-full pl-12 pr-4 py-3 rounded-xl text-sm" type="text" />
+                  <input v-model="form.nickname" class="glass-input w-full pl-12 pr-4 py-3 rounded-xl text-sm" type="text" />
                 </div>
               </div>
               <div class="space-y-2">
@@ -107,6 +155,20 @@ const handleSubmit = () => {
                   <span class="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400">smartphone</span>
                   <input v-model="form.phone" class="glass-input w-full pl-12 pr-4 py-3 rounded-xl text-sm" type="tel" />
                 </div>
+              </div>
+              <div class="space-y-2">
+                <label class="text-xs text-on-surface-variant font-[Plus_Jakarta_Sans] font-semibold uppercase tracking-widest ml-1">电子邮箱</label>
+                <div class="relative">
+                  <span class="absolute left-4 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400">mail</span>
+                  <input v-model="form.email" class="glass-input w-full pl-12 pr-4 py-3 rounded-xl text-sm" type="email" />
+                </div>
+              </div>
+              <div class="space-y-2">
+                <label class="text-xs text-on-surface-variant font-[Plus_Jakarta_Sans] font-semibold uppercase tracking-widest ml-1">系统角色</label>
+                <el-select v-model="form.role" style="width: 100%">
+                  <el-option label="普通用户" value="user" />
+                  <el-option label="系统管理员" value="admin" />
+                </el-select>
               </div>
             </div>
 
@@ -138,11 +200,12 @@ const handleSubmit = () => {
                 取消
               </button>
               <button
-                class="px-10 py-3 bg-primary text-white rounded-xl text-xs font-[Plus_Jakarta_Sans] font-semibold uppercase tracking-widest shadow-[0_10px_20px_-5px_rgba(38,106,81,0.4)] hover:scale-105 active:scale-95 transition-all duration-300 flex items-center gap-2 btn-jelly"
+                class="px-10 py-3 bg-primary text-white rounded-xl text-xs font-[Plus_Jakarta_Sans] font-semibold uppercase tracking-widest shadow-[0_10px_20px_-5px_rgba(38,106,81,0.4)] hover:scale-105 active:scale-95 transition-all duration-300 flex items-center gap-2 btn-jelly disabled:opacity-60 disabled:cursor-not-allowed"
                 type="submit"
+                :disabled="submitting || loading"
               >
                 <span class="material-symbols-outlined text-lg">save</span>
-                保存修改
+                {{ submitting ? '保存中…' : '保存修改' }}
               </button>
             </div>
           </form>

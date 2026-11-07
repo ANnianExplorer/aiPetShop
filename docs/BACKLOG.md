@@ -2,7 +2,7 @@
 
 - 状态：活文档（每次交付后更新；做完的条目移到对应 REPORT，并从本表删除）
 - 更新：2026-11-08
-- 基线：`main` @ `fef0913`，已完成到 **S1.9-b**（见 `docs/pet-agent-architecture.md` §12）
+- 基线：`main` @ `fef0913`，已完成到 **S1.14**（见 `docs/pet-agent-architecture.md` §12）
 
 ## 0. 怎么读这份文档
 
@@ -11,7 +11,7 @@
 3. 优先级按"卡不卡产品可用"分：P0 阻断、P1 该做、P2 值得做、P3 以后。
 4. 估算是"一个人、熟悉代码"的量级，不是承诺。
 
-统计：**P0 3 条（A1、A2 已交付）· P1 8 条 · P2 9 条 · P3 9 条 · 原项目卫生债 4 条**，原计划 42 条，其中 A1、A2、E1、E2、E3、E4、E5、E6、E7、E8、E13 已完成（E1/E3/E4/E5 见 `docs/reports/2026-11-08-s1.11-hygiene-debts.md`；E2/E6/E7 见 `docs/reports/2026-11-08-s1.12-e2-e6-e7.md`；E8/E13 见 `docs/reports/2026-11-08-s1.13-e8-e13.md`），剩余 31 条。
+统计：**P0 3 条（A1、A2 已交付）· P1 8 条 · P2 9 条 · P3 9 条 · 原项目卫生债 0 条**，原计划 42 条，其中 A1、A2 与卫生债 E1–E13 **全部完成**（E1/E3/E4/E5 见 `docs/reports/2026-11-08-s1.11-hygiene-debts.md`；E2/E6/E7 见 `docs/reports/2026-11-08-s1.12-e2-e6-e7.md`；E8/E13 见 `docs/reports/2026-11-08-s1.13-e8-e13.md`；E9/E10/E11/E12 见 `docs/reports/2026-11-08-s1.14-e9-e12.md`），剩余 27 条（A3 + P1/P2/P3）。
 
 ---
 
@@ -72,16 +72,18 @@
 
 ---
 
-## 5. 原项目卫生债（S0，已定位；E1–E8、E13 已修，剩 4 条）
+## 5. 原项目卫生债（S0）——**已清零（2026-11-08）**
 
-这些不是 Agent 引入的，但会拖累"企业级"的说法。
+E1–E13 全部完成，本表不再列条目。证据分布：
 
-| # | 位置 | 问题 | 影响 | 修法 |
-|---|---|---|---|---|
-| E9 | `pet-lumina-web/src/views/content/ViolationManage.vue` | 全本地 mock，`// TODO: call API`，无 api 模块 | 页面是假的 | 后端补违规接口，或先隐藏入口 |
-| E10 | `pet-lumina-web` AddUser/EditUser | 提交只弹 toast；EditUser 预填硬编码"森林语者/138-xxxx-8888" | 管理端"能看不能改" | 接真实 create/update 接口 |
-| E11 | `pet-lumina-app` 多页 | 41 处 `as any`（另有 1 处只是注释）、`currentPet.value!.id` 非空断言（`RecordHealthData.vue:187`、`AddPlan.vue:66`）、假数据残留（`WeeklyHealthDetail.vue:98-116`、`BentoDashboard.vue`、`UserInfo.vue:66-81`） | 类型形同虚设，改错要等运行时报错 | 先把 `as any` 换成真实类型（41 处有清单，可逐个清），再处理假数据 |
-| E12 | `TopicController.java:172` + `PostServiceImpl.java:78-86` | `tags` 里搜 `"topic:<id>"` 的隐式约定，只有"从话题页发帖"会写 | 数据关联靠约定，易断 | 加 `post_topic` 关联表，或写清契约 |
+| 批次 | 覆盖 | 报告 |
+|---|---|---|
+| S1.11 | E1 验证码、E3 管理端类型门禁、E4 社区分类、E5 今日提醒 | `docs/reports/2026-11-08-s1.11-hygiene-debts.md` |
+| S1.12 | E2 广播已读、E6 `sortField`、E7 真实 HTTP 状态码 | `docs/reports/2026-11-08-s1.12-e2-e6-e7.md` |
+| S1.13 | E8 仪表盘聚合、E13 数据库口令出仓库 | `docs/reports/2026-11-08-s1.13-e8-e13.md` |
+| S1.14 | E9 违规管理、E10 管理端用户增改、E11 前端类型/假数据、E12 话题归属 | `docs/reports/2026-11-08-s1.14-e9-e12.md` |
+
+遗留观察（不构成卫生债，随对应里程碑处理）：`init.sql` 未合并 v2.13–v2.15 的新表，全新环境需按顺序执行迁移脚本（已写进根 `README.md`）。
 
 ---
 
@@ -103,3 +105,4 @@
 3. ~~**E1 / E3 / E4 / E5 四个小修**~~ ✅ 已完成（2026-11-08）。
 4. ~~**E2 / E6 / E7 三个小修**~~ ✅ 已完成（2026-11-08）：广播已读改用 `notification_read` 表、`sortField` 白名单生效、错误码映射真实 HTTP 状态；下一批建议 E8 / E13（仪表盘 N+1、明文密码）。
 5. ~~**E8 / E13**~~ ✅ 已完成（2026-11-08）：仪表盘趋势改一次 `GROUP BY`、宠物分布改聚合、热门帖作者改批量查；数据库口令移出仓库（环境变量 / `application-local.yml`，且在全仓库清掉了明文）。见 `docs/reports/2026-11-08-s1.13-e8-e13.md`。
+6. ~~**E9 / E10 / E11 / E12**~~ ✅ 已完成（2026-11-08）：违规管理接真实接口、管理端新增/编辑用户真落库、话题归属改 `post.topic_id`、App `as any` 清零 + 假数据下架。见 `docs/reports/2026-11-08-s1.14-e9-e12.md`。**卫生债至此清零**，下一批建议 A3（文件/图片/视频 RAG）或 B1（RocketMQ）。

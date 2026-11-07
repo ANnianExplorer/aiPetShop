@@ -7,7 +7,7 @@ import { useUserStore } from '@/stores/user'
 import { useToast } from '@/composables/useToast'
 import { petApi } from '@/api/pet'
 import { healthApi } from '@/api/health'
-import type { Pet } from '@/types'
+import type { Pet, PetHealthData } from '@/types'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -20,7 +20,7 @@ const petId = computed(() => route.params.id as string)
 const pet = ref<Pet | null>(null)
 const loading = ref(true)
 const errorMsg = ref('')
-const healthRecords = ref<any[]>([])
+const healthRecords = ref<PetHealthData[]>([])
 
 const loadPet = async () => {
   loading.value = true
@@ -29,18 +29,21 @@ const loadPet = async () => {
   if (!id) { pet.value = null; errorMsg.value = t('pet.invalidPetId'); loading.value = false; return }
 
   const storePet = getPetById.value(id)
-  if (storePet) { pet.value = storePet as Pet; loading.value = false }
+  if (storePet) { pet.value = storePet; loading.value = false }
 
   try {
     const res = await petApi.getById(id)
-    if (res) pet.value = res as unknown as Pet
+    if (res) pet.value = res
     else if (!storePet) errorMsg.value = t('pet.petNotFound')
-  } catch (e: any) {
-    if (!storePet) { pet.value = null; errorMsg.value = e?.message || t('pet.fetchFailed') }
+  } catch (error) {
+    if (!storePet) {
+      pet.value = null
+      errorMsg.value = error instanceof Error ? error.message : t('pet.fetchFailed')
+    }
   } finally { loading.value = false }
 
   try {
-    const hRes = await healthApi.recordListPage({ petId: id as any, pageSize: 5 }) as any
+    const hRes = await healthApi.recordListPage({ petId: id, pageSize: 5 })
     healthRecords.value = hRes?.records || []
   } catch {}
 }
@@ -88,7 +91,7 @@ const saveEdit = async () => {
   if (!editForm.value.name || !editForm.value.breed) { showToast(t('pet.fillRequired'), 'error'); return }
   try {
     const { type, ...rest } = editForm.value
-    await userStore.updatePet(petId.value as any, { ...rest, type: type || undefined } as any)
+    await userStore.updatePet(petId.value, { ...rest, type: type || undefined })
     await loadPet()
     showToast(t('pet.saveSuccess'), 'success')
     isEditing.value = false

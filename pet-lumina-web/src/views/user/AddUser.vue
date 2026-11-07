@@ -3,11 +3,12 @@ import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { fileApi } from '@/api/file'
+import { userApi } from '@/api/user'
 
 const router = useRouter()
 const form = ref({
-  username: '',
-  role: 'user',
+  nickname: '',
+  role: 'user' as 'user' | 'admin',
   phone: '',
   email: '',
   password: '',
@@ -17,6 +18,7 @@ const avatarPreview = ref('')
 const avatarUrl = ref('')
 const avatarInputRef = ref<HTMLInputElement | null>(null)
 const avatarUploading = ref(false)
+const submitting = ref(false)
 
 const passwordStrength = ref(0)
 const passwordLabel = ref('')
@@ -53,17 +55,41 @@ const onAvatarChange = async (e: Event) => {
   } catch { avatarPreview.value = '' } finally { avatarUploading.value = false; input.value = '' }
 }
 
-const handleSubmit = () => {
-  if (!form.value.username || !form.value.phone) {
-    ElMessage.warning('请填写必填项')
+const handleSubmit = async () => {
+  if (!form.value.phone) {
+    ElMessage.warning('请填写手机号')
     return
   }
-  ElMessage.success('用户创建成功')
-  router.push('/user')
+  if (!/^1\d{10}$/.test(form.value.phone)) {
+    ElMessage.warning('手机号格式不正确')
+    return
+  }
+  if (!form.value.password || form.value.password.length < 6) {
+    ElMessage.warning('初始密码至少 6 位')
+    return
+  }
+  submitting.value = true
+  try {
+    const id = await userApi.add({
+      phone: form.value.phone.trim(),
+      password: form.value.password,
+      nickname: form.value.nickname.trim() || undefined,
+      email: form.value.email.trim() || undefined,
+      avatar: avatarUrl.value || undefined,
+      role: form.value.role,
+      status: 1,
+    })
+    ElMessage.success(`用户创建成功（ID ${id}）`)
+    router.push('/user')
+  } catch (e: any) {
+    ElMessage.error(e?.message || '创建失败')
+  } finally {
+    submitting.value = false
+  }
 }
 
 const handleReset = () => {
-  form.value = { username: '', role: 'user', phone: '', email: '', password: '' }
+  form.value = { nickname: '', role: 'user', phone: '', email: '', password: '' }
   passwordStrength.value = 0
 }
 </script>
@@ -121,8 +147,8 @@ const handleReset = () => {
               <div class="grid grid-cols-2 gap-6">
                 <!-- Username -->
                 <div class="col-span-2 sm:col-span-1">
-                  <label class="text-xs text-slate-600 font-[Plus_Jakarta_Sans] font-semibold uppercase tracking-widest mb-2 block">用户名</label>
-                  <input v-model="form.username" class="glass-input w-full px-5 py-4 rounded-2xl text-sm" placeholder="例如：zhang_san" type="text" />
+                  <label class="text-xs text-slate-600 font-[Plus_Jakarta_Sans] font-semibold uppercase tracking-widest mb-2 block">昵称</label>
+                  <input v-model="form.nickname" class="glass-input w-full px-5 py-4 rounded-2xl text-sm" placeholder="例如：森林语者（留空自动生成）" type="text" />
                 </div>
                 <!-- User Role -->
                 <div class="col-span-2 sm:col-span-1">
@@ -130,7 +156,6 @@ const handleReset = () => {
                   <el-select v-model="form.role" style="width: 100%">
                     <el-option label="普通用户" value="user" />
                     <el-option label="系统管理员" value="admin" />
-                    <el-option label="宠物医疗专家" value="expert" />
                   </el-select>
                 </div>
                 <!-- Phone -->
@@ -184,10 +209,11 @@ const handleReset = () => {
                   重置表单
                 </button>
                 <button
-                  class="px-10 py-3.5 rounded-2xl bg-primary-container text-white text-xs font-semibold uppercase tracking-widest shadow-[0_10px_25px_-5px_rgba(109,175,146,0.4)] hover:shadow-[0_15px_30px_-5px_rgba(109,175,146,0.6)] hover:scale-[1.02] active:scale-95 transition-all duration-300 btn-jelly"
+                  class="px-10 py-3.5 rounded-2xl bg-primary-container text-white text-xs font-semibold uppercase tracking-widest shadow-[0_10px_25px_-5px_rgba(109,175,146,0.4)] hover:shadow-[0_15px_30px_-5px_rgba(109,175,146,0.6)] hover:scale-[1.02] active:scale-95 transition-all duration-300 btn-jelly disabled:opacity-60 disabled:cursor-not-allowed"
                   type="submit"
+                  :disabled="submitting"
                 >
-                  创建用户账号
+                  {{ submitting ? '创建中…' : '创建用户账号' }}
                 </button>
               </div>
             </div>

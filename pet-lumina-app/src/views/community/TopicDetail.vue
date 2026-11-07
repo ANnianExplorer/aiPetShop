@@ -19,11 +19,11 @@ const loading = ref(true)
 onMounted(async () => {
   loading.value = true
   try {
-    const topicData = await topicApi.getById(topicId.value) as any
+    const topicData = await topicApi.getById(topicId.value)
     topic.value = topicData
     isFollowing.value = topicData?.isFollowed === 1
 
-    const postsRes = await topicApi.listTopicPosts({ topicId: topicId.value, pageSize: 10 }) as any
+    const postsRes = await topicApi.listTopicPosts({ topicId: topicId.value, pageSize: 10 })
     relatedPosts.value = postsRes?.records || []
   } catch (error) {
     console.error('Failed to fetch topic detail:', error)
@@ -36,8 +36,8 @@ const goBack = () => {
   router.back()
 }
 
-const goToPostDetail = (postId: number) => {
-  router.push({ name: 'postDetail', params: { id: String(postId) } })
+const goToPostDetail = (postId: string) => {
+  router.push({ name: 'postDetail', params: { id: postId } })
 }
 
 const goToCreatePost = () => {

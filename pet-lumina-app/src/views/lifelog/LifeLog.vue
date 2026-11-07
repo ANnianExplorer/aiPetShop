@@ -55,7 +55,7 @@ const loading = ref(false)
 const fetchLogs = async () => {
   loading.value = true
   try {
-    const res = await logApi.listPage({ pageSize: 20 }) as any
+    const res = await logApi.listPage({ pageSize: 20 })
     logs.value = res?.records || []
   } catch (e) {
     console.error('Failed to fetch logs:', e)

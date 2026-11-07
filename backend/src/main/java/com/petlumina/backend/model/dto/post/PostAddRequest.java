@@ -19,4 +19,7 @@ public class PostAddRequest implements Serializable {
     private String tags;
 
     private String category;
+
+    /** 从话题页发帖时带上，服务端校验话题存在后写入 post.topic_id */
+    private Long topicId;
 }

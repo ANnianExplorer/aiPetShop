@@ -57,8 +57,8 @@ onMounted(async () => {
       topicApi.listPage({ pageSize: 10 }),
       postApi.listPage({ pageSize: 10 })
     ])
-    topics.value = (topicRes as any)?.records ?? []
-    posts.value = (postRes as any)?.records ?? []
+    topics.value = topicRes?.records ?? []
+    posts.value = postRes?.records ?? []
   } catch (e) {
     console.error('Failed to fetch community data:', e)
   }

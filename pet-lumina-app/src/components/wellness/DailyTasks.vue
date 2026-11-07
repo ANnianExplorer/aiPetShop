@@ -22,12 +22,12 @@ const toggleTask = (task: HealthPlan) => {
   emit('update', props.tasks)
 }
 
-const getPetName = (petId: number) => {
+const getPetName = (petId: string) => {
   const pet = getPetById.value(petId)
   return pet?.name || ''
 }
 
-const getPetAvatar = (petId: number) => {
+const getPetAvatar = (petId: string) => {
   const pet = getPetById.value(petId)
   return pet?.avatar || ''
 }

@@ -40,7 +40,7 @@ const weeklyAvgSleep = computed(() => {
   return Math.round((data.reduce((sum, d) => sum + (d.sleepHours || 0), 0) / data.length) * 10) / 10
 })
 
-const switchPet = (petId: number) => {
+const switchPet = (petId: string) => {
   userStore.switchCurrentPet(petId)
   showPetSelector.value = false
 }
@@ -122,6 +122,7 @@ const switchPet = (petId: number) => {
         <BentoDashboard
           :weight="currentHealthData.weight"
           :weightChange="currentHealthData.weightChange"
+          :weekly="currentHealthData.weeklyData"
         />
       </div>
       <div class="animate-float-up stagger-3">

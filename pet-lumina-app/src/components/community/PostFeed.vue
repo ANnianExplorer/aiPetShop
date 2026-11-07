@@ -15,17 +15,17 @@ const props = defineProps<{
 
 const showShareModal = ref(false)
 const currentSharePost = ref<{ title: string; image: string; author: string } | null>(null)
-const likingPosts = ref<Set<number>>(new Set())
+const likingPosts = ref<Set<string>>(new Set())
 
-const navigateToPost = (postId: number) => {
-  router.push({ name: 'postDetail', params: { id: String(postId) } })
+const navigateToPost = (postId: string) => {
+  router.push({ name: 'postDetail', params: { id: postId } })
 }
 
 const toggleLike = async (post: Post) => {
   if (likingPosts.value.has(post.id)) return
   likingPosts.value.add(post.id)
   try {
-    const isLiked = await postApi.toggleLike(post.id) as any
+    const isLiked = await postApi.toggleLike(post.id)
     post.isLiked = isLiked ? 1 : 0
     post.likes += isLiked ? 1 : -1
     showToast(isLiked ? '点赞成功' : '已取消点赞', 'success')
@@ -38,7 +38,7 @@ const toggleLike = async (post: Post) => {
 
 const toggleBookmark = async (post: Post) => {
   try {
-    const isFavorited = await postApi.toggleFavorite(post.id) as any
+    const isFavorited = await postApi.toggleFavorite(post.id)
     post.isFavorited = isFavorited ? 1 : 0
     showToast(isFavorited ? '收藏成功' : '已取消收藏', 'success')
   } catch {

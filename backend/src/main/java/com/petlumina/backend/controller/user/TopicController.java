@@ -167,9 +167,9 @@ public class TopicController {
         long current = request.getCurrent();
         long size = request.getPageSize();
 
-        // 通过 tags 字段查询话题下的帖子
+        // 话题归属走显式列（E12：旧实现是 tags LIKE '"topic:<id>"'，数据关联靠字符串约定）
         QueryWrapper<Post> queryWrapper = new QueryWrapper<>();
-        queryWrapper.like("tags", "\"topic:" + request.getTopicId() + "\"");
+        queryWrapper.eq("topic_id", request.getTopicId());
         queryWrapper.orderByDesc("create_time");
 
         Page<Post> page = postService.page(new Page<>(current, size), queryWrapper);

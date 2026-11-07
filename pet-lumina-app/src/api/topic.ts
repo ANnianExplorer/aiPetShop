@@ -1,24 +1,25 @@
 import request from './request'
+import type { PageResult, Post, Topic } from '@/types'
 
 export const topicApi = {
-  add: (data: { title: string; description?: string; image?: string; category?: string }) =>
-    request.post('/topic/add', data),
+  add: (data: { title: string; description?: string; image?: string; category?: string }): Promise<string> =>
+    request.post<string>('/topic/add', data),
 
-  edit: (data: { id: number; title?: string; description?: string; image?: string; category?: string }) =>
-    request.post('/topic/edit', data),
+  edit: (data: { id: string | number; title?: string; description?: string; image?: string; category?: string }): Promise<boolean> =>
+    request.post<boolean>('/topic/edit', data),
 
-  delete: (id: number) =>
-    request.post('/topic/delete', { id }),
+  delete: (id: string | number): Promise<boolean> =>
+    request.post<boolean>('/topic/delete', { id }),
 
-  getById: (id: number | string) =>
-    request.get('/topic/get/vo', { params: { id: String(id) } }),
+  getById: (id: string | number): Promise<Topic> =>
+    request.get<Topic>('/topic/get/vo', { params: { id: String(id) } }),
 
-  listPage: (data: { current?: number; pageSize?: number; category?: string; searchText?: string }) =>
-    request.post('/topic/list/page/vo', data),
+  listPage: (data: { current?: number; pageSize?: number; category?: string; searchText?: string }): Promise<PageResult<Topic>> =>
+    request.post<PageResult<Topic>>('/topic/list/page/vo', data),
 
-  toggleFollow: (id: number | string) =>
-    request.post(`/topic/follow/${String(id)}`),
+  toggleFollow: (id: string | number): Promise<boolean> =>
+    request.post<boolean>(`/topic/follow/${String(id)}`),
 
-  listTopicPosts: (data: { topicId: number | string; current?: number; pageSize?: number }) =>
-    request.post('/topic/list/page/vo/posts', data),
+  listTopicPosts: (data: { topicId: string | number; current?: number; pageSize?: number }): Promise<PageResult<Post>> =>
+    request.post<PageResult<Post>>('/topic/list/page/vo/posts', data),
 }

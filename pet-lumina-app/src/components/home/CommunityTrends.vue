@@ -12,7 +12,7 @@ const goToCommunity = () => {
   router.push({ name: 'community' })
 }
 
-const goToPost = (postId: number) => {
+const goToPost = (postId: string) => {
   router.push({ name: 'postDetail', params: { id: postId } })
 }
 </script>

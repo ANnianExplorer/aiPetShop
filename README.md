@@ -231,6 +231,14 @@ mysql -u root -p < sql/init.sql
 # 2. (可选) 导入开发种子数据
 mysql -u root -p petlumina < sql/seed.sql
 
+# 2.1 按序执行增量脚本（全新库也必须跑，否则缺少 Agent 表、话题归属列、违规词表）
+mysql -u root -p petlumina < sql/v2.10-agent.sql
+mysql -u root -p petlumina < sql/v2.11-agent-memory.sql
+mysql -u root -p petlumina < sql/v2.12-agent-idempotency.sql
+mysql -u root -p petlumina < sql/v2.13-notification-read.sql
+mysql -u root -p petlumina < sql/v2.14-post-topic.sql
+mysql -u root -p petlumina < sql/v2.15-violation.sql
+
 # 3. 配置环境变量 (COS 密钥等)
 export COS_SECRET_ID=your_id
 export COS_SECRET_KEY=your_key
@@ -438,12 +446,12 @@ $env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:yourpwd@127.0.0.1:3306/petlumina"
 cd pet-lumina-app && npm run build && npm test    # vue-tsc + vitest（37 例：SSE / 聊天流 / 分类 / 提醒日期）
 cd pet-lumina-web && npm run typecheck && npm run build   # 管理端 vue-tsc -b（真检查，不是空转）
 
-cd backend && mvn test                            # 后端单测（含验证码生成器 5 例）
+cd backend && mvn test                            # 后端单测 27 例（仪表盘/排序/验证码/用户管理/发帖话题）
 ```
 
 文档入口：[`docs/README.md`](./docs/README.md)（四类文档职责 + 索引），
 面向决策的背景见 [`docs/pet-agent-architecture.md`](./docs/pet-agent-architecture.md)，
-**还差什么**见 [`docs/BACKLOG.md`](./docs/BACKLOG.md)（42 条，按优先级/验收标准列）。
+**还差什么**见 [`docs/BACKLOG.md`](./docs/BACKLOG.md)（原 42 条，剩 27 条；卫生债 E1–E13 已清零）。
 
 ## 更新日志
 

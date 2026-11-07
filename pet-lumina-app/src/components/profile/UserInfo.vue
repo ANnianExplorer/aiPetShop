@@ -33,7 +33,7 @@ const handleFileChange = async (event: Event) => {
   uploading.value = true
   try {
     // 调用后端 /user/update/avatar，同时上传 COS + 更新数据库
-    const url = await userApi.updateAvatar(file) as unknown as string
+    const url = await userApi.updateAvatar(file)
     emit('updateAvatar', url)
     showToast('头像更新成功', 'success')
   } catch (e) {
@@ -63,22 +63,7 @@ const handleFileChange = async (event: Event) => {
       @change="handleFileChange"
     />
     <h1 class="mt-4 font-display-lg text-display-lg text-on-surface">{{ user.nickname }}</h1>
-    <p class="mt-2 font-body-md text-caption-sm text-outline max-w-xs">热爱自然的摄影师，也是两只调皮猫咪的"全职管家"。致力于分享最有温度的养宠生活。</p>
-
-    <!-- Stats Chips -->
-    <div class="mt-6 flex justify-center gap-4">
-      <div class="bg-surface-container-low px-4 py-2 rounded-full flex flex-col items-center min-w-[80px]">
-        <span class="font-label-bold text-label-bold text-primary">128</span>
-        <span class="text-[10px] font-medium text-outline">动态</span>
-      </div>
-      <div class="bg-surface-container-low px-4 py-2 rounded-full flex flex-col items-center min-w-[80px]">
-        <span class="font-label-bold text-label-bold text-primary">1.2k</span>
-        <span class="text-[10px] font-medium text-outline">关注者</span>
-      </div>
-      <div class="bg-surface-container-low px-4 py-2 rounded-full flex flex-col items-center min-w-[80px]">
-        <span class="font-label-bold text-label-bold text-primary">856</span>
-        <span class="text-[10px] font-medium text-outline">获赞</span>
-      </div>
-    </div>
+    <p v-if="user.bio" class="mt-2 font-body-md text-caption-sm text-outline max-w-xs">{{ user.bio }}</p>
+    <p v-else class="mt-2 font-body-md text-caption-sm text-outline max-w-xs">还没有填写个人简介</p>
   </section>
 </template>

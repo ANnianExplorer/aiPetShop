@@ -1,18 +1,22 @@
 import request from './request'
+import type { Notification, PageResult } from '@/types'
 
 export const notificationApi = {
-  listPage: (data: { current?: number; pageSize?: number; type?: string; isRead?: number }) =>
-    request.post('/notification/list/page', data),
+  listPage: (data: { current?: number; pageSize?: number; type?: string; isRead?: number }): Promise<PageResult<Notification>> =>
+    request.post<PageResult<Notification>>('/notification/list/page', data),
 
-  getDetail: (id: number | string) =>
-    request.get('/notification/detail', { params: { id: String(id) } }),
+  getDetail: (id: string | number): Promise<Notification> =>
+    request.get<Notification>('/notification/detail', { params: { id: String(id) } }),
 
-  unreadCount: () =>
-    request.get('/notification/unread/count'),
+  unreadCount: async (): Promise<number> => {
+    // 后端该接口返回 Long，JsonConfig 会序列化成字符串，这里统一收敛为 number
+    const count = await request.get<string | number>('/notification/unread/count')
+    return Number(count) || 0
+  },
 
-  markAsRead: (id: number | string) =>
-    request.post(`/notification/read/${String(id)}`),
+  markAsRead: (id: string | number): Promise<boolean> =>
+    request.post<boolean>(`/notification/read/${String(id)}`),
 
-  markAllAsRead: () =>
-    request.post('/notification/read/all'),
+  markAllAsRead: (): Promise<boolean> =>
+    request.post<boolean>('/notification/read/all'),
 }

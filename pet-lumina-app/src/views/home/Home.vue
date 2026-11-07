@@ -40,14 +40,14 @@ onMounted(async () => {
     const now = new Date()
     const pad = (n: number) => String(n).padStart(2, '0')
     const today = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} 00:00:00`
-    const res = await reminderApi.listPage({ pageSize: 5, startDate: today }) as any
+    const res = await reminderApi.listPage({ pageSize: 5, startDate: today })
     reminders.value = res?.records || []
   } catch (e) {
     reminders.value = []
   }
 
   try {
-    const res = await postApi.listPage({ pageSize: 3 }) as any
+    const res = await postApi.listPage({ pageSize: 3 })
     trends.value = res?.records || []
   } catch (e) {
     trends.value = []

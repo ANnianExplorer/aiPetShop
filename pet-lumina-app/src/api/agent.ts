@@ -181,7 +181,7 @@ export async function fetchSessions(page = 1, pageSize = 20): Promise<AgentSessi
   return { total: payload.total ?? 0, items: payload.items ?? [] }
 }
 
-// ---- 事件载荷收窄：保持 UI 层不写 `as any` ----
+// ---- 事件载荷收窄：保持 UI 层不写宽泛断言 ----
 
 export function isRouteEvent(data: unknown): data is RouteEvent {
   return typeof data === 'object' && data !== null && 'run_id' in data && 'route' in data

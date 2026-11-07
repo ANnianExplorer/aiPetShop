@@ -39,7 +39,31 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post>
     @Resource
     private FavoriteRecordService favoriteRecordService;
 
+    @Resource
+    private com.petlumina.backend.mapper.TopicMapper topicMapper;
+
     private static final String TARGET_TYPE = "post";
+
+    /** 旧数据里话题藏在 tags 的 "topic:<id>" 元素里，统一在这里清掉（E12） */
+    private static String stripTopicTags(String tags) {
+        if (StrUtil.isBlank(tags)) {
+            return tags;
+        }
+        try {
+            cn.hutool.json.JSONArray arr = cn.hutool.json.JSONUtil.parseArray(tags);
+            java.util.List<String> kept = new java.util.ArrayList<>();
+            for (Object item : arr) {
+                String text = String.valueOf(item);
+                if (!text.startsWith("topic:")) {
+                    kept.add(text);
+                }
+            }
+            return cn.hutool.json.JSONUtil.toJsonStr(kept);
+        } catch (Exception e) {
+            log.warn("tags 不是合法 JSON 数组，原样保留: {}", tags);
+            return tags;
+        }
+    }
 
     @Override
     public QueryWrapper<Post> getQueryWrapper(PostQueryRequest request) {
@@ -54,6 +78,10 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post>
                     .like("content", searchText)
                     .or()
                     .like("tags", searchText));
+        }
+        // 话题归属走显式列，不再依赖 tags 里的字符串约定（E12）
+        if (request.getTopicId() != null) {
+            queryWrapper.eq("topic_id", request.getTopicId());
         }
         // 按作者昵称筛选
         if (StrUtil.isNotBlank(authorName)) {
@@ -77,6 +105,11 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post>
         post.setAuthorId(loginUser.getId());
         post.setLikes(0);
         post.setComments(0);
+        // 话题必须先存在，否则会写出一条永远挂不上话题的帖子（E12）
+        if (post.getTopicId() != null) {
+            com.petlumina.backend.model.entity.Topic topic = topicMapper.selectById(post.getTopicId());
+            ThrowUtils.throwIf(topic == null, ErrorCode.NOT_FOUND_ERROR, "话题不存在");
+        }
         // tags 字段如果是普通字符串，转为 JSON 数组格式
         if (StrUtil.isNotBlank(post.getTags()) && !post.getTags().startsWith("[")) {
             String[] tagArr = post.getTags().split("[,，]");
@@ -88,6 +121,8 @@ public class PostServiceImpl extends ServiceImpl<PostMapper, Post>
             sb.append("]");
             post.setTags(sb.toString());
         }
+        // 客户端的旧版本可能还在往 tags 里塞 "topic:<id>"，落库前统一清掉
+        post.setTags(stripTopicTags(post.getTags()));
         // images 字段同理
         if (StrUtil.isNotBlank(post.getImages()) && !post.getImages().startsWith("[")) {
             String[] imgArr = post.getImages().split(",");

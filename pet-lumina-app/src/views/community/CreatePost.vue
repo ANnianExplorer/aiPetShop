@@ -27,7 +27,7 @@ const tagOptions = ['猫咪', '狗狗', '日常', '健康', '户外', '美食', 
 onMounted(async () => {
   if (topicId) {
     try {
-      const topic = await topicApi.getById(topicId) as any
+      const topic = await topicApi.getById(topicId)
       topicTitle.value = topic?.title || ''
     } catch (e) {
       console.error('Failed to fetch topic:', e)
@@ -67,10 +67,11 @@ const submitForm = async () => {
   loading.value = true
   try {
     const tags = [...form.value.tags]
-    if (topicId) tags.push(`topic:${topicId}`)
     await postApi.add({
       content: form.value.content,
       category: form.value.category,
+      // 话题走显式字段，不再塞进 tags（后端 E12：post.topic_id）
+      topicId: topicId ? String(topicId) : undefined,
       images: form.value.images.length > 0 ? JSON.stringify(form.value.images) : undefined,
       tags: tags.length > 0 ? JSON.stringify(tags) : undefined,
     })

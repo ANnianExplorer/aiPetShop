@@ -48,7 +48,7 @@ const toggleEmojiPicker = () => {
 
 const toggleLike = async (comment: CommentItem) => {
   try {
-    const isLiked = await commentApi.toggleLike(comment.id) as any
+    const isLiked = await commentApi.toggleLike(comment.id)
     comment.isLiked = isLiked ? 1 : 0
     comment.likes += isLiked ? 1 : -1
   } catch {

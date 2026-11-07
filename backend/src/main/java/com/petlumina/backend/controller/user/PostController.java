@@ -19,6 +19,7 @@ import com.petlumina.backend.service.user.FavoriteRecordService;
 import com.petlumina.backend.service.user.LikeRecordService;
 import com.petlumina.backend.service.user.PostService;
 import com.petlumina.backend.service.user.UserService;
+import com.petlumina.backend.service.violation.SensitiveWordService;
 import com.petlumina.backend.utils.ThrowUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -51,6 +52,9 @@ public class PostController {
     @Resource
     private FavoriteRecordService favoriteRecordService;
 
+    @Resource
+    private SensitiveWordService sensitiveWordService;
+
     /**
      * 发布帖子
      */
@@ -62,6 +66,9 @@ public class PostController {
         ThrowUtils.throwIf(StrUtil.isBlank(request.getContent()), ErrorCode.PARAMS_ERROR, "帖子内容不能为空");
 
         User loginUser = userService.getLoginUser(httpRequest);
+
+        // 敏感词检测：命中会记录违规并抛出业务异常，阻止本次发布
+        sensitiveWordService.checkAndRecord(request.getContent(), "post", loginUser.getId());
 
         Post post = new Post();
         BeanUtils.copyProperties(request, post);

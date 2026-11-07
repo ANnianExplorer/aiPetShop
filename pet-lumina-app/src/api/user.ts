@@ -1,23 +1,24 @@
 import request from './request'
+import type { User } from '@/types'
 
 export const userApi = {
-  getById: (id: string | number) =>
-    request.get('/user/get/vo', { params: { id: String(id) } }),
+  getById: (id: string | number): Promise<User> =>
+    request.get<User>('/user/get/vo', { params: { id: String(id) } }),
 
-  getLoginUser: () =>
-    request.get('/user/get/login'),
+  getLoginUser: (): Promise<User> =>
+    request.get<User>('/user/get/login'),
 
-  update: (data: { nickname?: string; bio?: string; location?: string }) =>
-    request.post('/user/update', data),
+  update: (data: { nickname?: string; bio?: string; location?: string }): Promise<boolean> =>
+    request.post<boolean>('/user/update', data),
 
-  updateAvatar: (file: File) => {
+  updateAvatar: (file: File): Promise<string> => {
     const formData = new FormData()
     formData.append('file', file)
-    return request.post('/user/update/avatar', formData, {
+    return request.post<string>('/user/update/avatar', formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     })
   },
 
-  updatePassword: (data: { oldPassword: string; newPassword: string }) =>
-    request.post('/user/update/password', data),
+  updatePassword: (data: { oldPassword: string; newPassword: string }): Promise<boolean> =>
+    request.post<boolean>('/user/update/password', data),
 }
