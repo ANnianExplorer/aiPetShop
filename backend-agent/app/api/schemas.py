@@ -14,6 +14,12 @@ class ChatRequest(BaseModel):
     session_id: str | None = Field(default=None, max_length=32, description="会话ID；为空则新建")
     pet_id: str | None = Field(default=None, max_length=32, description="本轮聚焦的宠物ID")
     channel: Literal["app", "web", "internal"] = "app"
+    client_message_id: str | None = Field(
+        default=None,
+        max_length=64,
+        pattern=r"^[A-Za-z0-9_-]{1,64}$",
+        description="客户端生成的幂等键；重试同一条消息时带上它，服务端不会重复执行",
+    )
 
 
 class MessageOut(BaseModel):

@@ -242,6 +242,11 @@ class Run:
     intent: Intent
     model: str
     status: RunStatus = RunStatus.RUNNING
+    # 用户维度：幂等键按 (user_id, idempotency_key) 去重，所以 run 必须自带 user_id。
+    # 冗余一份是有意的——首次请求可能失败在"会话还没建出来"之前，此时只能靠用户定位重试。
+    user_id: str = ""
+    # 幂等键：客户端重试同一条消息时，用它找到已有 run 直接回放，不重复调用模型
+    idempotency_key: str | None = None
 
 
 @dataclass(frozen=True)

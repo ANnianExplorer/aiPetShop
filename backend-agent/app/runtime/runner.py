@@ -42,6 +42,8 @@ class ChatCommand:
     session_id: str | None = None
     pet_id: str | None = None
     channel: str = "app"
+    # 客户端为每条消息生成的幂等键：重试同一个键时回放已有 run，不重复调用模型
+    client_message_id: str | None = None
 
 
 @dataclass(frozen=True)
@@ -90,6 +92,25 @@ class AgentRunner:
             session = await self._repo.get_or_create_session(
                 cmd.session_id, caller.user_id, cmd.pet_id, cmd.channel, cmd.message[:24]
             )
+            # 幂等快路径：同一 key 已经跑过就直接回放，不建消息、不调模型、不重复计费。
+            # 按 user 维度查而不是 session：首次请求可能失败在会话建出来之前。
+            if cmd.client_message_id:
+                existing = await self._repo.find_run_by_idempotency(
+                    caller.user_id, cmd.client_message_id
+                )
+                if existing is not None:
+                    log_event(
+                        run_log,
+                        logging.INFO,
+                        "run replayed",
+                        session_id=session.id,
+                        run_id=existing.id,
+                        idempotency_key=cmd.client_message_id,
+                    )
+                    async for event in self._replay(session.id, existing):
+                        yield event
+                    return
+
             history = await self._repo.history(session.id, self._settings.history_limit)
             memory_lines = await self._recall(caller.user_id, cmd.pet_id)
             user_message = await self._repo.add_message(
@@ -99,12 +120,28 @@ class AgentRunner:
                 Run(
                     id="",
                     session_id=session.id,
+                    user_id=caller.user_id,
                     user_message_id=user_message.id,
                     route=decision.route,
                     intent=decision.intent,
                     model=self._model.name,
+                    idempotency_key=cmd.client_message_id,
                 )
             )
+            if run.user_message_id and run.user_message_id != user_message.id:
+                # 并发撞唯一键：本次新建的 user_message 没被采用，回放已落库的那次运行
+                log_event(
+                    run_log,
+                    logging.INFO,
+                    "run replayed",
+                    session_id=session.id,
+                    run_id=run.id,
+                    idempotency_key=cmd.client_message_id,
+                    reason="unique_key_race",
+                )
+                async for event in self._replay(session.id, run):
+                    yield event
+                return
             run_id = run.id
             self._gateway.reset_run(run_id)
             run_id_var.set(run_id)
@@ -284,6 +321,57 @@ class AgentRunner:
                         int((time.perf_counter() - started) * 1000),
                         "客户端断开或任务被取消",
                     )
+
+    # ------------------------------------------------------------------ 回放
+    async def _replay(self, session_id: str, run: Run) -> AsyncIterator[Event]:
+        """回放一次已完成的运行，而不是重新执行。
+
+        优先用事件日志里的原始事件（保真，客户端拿到的和第一次一模一样）；
+        事件已过期（TTL/进程重启）时退化为按库里的消息重建一条最小事件流——
+        宁可少一个 delta，也不能报错或让客户端永远转圈。
+        """
+        events = await self._eventlog.events(run.id, 0)
+        if events:
+            for event in events:
+                if event.type is EventType.DONE:
+                    event = Event(
+                        EventType.DONE, {**event.data, "replayed": True}, event.seq
+                    )
+                yield event
+            return
+
+        messages = await self._repo.list_messages(session_id, limit=2)
+        answer = next(
+            (m.content for m in reversed(messages) if m.role is Role.ASSISTANT), ""
+        )
+        yield Event(
+            EventType.ROUTE,
+            {
+                "session_id": session_id,
+                "run_id": run.id,
+                "route": run.route.value,
+                "intent": run.intent.value,
+                "reason": "replay:from_db",
+            },
+            1,
+        )
+        yield Event(
+            EventType.DONE,
+            {
+                "session_id": session_id,
+                "run_id": run.id,
+                "route": run.route.value,
+                "intent": run.intent.value,
+                "answer": answer,
+                "citations": [],
+                "steps": [],
+                "usage": {"prompt_tokens": 0, "completion_tokens": 0},
+                "latency_ms": 0,
+                "replayed": True,
+                "replay_mode": "from_db",
+            },
+            2,
+        )
 
     # ------------------------------------------------------------------ 记忆
     async def _recall(self, user_id: str, pet_id: str | None) -> list[str]:

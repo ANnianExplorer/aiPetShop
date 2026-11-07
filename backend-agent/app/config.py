@@ -65,6 +65,9 @@ class Settings(BaseSettings):
     rate_limit_per_day: int = Field(default=300, ge=1)
     rate_limit_backend: Literal["memory", "redis"] = "memory"
     redis_url: str = Field(default="redis://localhost:6379/0", repr=False)
+    # 熔断：下游连续失败 N 次后快速失败，冷却期放一个探测请求
+    circuit_threshold: int = Field(default=5, ge=1, le=100)
+    circuit_cooldown_s: float = Field(default=30.0, gt=0)
 
     # ---- 通道策略 ----
     allowed_channels: tuple[str, ...] = ("app", "web", "internal")

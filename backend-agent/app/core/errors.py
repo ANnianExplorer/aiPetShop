@@ -131,6 +131,24 @@ class RateLimited(AgentError):
         self.retry_after_s = max(1, int(retry_after_s))
 
 
+class CircuitOpen(AgentError):
+    """下游连续失败触发熔断：立即失败，别让请求排队等超时。"""
+
+    code = "circuit_open"
+    http_status = 503
+    retryable = True
+
+    def __init__(
+        self,
+        message: str = "下游服务暂时不可用，请稍后再试",
+        *,
+        retry_after_s: int = 30,
+        breaker: str = "",
+    ) -> None:
+        super().__init__(message, detail={"retry_after_s": retry_after_s, "breaker": breaker})
+        self.retry_after_s = max(1, int(retry_after_s))
+
+
 class InvalidArguments(AgentError):
     code = "invalid_arguments"
     http_status = 422

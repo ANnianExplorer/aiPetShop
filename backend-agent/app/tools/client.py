@@ -12,6 +12,7 @@ from typing import Any
 
 import httpx
 
+from ..core.circuit import CircuitBreaker
 from ..core.errors import BackendError, Unauthorized
 
 AUTH_FAILED_CODE = 40100
@@ -26,21 +27,24 @@ class BackendClient:
         http: httpx.AsyncClient,
         *,
         timeout_s: float = 8.0,
+        breaker: CircuitBreaker | None = None,
     ) -> None:
         self._base = base_url.rstrip("/")
         self._token = token
         self._http = http
         self._timeout = timeout_s
+        # 熔断器由 app 装配时传入并共享（按请求 new 一个永远打不开熔断）
+        self._breaker = breaker or CircuitBreaker("backend")
 
     @property
     def base_url(self) -> str:
         return self._base
 
     async def get(self, path: str, params: dict[str, Any] | None = None) -> Any:
-        return await self._request("GET", path, params=params)
+        return await self._breaker.call(self._request, "GET", path, params=params)
 
     async def post(self, path: str, payload: dict[str, Any] | None = None) -> Any:
-        return await self._request("POST", path, json=payload or {})
+        return await self._breaker.call(self._request, "POST", path, json=payload or {})
 
     async def _request(self, method: str, path: str, **kwargs: Any) -> Any:
         url = self._base + path

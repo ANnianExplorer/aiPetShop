@@ -32,6 +32,8 @@ class InMemoryRepository:
         self._steps: dict[str, list[Step]] = {}
         self._tool_calls: list[dict[str, Any]] = []
         self._facts: dict[tuple[str, str, str], MemoryFact] = {}
+        # 幂等键索引：(session_id, key) -> run_id，模拟库上的唯一键
+        self._idem: dict[tuple[str, str], str] = {}
 
     # ------------------------------------------------------------ 会话
     async def get_or_create_session(
@@ -146,6 +148,15 @@ class InMemoryRepository:
     async def start_run(self, run: Run) -> Run:
         if not run.id:
             run.id = new_id()
+        if run.idempotency_key:
+            key = (run.user_id, run.idempotency_key)
+            existing_id = self._idem.get(key)
+            if existing_id is not None:
+                # 与 MySQL 唯一键同语义：已存在就返回旧 run，不新建（调用方据此回放）
+                existing = self._runs.get(existing_id)
+                if existing is not None:
+                    return existing["run"]
+            self._idem[key] = run.id
         self._runs[run.id] = {
             "run": run,
             "status": RunStatus.RUNNING,
@@ -160,6 +171,12 @@ class InMemoryRepository:
     async def get_run(self, run_id: str) -> Run | None:
         record = self._runs.get(run_id)
         return record["run"] if record else None
+
+    async def find_run_by_idempotency(self, user_id: str, idempotency_key: str) -> Run | None:
+        run_id = self._idem.get((user_id, idempotency_key))
+        if run_id is None:
+            return None
+        return await self.get_run(run_id)
 
     async def add_steps(self, run_id: str, steps: list[Step], start_seq: int = 1) -> None:
         bucket = self._steps.setdefault(run_id, [])

@@ -163,9 +163,9 @@ def _field(fields: Any, name: str) -> str | None:
 
 def create_event_store(settings: Any) -> EventStore:
     if settings.event_backend == "redis":
-        from redis.asyncio import from_url
+        from ..core.redis_client import create_redis
 
-        client = from_url(settings.redis_url, encoding="utf-8", decode_responses=True)
+        client = create_redis(settings.redis_url)
         return RedisEventStore(
             client,
             capacity=settings.event_log_capacity,

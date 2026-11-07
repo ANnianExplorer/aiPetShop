@@ -42,6 +42,18 @@ class AgentRepository(Protocol):
 
     async def start_run(self, run: Run) -> Run: ...
 
+    async def find_run_by_idempotency(self, user_id: str, idempotency_key: str) -> Run | None:
+        """按幂等键查已有运行；查不到返回 None。
+
+        按**用户**而不是会话去重：首次请求可能失败在「会话还没建出来」之前，
+        客户端此时拿不到 session_id，重试只能重发同一条消息；
+        若按会话去重，重试会新建会话再执行一遍，幂等就失效了。
+
+        唯一键 `(user_id, idempotency_key)` 在库层兜底：并发重复提交时，
+        `start_run` 会撞唯一键并回查已有 run，保证「一条消息最多一次执行」。
+        """
+        ...
+
     async def get_run(self, run_id: str) -> Run | None: ...
 
     async def add_steps(self, run_id: str, steps: list[Step], start_seq: int = 1) -> None: ...

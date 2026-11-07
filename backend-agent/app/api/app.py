@@ -18,7 +18,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from ..config import Settings
-from ..core.errors import AgentError, RateLimited
+from ..core.circuit import CircuitBreaker
+from ..core.errors import AgentError, CircuitOpen, RateLimited
 from ..core.logging import configure_logging
 from ..core.ratelimit import RateLimiter, create_rate_limiter
 from ..graph import build_graph
@@ -41,12 +42,22 @@ def create_app(
     http_client: httpx.AsyncClient | None = None,
     limiter: RateLimiter | None = None,
     event_store: EventStore | None = None,
+    llm_breaker: CircuitBreaker | None = None,
+    backend_breaker: CircuitBreaker | None = None,
 ) -> FastAPI:
     settings = settings or Settings()
     configure_logging(settings.log_level)
     http_owned = http_client is None
     http = http_client or httpx.AsyncClient(
         timeout=httpx.Timeout(settings.backend_timeout_s, connect=5.0)
+    )
+
+    # 熔断器必须在 app 生命周期内共享：每个请求 new 一个，失败计数永远到不了阈值
+    llm_breaker = llm_breaker or CircuitBreaker(
+        "llm", threshold=settings.circuit_threshold, cooldown_s=settings.circuit_cooldown_s
+    )
+    backend_breaker = backend_breaker or CircuitBreaker(
+        "backend", threshold=settings.circuit_threshold, cooldown_s=settings.circuit_cooldown_s
     )
 
     repository = repo or create_repository(settings)
@@ -71,12 +82,16 @@ def create_app(
 
     def backend_factory(token: str) -> BackendClient:
         return BackendClient(
-            settings.backend_base_url, token, http, timeout_s=settings.backend_timeout_s
+            settings.backend_base_url,
+            token,
+            http,
+            timeout_s=settings.backend_timeout_s,
+            breaker=backend_breaker,
         )
 
     model_owned = False
     if model is None and settings.model_configured:
-        model = build_model(settings)
+        model = build_model(settings, breaker=llm_breaker)
         model_owned = True
 
     graph = (
@@ -131,11 +146,13 @@ def create_app(
     app.state.memory = memory
     app.state.limiter = rate_limiter
     app.state.identity = IdentityResolver(settings, http)
+    app.state.llm_breaker = llm_breaker
+    app.state.backend_breaker = backend_breaker
 
     @app.exception_handler(AgentError)
     async def _agent_error(_: Request, exc: AgentError) -> JSONResponse:
         headers = {}
-        if isinstance(exc, RateLimited):
+        if isinstance(exc, RateLimited | CircuitOpen):
             # 客户端据此决定退避，不用猜
             headers["Retry-After"] = str(exc.retry_after_s)
         return JSONResponse(status_code=exc.http_status, content=exc.to_payload(), headers=headers)

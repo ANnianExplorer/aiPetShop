@@ -1,7 +1,7 @@
-# 规格：Agent Runtime HTTP/SSE 契约 v1.3
+# 规格：Agent Runtime HTTP/SSE 契约 v1.4
 
 - 状态：Frozen（实现已按此验收；破坏性变更需升 v2）
-- 日期：2026-11-07（v1.2 更新 2026-11-08）
+- 日期：2026-11-08（v1.4 增幂等键与熔断；v1.3 增管理端）
 - 实现：`backend-agent/app/api/`
 - 关联：[SDD](../sdd/pet-agent-sdd.md) · [ADR-0003](../adr/0003-sse-event-contract.md)
 
@@ -47,19 +47,20 @@ Base URL：dev `http://localhost:8099`；路径前缀 `/`（不带 `/api/v1`，�
 200（就绪）：
 
 ```json
-{"status": "ready", "checks": {"repo": "ok", "model": "ok"}}
+{"status": "ready", "checks": {"repo": "ok", "model": "ok", "circuit:llm": "ok", "circuit:backend": "ok"}}
 ```
 
 503（未就绪）：`checks` 里对应项给出原因，且**不返回堆栈**：
 
 ```json
-{"status": "degraded", "checks": {"repo": "ConnectionError", "model": "ok"}}
+{"status": "degraded", "checks": {"repo": "ConnectionError", "model": "ok", "circuit:llm": "ok", "circuit:backend": "open"}}
 ```
 
 | 检查项 | 通过条件 | 失败取值 |
 | --- | --- | --- |
 | `repo` | 存储真正可用：内存版恒 ok；MySQL 版执行 `SELECT 1` | 异常类名（如 `ConnectionError`） |
 | `model` | `PET_AGENT_LLM_API_KEY` 非空 | `not_configured` |
+| `circuit:llm` / `circuit:backend` | 熔断器未打开（`closed` / `half_open`；`half_open` 允许探活） | `open` |
 
 ## 3.2 通用响应头与日志字段
 
@@ -83,8 +84,9 @@ Base URL：dev `http://localhost:8099`；路径前缀 `/`（不带 `/api/v1`，�
 | `session_id` | string? | 否 | ≤32；为空则新建会话 |
 | `pet_id` | string? | 否 | ≤32；随工具上下文下发 |
 | `channel` | enum | 否 | `app` / `web` / `internal`，默认 `app`；不在 `allowed_channels` → 403 `forbidden` |
+| `client_message_id` | string? | 否 | ≤64，`^[A-Za-z0-9_-]{1,64}$`；**幂等键**，见 4.2 |
 
-未知字段 → **422**（`extra=forbid`，防止前端偷偷传 `user_id`）。
+未知字段 → **422**（`extra=forbid`，防止前端偷偷传 `user_id`）。`client_message_id` 不合法（空格、中文、超长）同样 422。
 
 ### 4.2 响应
 
@@ -99,6 +101,25 @@ Base URL：dev `http://localhost:8099`；路径前缀 `/`（不带 `/api/v1`，�
 ```
 
 响应头必须带 `Retry-After`（秒，≥1）。
+
+上游连续失败触发熔断时同样**不建立 SSE**，直接 `503`：
+
+```json
+{ "code": "circuit_open", "message": "模型服务暂时不可用，请稍后再试", "retryable": true,
+  "detail": { "retry_after_s": 30, "breaker": "llm" } }
+```
+
+#### 幂等（`client_message_id`）
+
+| 场景 | 行为 |
+| --- | --- |
+| 首次请求带 `client_message_id` | 正常执行；`done` 事件里**没有** `replayed` 字段 |
+| 同用户、同 key 再次请求 | 不新建消息、不调模型、不计费；回放已有 run 的事件流，`done.replayed=true`，`run_id` 与首次相同 |
+| 并发两个同 key 请求 | 库层唯一键 `(user_id, idempotency_key)` 兜底：败者走回放，不重复执行 |
+| 事件日志已过期（TTL/进程重启） | 退化为按库内消息重建 `route` + `done`（`replay_mode="from_db"`），**不报错** |
+
+去重维度是**用户**不是会话：首次请求可能失败在「会话还没建出来」之前，此时客户端只有 key、没有 `session_id`。
+不同用户用同一个 key 互不影响。
 
 每条事件：
 
@@ -218,17 +239,23 @@ data: {"text":"9月1日打过疫苗，"}
 | I13 | 记忆写入/召回失败不影响本轮回答（降级为无记忆） | `app/runtime/runner.py` 的 `_recall`/`_observe` 兜底；`test_api.py::test_recalled_memory_is_injected_into_system_prompt` |
 | I14 | `/agent/admin/**` 只有 `role == "admin"` 可访问；伪造 `x-user-role` 在 backend 模式无效 | `test_admin.py::test_forged_role_header_is_ignored` |
 | I15 | 管理端读取他人数据必留 `admin.access` 审计，且不落正文 | `test_admin.py::test_admin_detail_audit_log` |
+| I16 | 同用户同 `client_message_id` 重试只执行一次：不重复调模型、不重复落消息、不重复计费 | `test_idempotency.py::test_same_key_does_not_execute_twice`、`scripts.idempotency_smoke` |
+| I17 | 熔断打开后新请求快速失败 `503 circuit_open` + `Retry-After`，**不再打下游**；401/422 不计入失败 | `test_circuit.py::test_opens_after_threshold_and_fails_fast`、`test_client_errors_do_not_trip_breaker` |
+| I18 | 熔断打开时 `/readyz` 返回 503 且 `checks["circuit:*"] == "open"`，`/healthz` 仍 200 | `test_circuit.py::test_readyz_reports_open_circuit` |
 
 ## 8. 验收用例（可执行）
 
 ```powershell
 cd backend-agent
-.\.venv\Scripts\python -m pytest          # 101 passed
-.\.venv\Scripts\python -m evals.run       # routing 15/15, safety 6/6, memory 2/2
-.\.venv\Scripts\python -m scripts.e2e_smoke   # 10/10
-.\.venv\Scripts\python -m scripts.p1_smoke    # 9/9（配额/用量/记忆）
-.\.venv\Scripts\python -m scripts.admin_smoke # 6/6（管理端权限与列表/详情/用量）
-.\.venv\Scripts\ruff.exe check .          # All checks passed
+# 含真机仓储契约测试（需要 DSN，否则跳过 mysql 变体）
+$env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:yzh521@127.0.0.1:3306/petlumina"
+.\.venv\Scripts\python -m pytest              # 122 passed
+.\.venv\Scripts\python -m evals.run           # routing 15/15, safety 6/6, memory 2/2
+.\.venv\Scripts\python -m scripts.e2e_smoke       # 10/10
+.\.venv\Scripts\python -m scripts.p1_smoke        # 9/9（配额/用量/记忆）
+.\.venv\Scripts\python -m scripts.admin_smoke     # 6/6（管理端权限与列表/详情/用量）
+.\.venv\Scripts\python -m scripts.idempotency_smoke  # 8/8（幂等键）
+.\.venv\Scripts\ruff.exe check .              # All checks passed
 ```
 
 ## 9. 变更记录
@@ -239,3 +266,4 @@ cd backend-agent
 | v1.1 | 2026-11-07 | 增 `/readyz`、`x-request-id`、日志字段约定与 I9–I10（S1.6 P0） |
 | v1.2 | 2026-11-08 | 增 `/agent/memory/me`、`/agent/usage/me`、429 与配额头、I11–I13（S1.6 P1） |
 | v1.3 | 2026-11-08 | 增 6.3 管理端只读接口、`admin.access` 审计、I14–I15（S1.7） |
+| v1.4 | 2026-11-08 | 增 `client_message_id` 幂等语义、`503 circuit_open`、`/readyz` 熔断检查、I16–I18（S1.8 P2） |

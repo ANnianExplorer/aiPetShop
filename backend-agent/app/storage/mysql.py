@@ -13,6 +13,8 @@ from datetime import datetime
 from typing import Any
 from urllib.parse import unquote, urlparse
 
+import pymysql.err
+
 from ..core.errors import Forbidden, NotFound
 from ..core.ids import new_id
 from ..domain.models import (
@@ -197,40 +199,70 @@ class MySqlRepository:
             run.id = new_id()
         pool = await self._ensure_pool()
         async with pool.acquire() as conn, conn.cursor() as cur:
-            await cur.execute(
-                "INSERT INTO agent_run (id,session_id,user_message_id,intent,route,status,model)"
-                " VALUES (%s,%s,%s,%s,%s,'running',%s)",
-                (
-                    int(run.id),
-                    int(run.session_id),
-                    int(run.user_message_id) if run.user_message_id else None,
-                    run.intent.value,
-                    run.route.value,
-                    run.model,
-                ),
-            )
+            try:
+                await cur.execute(
+                    "INSERT INTO agent_run"
+                    " (id,session_id,user_id,user_message_id,intent,route,status,model,"
+                    " idempotency_key)"
+                    " VALUES (%s,%s,%s,%s,%s,%s,'running',%s,%s)",
+                    (
+                        int(run.id),
+                        int(run.session_id),
+                        int(run.user_id) if run.user_id else 0,
+                        int(run.user_message_id) if run.user_message_id else None,
+                        run.intent.value,
+                        run.route.value,
+                        run.model,
+                        run.idempotency_key,
+                    ),
+                )
+            except pymysql.err.IntegrityError:
+                # 并发重复提交：唯一键 (user_id, idempotency_key) 拦下，回查已有 run
+                existing = await self.find_run_by_idempotency(
+                    run.user_id, run.idempotency_key or ""
+                )
+                if existing is None:
+                    raise
+                return existing
         return run
+
+    async def find_run_by_idempotency(self, user_id: str, idempotency_key: str) -> Run | None:
+        if not idempotency_key or not user_id:
+            return None
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn, conn.cursor() as cur:
+            await cur.execute(
+                "SELECT id FROM agent_run WHERE user_id=%s AND idempotency_key=%s",
+                (int(user_id), idempotency_key),
+            )
+            row = await cur.fetchone()
+        if row is None:
+            return None
+        return await self.get_run(str(row[0]))
 
     async def get_run(self, run_id: str) -> Run | None:
         pool = await self._ensure_pool()
         async with pool.acquire() as conn, conn.cursor() as cur:
             await cur.execute(
-                "SELECT id,session_id,user_message_id,intent,route,status,model FROM agent_run"
-                " WHERE id=%s",
+                "SELECT id,session_id,user_id,user_message_id,intent,route,status,model,"
+                " idempotency_key"
+                " FROM agent_run WHERE id=%s",
                 (int(run_id),),
             )
             row = await cur.fetchone()
         if row is None:
             return None
-        rid, sid, umid, intent, route, status, model = row
+        rid, sid, uid, umid, intent, route, status, model, idem = row
         return Run(
             id=str(rid),
             session_id=str(sid),
+            user_id=str(uid or ""),
             user_message_id=str(umid) if umid else "",
             route=Route(route),
             intent=Intent(intent or "chat"),
             model=model or "",
             status=RunStatus(status),
+            idempotency_key=idem,
         )
 
     async def add_steps(self, run_id: str, steps: list[Step], start_seq: int = 1) -> None:
@@ -273,6 +305,11 @@ class MySqlRepository:
         error: str | None = None,
     ) -> None:
         pool = await self._ensure_pool()
+        try:
+            rid = int(run_id)
+        except (TypeError, ValueError) as exc:
+            # 非数字 id 在雪花 id 空间里不可能存在，按"找不到"处理，而不是抛 ValueError 炸成 500
+            raise NotFound(f"运行不存在：{run_id}") from exc
         async with pool.acquire() as conn, conn.cursor() as cur:
             await cur.execute(
                 "UPDATE agent_run SET status=%s,prompt_tokens=%s,completion_tokens=%s,"
@@ -283,11 +320,11 @@ class MySqlRepository:
                     usage.completion_tokens,
                     latency_ms,
                     (error or "")[:512] or None,
-                    int(run_id),
+                    rid,
                 ),
             )
             if cur.rowcount == 0:
-                await cur.execute("SELECT status FROM agent_run WHERE id=%s", (int(run_id),))
+                await cur.execute("SELECT status FROM agent_run WHERE id=%s", (rid,))
                 row = await cur.fetchone()
                 if row is None:
                     raise NotFound(f"运行不存在：{run_id}")
@@ -295,7 +332,7 @@ class MySqlRepository:
             await cur.execute(
                 "UPDATE agent_session s JOIN agent_run r ON r.session_id=s.id"
                 " SET s.total_tokens=s.total_tokens+%s WHERE r.id=%s",
-                (usage.total, int(run_id)),
+                (usage.total, rid),
             )
 
     async def audit_tool_call(

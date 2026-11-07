@@ -88,7 +88,12 @@ async def test_readyz_ok(client: httpx.AsyncClient) -> None:
     assert response.status_code == 200
     body = response.json()
     assert body["status"] == "ready"
-    assert body["checks"] == {"repo": "ok", "model": "ok"}
+    checks = body["checks"]
+    assert checks["repo"] == "ok"
+    assert checks["model"] == "ok"
+    # 熔断器是 /readyz 的一等公民：打开时要能把实例踢出负载均衡
+    assert checks["circuit:llm"] == "ok"
+    assert checks["circuit:backend"] == "ok"
 
 
 async def test_readyz_degrades_when_repo_unavailable(client: httpx.AsyncClient) -> None:

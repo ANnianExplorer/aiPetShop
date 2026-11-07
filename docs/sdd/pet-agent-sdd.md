@@ -98,7 +98,7 @@ sequenceDiagram
 | --- | --- | --- |
 | `agent_session` | `id`, `user_id`, `pet_id`, `title`, `message_count`, `status` | 会话有主；`user_id` 只能来自 token |
 | `agent_message` | `id`, `session_id`, `role`, `content`, `citations_json`, `run_id` | 只存 `user`/`assistant`；正序 |
-| `agent_run` | `id`, `session_id`, `status`, `route`, `prompt_tokens`, `completion_tokens`, `latency_ms`, `error_code` | 必须落到终态（succeeded/failed/cancelled） |
+| `agent_run` | `id`, `session_id`, `user_id`, `status`, `route`, `prompt_tokens`, `completion_tokens`, `latency_ms`, `error_code`, `idempotency_key` | 必须落到终态（succeeded/failed/cancelled）；唯一键 `(user_id, idempotency_key)` 保证「一条消息最多执行一次」 |
 | `agent_step` | `id`, `run_id`, `seq`, `kind`, `name`, `status`, `latency_ms`, `error` | `(run_id, seq)` 连续 |
 | `tool_call_log` | `id`, `run_id`, `tool_name`, `args_digest`, `ok`, `error_code`, `latency_ms` | 只存 sha256 前 16 位摘要，不存原文 |
 | `memory_fact` | `id`, `user_id`, `pet_id`, `fact_key`, `fact_value`, `confidence`, `source` | 唯一键 `(user_id, pet_id, fact_key)`；`pet_id=0` 表示无宠物维度 |
@@ -151,6 +151,8 @@ SSE 里错误以 `event: error` 出现，载荷 `{code, message, retryable, deta
 | `PET_AGENT_EVENT_BACKEND` | `memory` | `memory` / `redis`（Redis Stream，跨进程续传） |
 | `PET_AGENT_REDIS_URL` | `redis://localhost:6379/0` | 事件流与配额共用 |
 | `PET_AGENT_LOG_LEVEL` | `INFO` | 日志级别 |
+| `PET_AGENT_CIRCUIT_THRESHOLD` | `5` | 连续失败多少次打开熔断 |
+| `PET_AGENT_CIRCUIT_COOLDOWN_S` | `30` | 熔断冷却期，过后放一个探测请求 |
 
 ## 8. 部署（dev）
 
@@ -215,6 +217,21 @@ cd ..\pet-lumina-app; npm run dev
 
 管理端只读是刻意的：**不允许管理员代发消息**。代发会污染用户会话与记忆归属，需要单独的产品与审计设计（S3 再议）。
 
+### 8.5 韧性：幂等与熔断（S1.8 P2）
+
+| 关注点 | 落点 | 约定 |
+| --- | --- | --- |
+| 幂等键 | `ChatRequest.client_message_id` | `^[A-Za-z0-9_-]{1,64}$`；非法在入口 422，不落库 |
+| 去重维度 | `agent_run` 唯一键 `(user_id, idempotency_key)` | 按**用户**而不是会话：首次请求可能失败在会话建出来之前，此时客户端只有 key |
+| 重试路径 | `AgentRunner.stream` 快路径 + `_replay` | 命中即回放事件流，`done.replayed=true`；不建消息、不调模型、不计费 |
+| 事件缺失 | `_replay` 退化分支 | `eventlog` 已过期时按库内消息重建 `route` + `done`（`replay_mode="from_db"`），绝不报错 |
+| 并发 | MySQL 唯一键 + `IntegrityError` 回查 | 败者拿到旧 run 并回放；内存实现用同语义的 `dict` 兜底 |
+| 熔断 | `app/core/circuit.py` | 三态 `closed → open → half_open`；阈值 5、冷却 30s 可配；`half_open` 只放**一个**探测 |
+| 熔断范围 | LLM 客户端与 Java 后端客户端各自一个 | 熔断器在 `create_app` 装配时创建并共享；按请求 new 永远打不开 |
+| 失败计数口径 | `counts_as_failure` | 非 `AgentError` 一律算失败；`AgentError` 只算 `retryable=True`（401/403/422 是调用方问题，不熔断后端） |
+| 暴露方式 | `503 circuit_open` + `Retry-After`；`/readyz` 的 `checks.circuit:*` | 快速失败不再打下游；liveness 不受影响 |
+| Redis 兼容 | `app/core/redis_client.py` | 统一 `protocol=2`：Redis 5 不支持 RESP3 的 `HELLO`，用默认 RESP3 会直接连不上（真机抓到的 D1） |
+
 ## 9. 质量属性
 
 | 属性 | 设计手段 | 验收 |
@@ -227,6 +244,8 @@ cd ..\pet-lumina-app; npm run dev
 | 可替换 | 分层 + 依赖注入 | 换 `ChatModel`/`AgentRepository` 不改业务 |
 | 可观测 | `x-request-id` + 单行 JSON 日志 + `/readyz` | `test_observability.py`（10 例）；真进程日志实测含 `request_id/user_id/run_id` |
 | 可追溯 | `agent.admin` 只读接口 + `admin.access` 审计 | `test_admin.py`（9 例）+ `scripts.admin_smoke`（6/6）+ 浏览器实测 |
+| 不重复计费 | 用户维度幂等键 + 回放 | `test_idempotency.py`（4 例）+ `scripts.idempotency_smoke`（8/8，真 MySQL/Redis） |
+| 故障隔离 | 熔断 + `503` 快速失败 + 探针降级 | `test_circuit.py`（8 例）+ 真机 `/readyz` 四项 check |
 
 ## 10. 扩展点
 

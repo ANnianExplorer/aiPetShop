@@ -118,6 +118,16 @@ async def readyz(request: Request) -> JSONResponse:
         checks["model"] = "not_configured"
         ready = False
 
+    # 熔断打开时说明下游已经在连续失败：此时接流量只会把请求排进超时队列
+    for name in ("llm_breaker", "backend_breaker"):
+        breaker = getattr(request.app.state, name, None)
+        if breaker is None:
+            continue
+        snap = breaker.snapshot()
+        checks[f"circuit:{snap.name}"] = "ok" if snap.healthy else "open"
+        if not snap.healthy:
+            ready = False
+
     payload = {"status": "ready" if ready else "degraded", "checks": checks}
     log_event(ready_log, logging.WARNING if not ready else logging.INFO, "readiness check", **checks)
     return JSONResponse(payload, status_code=200 if ready else 503)
@@ -154,6 +164,7 @@ async def chat(payload: ChatRequest, request: Request) -> StreamingResponse:
         session_id=payload.session_id,
         pet_id=payload.pet_id,
         channel=payload.channel,
+        client_message_id=payload.client_message_id,
     )
 
     async def events() -> AsyncIterator[str]:

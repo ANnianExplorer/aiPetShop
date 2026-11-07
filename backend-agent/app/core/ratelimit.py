@@ -152,8 +152,8 @@ def _prune(bucket: deque[float], deadline: float) -> None:
 
 def create_rate_limiter(settings: Any) -> RateLimiter:
     if settings.rate_limit_backend == "redis":
-        from redis.asyncio import from_url
+        from .redis_client import create_redis
 
-        client = from_url(settings.redis_url, encoding="utf-8", decode_responses=True)
+        client = create_redis(settings.redis_url)
         return RedisRateLimiter(client, settings.rate_limit_per_minute, settings.rate_limit_per_day)
     return InMemoryRateLimiter(settings.rate_limit_per_minute, settings.rate_limit_per_day)

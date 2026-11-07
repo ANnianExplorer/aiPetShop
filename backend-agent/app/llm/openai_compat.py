@@ -18,6 +18,7 @@ from typing import Any
 import httpx
 
 from ..config import Settings
+from ..core.circuit import CircuitBreaker, counts_as_failure
 from ..core.errors import ModelError
 from ..domain.models import Usage
 from .base import ChatModel, LLMReply, StreamChunk, ToolCall
@@ -26,7 +27,13 @@ _RETRY_STATUS = frozenset({408, 409, 425, 429, 500, 502, 503, 504})
 
 
 class OpenAICompatModel(ChatModel):
-    def __init__(self, settings: Settings, client: httpx.AsyncClient | None = None) -> None:
+    def __init__(
+        self,
+        settings: Settings,
+        client: httpx.AsyncClient | None = None,
+        *,
+        breaker: CircuitBreaker | None = None,
+    ) -> None:
         if not settings.llm_api_key:
             raise ModelError("PET_AGENT_LLM_API_KEY 未配置", code="model_not_configured", http_status=503)
         self._settings = settings
@@ -36,6 +43,14 @@ class OpenAICompatModel(ChatModel):
             timeout=httpx.Timeout(settings.llm_timeout_s, connect=10.0),
             headers={"Authorization": f"Bearer {settings.llm_api_key}"},
         )
+        # 熔断器默认自带一个：单测直接 new 模型也能获得保护，不需要额外接线
+        self._breaker = breaker or CircuitBreaker(
+            "llm", threshold=settings.circuit_threshold, cooldown_s=settings.circuit_cooldown_s
+        )
+
+    @property
+    def breaker(self) -> CircuitBreaker:
+        return self._breaker
 
     @property
     def name(self) -> str:
@@ -47,6 +62,11 @@ class OpenAICompatModel(ChatModel):
 
     # ------------------------------------------------------------------ 非流式
     async def complete(
+        self, messages: list[dict[str, Any]], tools: list[dict[str, Any]] | None = None
+    ) -> LLMReply:
+        return await self._breaker.call(self._complete, messages, tools)
+
+    async def _complete(
         self, messages: list[dict[str, Any]], tools: list[dict[str, Any]] | None = None
     ) -> LLMReply:
         payload: dict[str, Any] = {
@@ -101,6 +121,23 @@ class OpenAICompatModel(ChatModel):
 
     # ------------------------------------------------------------------ 流式
     async def stream(self, messages: list[dict[str, Any]]) -> AsyncIterator[StreamChunk]:
+        self._breaker.ensure_allowed()
+        try:
+            async for chunk in self._stream_guarded(messages):
+                yield chunk
+        except GeneratorExit:  # 客户端断开：不算下游故障，只释放探测名额
+            self._breaker.release()
+            raise
+        except Exception as exc:
+            if counts_as_failure(exc):
+                self._breaker.record_failure()
+            else:
+                self._breaker.release()
+            raise
+        else:
+            self._breaker.record_success()
+
+    async def _stream_guarded(self, messages: list[dict[str, Any]]) -> AsyncIterator[StreamChunk]:
         payload: dict[str, Any] = {
             "model": self._settings.llm_model,
             "messages": messages,
@@ -210,5 +247,10 @@ def _parse_sse_line(line: str) -> StreamChunk | None:
     return StreamChunk(text=text) if text else None
 
 
-def build_model(settings: Settings, client: httpx.AsyncClient | None = None) -> ChatModel:
-    return OpenAICompatModel(settings, client)
+def build_model(
+    settings: Settings,
+    client: httpx.AsyncClient | None = None,
+    *,
+    breaker: CircuitBreaker | None = None,
+) -> ChatModel:
+    return OpenAICompatModel(settings, client, breaker=breaker)

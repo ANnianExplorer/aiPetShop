@@ -104,11 +104,11 @@ async def test_finish_run_once_only(repo: AgentRepository) -> None:
 
 async def test_finish_unknown_run(repo: AgentRepository) -> None:
     with pytest.raises(NotFound):
-        await repo.finish_run("no-such-run", RunStatus.SUCCEEDED, Usage(), 1)
+        await repo.finish_run("9999999999999999999", RunStatus.SUCCEEDED, Usage(), 1)
 
 
 async def test_audit_tool_call(repo: AgentRepository) -> None:
-    await repo.audit_tool_call("run-1", "search_logs", True, None, 12, "abc123")
+    await repo.audit_tool_call("9000000000000000001", "search_logs", True, None, 12, "abc123")
     if isinstance(repo, InMemoryRepository):
         assert repo.tool_calls()[0]["name"] == "search_logs"
 
