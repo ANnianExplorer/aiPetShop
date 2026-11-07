@@ -208,7 +208,7 @@ PetLumina 是一个面向宠物主人的智能生活管理与社区互动平台�
 | aiomysql | 0.3 | 会话 / 消息 / 运行 / 记忆落库 |
 | redis-py | 8.1（RESP2） | 事件存储、限流、旁路任务队列 |
 | ruff | 0.17 | lint 门禁 |
-| pytest + pytest-asyncio | 9.2 / 1.4 | 142 项契约测试 |
+| pytest + pytest-asyncio | 9.2 / 1.4 | 146 项契约测试 |
 
 ## 快速开始
 
@@ -388,7 +388,7 @@ ai-PetShop/
 │   │   ├── llm/                     # ChatModel 协议 / OpenAI 兼容实现 / 脚本化桩
 │   │   ├── core/                    # 错误模型 / ID 生成 / 日志 / 熔断 / 限流 / Redis 客户端
 │   │   └── domain/                  # 领域模型 / 事件 / 意图路由
-│   ├── tests/                       # 142 项契约级测试 + 本地桩（Java / LLM）
+│   ├── tests/                       # 146 项契约级测试 + 本地桩（Java / LLM）
 │   ├── evals/                       # 23 条评测用例 + 三套阈值门禁
 │   ├── scripts/                     # 5 个真进程冒烟脚本
 │   ├── Dockerfile                   # 多阶段构建 + 非 root
@@ -417,7 +417,7 @@ Agent 侧的验收是"可复现命令"，不是口头结论：
 ```powershell
 cd backend-agent
 $env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:yourpwd@127.0.0.1:3306/petlumina"
-.venv\Scripts\python -m pytest            # 142 passed（含真机 MySQL 契约）
+.venv\Scripts\python -m pytest            # 146 passed（含真机 MySQL 契约）
 .venv\Scripts\python -m evals.run         # routing 15/15、safety 6/6、memory 2/2
 .venv\Scripts\python -m scripts.e2e_smoke          # 10/10（SSE / 续传 / 越权）
 .venv\Scripts\python -m scripts.p1_smoke           # 9/9（配额 / 记忆 / 用量）
@@ -451,10 +451,10 @@ cd pet-lumina-web && npm run build                # 管理端类型检查
 - 工程基线：单行 JSON 日志 + `x-request-id`、`/readyz` 四检、依赖精确锁定、多阶段非 root 镜像、CI（ruff + pytest + evals + build）
 - 韧性：用户级配额（429 + `Retry-After`）、用户维度幂等键（重试只执行一次）、LLM/后端双熔断
 - 旁路任务：`TaskQueue`（内存 / Redis）+ 启动补偿 + 死信重放 + 队列现场接口
-- App：首页「问 Lumina」入口 + 全屏对话页（流式、工具提示、引用回跳、历史会话恢复）
+- App：首页「问 Lumina」入口 + 全屏对话页（流式、工具提示、引用回跳、历史会话恢复）+ **历史会话面板**（`GET /agent/sessions`，列表切换与刷新恢复）
 - 管理端：会话工作台（会话列表 / 详情：对话流 + 运行轨迹 + 长期记忆 / 全局用量）
-- 文档体系：9 条 ADR、2 份 SPEC、1 份 SDD、5 份 PLAN、8 份 REPORT（见 `docs/README.md`）
-- 验收：142 单测、23 条评测、5 个真进程冒烟（10/9/6/8/8）、`ruff` 全绿
+- 文档体系：9 条 ADR、2 份 SPEC、1 份 SDD、5 份 PLAN、9 份 REPORT（见 `docs/README.md`）
+- 验收：146 单测、23 条评测、5 个真进程冒烟（10/9/6/8/8）、`ruff` 全绿
 
 ### v2.7 (2026-06-03)
 

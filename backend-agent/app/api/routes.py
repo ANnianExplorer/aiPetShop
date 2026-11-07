@@ -36,6 +36,8 @@ from .schemas import (
     MessagesOut,
     ReplayDeadLetterOut,
     ReplayDeadLetterRequest,
+    SessionItemOut,
+    SessionListOut,
     UsageOut,
 )
 
@@ -252,6 +254,35 @@ async def memory_me(
                 update_time=f.update_time,
             )
             for f in facts
+        ],
+    )
+
+
+@router.get("/agent/sessions", response_model=SessionListOut)
+async def my_sessions(
+    request: Request,
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=50),
+) -> SessionListOut:
+    """我的会话列表：App 历史入口。只返回本人会话，按最后活跃时间倒序。"""
+    identity = await _identity(request)
+    total, items = await _repo(request).list_sessions(
+        page=page, page_size=page_size, user_id=identity.user_id
+    )
+    return SessionListOut(
+        total=total,
+        page=page,
+        page_size=page_size,
+        items=[
+            SessionItemOut(
+                id=s.id,
+                pet_id=s.pet_id,
+                channel=s.channel,
+                title=s.title,
+                message_count=s.message_count,
+                create_time=s.create_time,
+            )
+            for s in items
         ],
     )
 

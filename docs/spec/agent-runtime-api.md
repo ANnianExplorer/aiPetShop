@@ -1,7 +1,7 @@
-# 规格：Agent Runtime HTTP/SSE 契约 v1.6
+# 规格：Agent Runtime HTTP/SSE 契约 v1.7
 
 - 状态：Frozen（实现已按此验收；破坏性变更需升 v2）
-- 日期：2026-11-08（v1.6 增队列运维接口与 I19–I21；v1.5 记忆最终一致；v1.4 幂等与熔断；v1.3 管理端）
+- 日期：2026-11-08（v1.7 增 App 会话列表与 I22；v1.6 队列运维接口；v1.5 记忆最终一致；v1.4 幂等与熔断；v1.3 管理端）
 - 实现：`backend-agent/app/api/`
 - 关联：[SDD](../sdd/pet-agent-sdd.md) · [ADR-0003](../adr/0003-sse-event-contract.md)
 
@@ -237,6 +237,21 @@ data: {"text":"9月1日打过疫苗，"}
 - 重放本身写 `admin.access`，`scope=tasks.replay:<topic>`；
 - 死信列表只留最近 `TASK_MAX_ATTEMPTS` 轮之后的条目，不做无限堆积（超过 `limit` 的留在死信里，可多次重放）。
 
+## 6.5 我的会话列表（S1.10 / BACKLOG A2）
+
+App 的历史入口。只返回 **token 解析出的本人**会话，不接受 `user_id` 参数（传了也没用）。
+
+| 接口 | 参数 | 返回 |
+| --- | --- | --- |
+| `GET /agent/sessions` | `page`（≥1，默认 1）、`page_size`（1–50，默认 20） | `{total, page, page_size, items:[{id, pet_id, channel, title, message_count, create_time}]}` |
+
+约定：
+
+- 排序按会话**最后一条消息**时间倒序；同一秒内建立的两个会话按 id 倒序（雪花号），与 MySQL 的 `ORDER BY last_message_time DESC, id DESC` 同语义；
+- 摘要里**不含 `user_id`**：本来就是自己的数据，前端不需要，也避免把别人 id 带出去；
+- `total` 是全量条数，不是当前页条数（前端分页要用它）；
+- 没有 token → `401`；分页参数越界 → `422`。
+
 ## 7. 不变量（必须永远成立）
 
 | 编号 | 断言 | 验证 |
@@ -262,6 +277,7 @@ data: {"text":"9月1日打过疫苗，"}
 | I19 | 进程启动时先把「在途」消息搬回队列再开消费，崩溃不丢任务 | `test_task_queue.py::test_recover_returns_inflight_messages`；真机日志 `task inflight recovered on startup` |
 | I20 | 死信重放后 `attempt` 归零，否则一次失败又立刻进死信 | `test_task_queue.py::test_replay_dead_letter_resets_attempt` |
 | I21 | 队列现场与死信重放只有 `role == "admin"` 可访问 | `test_admin.py::test_admin_replays_dead_letters` |
+| I22 | `GET /agent/sessions` 只返回本人会话；他人会话不出现在列表里，`user_id` 不出现在载荷里 | `test_sessions_api.py::test_sessions_are_isolated_by_user` |
 
 ## 8. 验收用例（可执行）
 
@@ -269,7 +285,7 @@ data: {"text":"9月1日打过疫苗，"}
 cd backend-agent
 # 含真机仓储契约测试（需要 DSN，否则跳过 mysql 变体）
 $env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:yzh521@127.0.0.1:3306/petlumina"
-.\.venv\Scripts\python -m pytest              # 142 passed
+.\.venv\Scripts\python -m pytest              # 146 passed
 .\.venv\Scripts\python -m evals.run           # routing 15/15, safety 6/6, memory 2/2
 .\.venv\Scripts\python -m scripts.e2e_smoke       # 10/10
 .\.venv\Scripts\python -m scripts.p1_smoke        # 9/9（配额/用量/记忆）
@@ -290,3 +306,4 @@ $env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:yzh521@127.0.0.1:3306/petlumina"
 | v1.4 | 2026-11-08 | 增 `client_message_id` 幂等语义、`503 circuit_open`、`/readyz` 熔断检查、I16–I18（S1.8 P2） |
 | v1.5 | 2026-11-08 | `/agent/memory/me` 补一致性说明：`TASK_BACKEND=memory\|redis` 时写入最终一致（S1.9-a）；验收命令 122 passed、补 `idempotency_smoke` |
 | v1.6 | 2026-11-08 | 增 6.4 队列运维接口（查看现场 + 死信重放）、I19–I21（启动补偿/重放归零/仅管理员）；验收命令 142 passed、补 `tasks_smoke`（S1.9-b） |
+| v1.7 | 2026-11-08 | 增 6.5 我的会话列表 `GET /agent/sessions`（本人隔离/排序/分页语义）与 I22；验收命令 146 passed（BACKLOG A2） |

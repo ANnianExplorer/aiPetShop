@@ -7,12 +7,13 @@ import 'vant/es/toast/style'
 import {
   AgentRequestError,
   fetchSessionMessages,
+  fetchSessions,
   streamChat,
 } from '@/api/agent'
 import { applyAgentEvent, historyToBubbles } from '@/utils/chatStream'
 import { useUserStore } from '@/stores/user'
 import type { AgentEvent } from '@/api/agent'
-import type { AgentCitation, ChatBubble, ToolEvent } from '@/types/agent'
+import type { AgentCitation, AgentSessionItem, ChatBubble, ToolEvent } from '@/types/agent'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -27,6 +28,10 @@ const sessionId = ref<string | null>(localStorage.getItem(SESSION_KEY))
 const scroller = ref<HTMLElement | null>(null)
 const input = ref<HTMLTextAreaElement | null>(null)
 const lastError = ref<string>('')
+const historyOpen = ref(false)
+const historyLoading = ref(false)
+const historyError = ref('')
+const sessions = ref<AgentSessionItem[]>([])
 
 let controller: AbortController | null = null
 let seqCounter = 0
@@ -165,6 +170,47 @@ function startNewChat() {
   sessionId.value = null
   bubbles.value = []
   lastError.value = ''
+  historyOpen.value = false
+}
+
+/** 打开历史面板：每次打开都重新拉，避免显示过期列表 */
+async function openHistory() {
+  if (streaming.value) {
+    showToast(t('chat.thinking'))
+    return
+  }
+  historyOpen.value = true
+  historyLoading.value = true
+  historyError.value = ''
+  try {
+    const page = await fetchSessions(1, 20)
+    sessions.value = page.items
+  } catch (error) {
+    if (error instanceof AgentRequestError && (error.code === 'unauthorized' || error.code === 'http_401')) {
+      localStorage.removeItem('satoken')
+      historyOpen.value = false
+      showToast(t('chat.loginExpired'))
+      void router.push('/login')
+      return
+    }
+    historyError.value = t('chat.historyLoadFailed')
+  } finally {
+    historyLoading.value = false
+  }
+}
+
+/** 切换到某个历史会话：先清空气泡再回读，避免上一条会话的内容串进来 */
+function openSession(id: string) {
+  historyOpen.value = false
+  if (id === sessionId.value) return
+  rememberSession(id)
+  bubbles.value = []
+  lastError.value = ''
+  void loadHistory()
+}
+
+function formatWhen(value?: string | null): string {
+  return value ? value.slice(0, 16) : ''
 }
 
 onMounted(() => {
@@ -201,6 +247,13 @@ onBeforeUnmount(() => {
             </p>
           </div>
         </div>
+        <button
+          class="flex h-10 w-10 items-center justify-center rounded-full bg-surface-container-low text-on-surface-variant"
+          :aria-label="t('chat.history')"
+          @click="openHistory"
+        >
+          <span class="material-symbols-outlined">history</span>
+        </button>
         <button
           class="flex h-10 w-10 items-center justify-center rounded-full bg-surface-container-low text-on-surface-variant"
           :aria-label="t('chat.newChat')"
@@ -307,5 +360,68 @@ onBeforeUnmount(() => {
         {{ t('chat.disclaimer') }}
       </p>
     </div>
+
+    <!-- 历史会话面板 -->
+    <transition
+      enter-active-class="transition duration-200 ease-out"
+      enter-from-class="opacity-0"
+      leave-active-class="transition duration-150 ease-in"
+      leave-to-class="opacity-0"
+    >
+      <div v-if="historyOpen" class="fixed inset-0 z-40">
+        <div class="absolute inset-0 bg-black/30" @click="historyOpen = false" />
+        <transition
+          enter-active-class="transition duration-200 ease-out"
+          enter-from-class="translate-y-full"
+          leave-active-class="transition duration-150 ease-in"
+          leave-to-class="translate-y-full"
+          appear
+        >
+          <section
+            class="absolute bottom-0 left-0 right-0 flex max-h-[70vh] flex-col rounded-t-3xl bg-surface pb-safe shadow-2xl"
+            role="dialog"
+            :aria-label="t('chat.history')"
+          >
+            <div class="flex items-center justify-between px-5 pb-2 pt-4">
+              <p class="font-title-md text-on-surface">{{ t('chat.history') }}</p>
+              <button
+                class="flex h-8 w-8 items-center justify-center rounded-full bg-surface-container-low text-on-surface-variant"
+                :aria-label="t('common.back')"
+                @click="historyOpen = false"
+              >
+                <span class="material-symbols-outlined text-lg">close</span>
+              </button>
+            </div>
+
+            <div class="min-h-0 flex-1 overflow-y-auto px-3 pb-4 no-scrollbar">
+              <p v-if="historyLoading" class="px-2 py-6 text-center text-sm text-on-surface-variant">
+                {{ t('common.loading') }}
+              </p>
+              <p v-else-if="historyError" class="px-2 py-6 text-center text-sm text-error">
+                {{ historyError }}
+              </p>
+              <p v-else-if="sessions.length === 0" class="px-2 py-6 text-center text-sm text-on-surface-variant">
+                {{ t('chat.historyEmpty') }}
+              </p>
+              <button
+                v-for="item in sessions"
+                :key="item.id"
+                class="mb-1 flex w-full items-start gap-3 rounded-2xl px-3 py-3 text-left active:bg-surface-container-low"
+                :class="item.id === sessionId ? 'bg-primary/10' : ''"
+                @click="openSession(item.id)"
+              >
+                <span class="material-symbols-outlined mt-0.5 text-xl text-primary/70">forum</span>
+                <span class="min-w-0 flex-1">
+                  <span class="block truncate text-sm text-on-surface">{{ item.title || t('chat.newChat') }}</span>
+                  <span class="mt-0.5 block text-[11px] text-on-surface-variant">
+                    {{ formatWhen(item.create_time) }} · {{ t('chat.messageCount', { count: item.message_count }) }}
+                  </span>
+                </span>
+              </button>
+            </div>
+          </section>
+        </transition>
+      </div>
+    </transition>
   </div>
 </template>

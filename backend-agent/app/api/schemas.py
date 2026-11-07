@@ -36,6 +36,24 @@ class MessagesOut(BaseModel):
     messages: list[MessageOut]
 
 
+class SessionItemOut(BaseModel):
+    """App 侧看到的会话摘要：不含 user_id（本来就是自己的）。"""
+
+    id: str
+    pet_id: str | None = None
+    channel: str
+    title: str
+    message_count: int
+    create_time: str | None = None
+
+
+class SessionListOut(BaseModel):
+    total: int
+    page: int
+    page_size: int
+    items: list[SessionItemOut]
+
+
 class HealthOut(BaseModel):
     status: str
     repo: str

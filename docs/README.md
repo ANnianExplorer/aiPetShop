@@ -39,7 +39,7 @@
 
 | 文档 | 版本 | 内容 |
 | --- | --- | --- |
-| [spec/agent-runtime-api.md](spec/agent-runtime-api.md) | v1.3 | `/healthz`、`/readyz`、`POST /agent/chat`、事件续传、消息回读、记忆/用量、管理端只读接口的请求/响应/事件/错误码/不变量 |
+| [spec/agent-runtime-api.md](spec/agent-runtime-api.md) | v1.7 | `/healthz`、`/readyz`、`POST /agent/chat`、事件续传、消息回读、会话列表、记忆/用量、管理端只读与队列运维接口的请求/响应/事件/错误码/不变量 |
 | [spec/web-chat-ui.md](spec/web-chat-ui.md) | v1.0 | 对话页状态机、交互、持久化键、错误映射、布局约束、i18n 键、非目标 |
 
 ### ADR
@@ -77,6 +77,7 @@
 | [reports/2026-11-08-s1.8-p2.md](reports/2026-11-08-s1.8-p2.md) | S1.8 P2 韧性与真机联调 | 122 单测（含 MySQL 契约）、四个冒烟 10/9/6/8 全绿、真机 MySQL 8.0.29 + Redis 5.0.14；抓到 5 个真实缺陷（RESP3、幂等维度、脚本清空文件等） |
 | [reports/2026-11-08-s1.9-task-queue.md](reports/2026-11-08-s1.9-task-queue.md) | S1.9-a 旁路任务队列（TaskQueue） | 134 单测、四个冒烟 10/9/6/8、真机 Redis 队列收发闭环；抓到 3 个真实缺陷（冒烟脚本不自洽、签名不一致、最终一致误判为回归） |
 | [reports/2026-11-08-s1.9b-deadletter.md](reports/2026-11-08-s1.9b-deadletter.md) | S1.9-b 启动补偿 + 死信重放 + 队列现场 | 142 单测、五个冒烟 10/9/6/8/8、真机"在途 1 条 → 重启回收 → 落库"闭环；修 3 个问题（import 顺序、未用 Any、不变量编号乱序） |
+| [reports/2026-11-08-a2-session-list.md](reports/2026-11-08-a2-session-list.md) | BACKLOG A2 App 历史会话 | 146 单测、build/vitest 通过、真机隔离与排序验证、Edge 浏览器端到端；修 1 个真实缺陷（同秒会话排序） |
 
 ## 3. 新增文档怎么起头
 

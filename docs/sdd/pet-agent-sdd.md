@@ -249,6 +249,17 @@ cd ..\pet-lumina-app; npm run dev
 | 死信重放 | `POST /agent/admin/tasks/dead-letters/replay` | `attempt` 重置为 1；未知 topic 400；写 `admin.access` 审计 |
 | 现场可观测 | `GET /agent/admin/tasks` | `enabled/backend/processed/failed` + 每 topic 的 `depth` 与 `dead_letters`；`off` 时 `enabled=false` |
 
+### 8.7 App 历史会话（BACKLOG A2）
+
+| 关注点 | 落点 | 约定 |
+| --- | --- | --- |
+| 数据来源 | `AgentRepository.list_sessions(page, page_size, user_id)` | 复用 S1.7 管理端那套查询，只是把 `user_id` 固定为 token 解析出的本人 |
+| 隔离 | 路由 `_identity()` → `user_id` 透传仓储 | 不接收请求体/查询里的 `user_id`；载荷里也不返回它 |
+| 排序 | 内存版 `(last_active, id)` 倒序；MySQL 版 `ORDER BY last_message_time DESC, id DESC` | 同一秒建立的会话靠雪花 id 兜底，两端语义一致 |
+| 分页 | `page` / `page_size`（1–50） | `total` 是全量条数 |
+| 前端 | `ChatView.vue` 的「历史会话」底部面板；`fetchSessions()` | 每次打开都重拉；选中后清空气泡再回读消息，避免串会话 |
+| 失败降级 | 401 → 清 token 跳登录；其他 → 面板内红字提示 | 不阻塞对话主流程 |
+
 ## 9. 质量属性
 
 | 属性 | 设计手段 | 验收 |

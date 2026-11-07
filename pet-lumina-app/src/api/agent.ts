@@ -10,6 +10,7 @@
 import { SseDecoder, type SseMessage } from './sse'
 import type {
   AgentMessage,
+  AgentSessionPage,
   DoneEvent,
   ErrorEvent,
   DeltaEvent,
@@ -167,6 +168,17 @@ export async function fetchSessionMessages(sessionId: string): Promise<AgentMess
   await assertOk(response)
   const payload = (await response.json()) as { messages?: AgentMessage[] }
   return payload.messages ?? []
+}
+
+/** 会话列表：服务端按最后活跃时间倒序，只返回本人的会话。 */
+export async function fetchSessions(page = 1, pageSize = 20): Promise<AgentSessionPage> {
+  const query = new URLSearchParams({ page: String(page), page_size: String(pageSize) })
+  const response = await fetch(`${agentBaseUrl()}/agent/sessions?${query}`, {
+    headers: { Accept: 'application/json', ...authHeaders() },
+  })
+  await assertOk(response)
+  const payload = (await response.json()) as AgentSessionPage
+  return { total: payload.total ?? 0, items: payload.items ?? [] }
 }
 
 // ---- 事件载荷收窄：保持 UI 层不写 `as any` ----

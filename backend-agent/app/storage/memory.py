@@ -86,9 +86,12 @@ class InMemoryRepository:
             q = query.strip().lower()
             items = [s for s in items if q in (s.title or "").lower()]
 
-        def last_active(s: Session) -> str:
+        def last_active(s: Session) -> tuple[str, str]:
+            # 时间只到秒：同一秒内建的两个会话靠 id（雪花）再降序，和 MySQL 的
+            # `ORDER BY last_message_time DESC, id DESC` 保持同一语义
             msgs = self._messages.get(s.id) or []
-            return (msgs[-1].create_time or "") if msgs else (s.create_time or "")
+            stamp = (msgs[-1].create_time or "") if msgs else (s.create_time or "")
+            return stamp, s.id
 
         items.sort(key=last_active, reverse=True)
         total = len(items)

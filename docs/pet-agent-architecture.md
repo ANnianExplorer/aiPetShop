@@ -467,7 +467,7 @@ S1 的运行时是一堆 HTTP 接口，用户看不见。这一节记录把它�
 | 文件 | 职责 | 为什么不塞进组件 |
 | --- | --- | --- |
 | `src/api/sse.ts` | 纯 SSE 文本解析（`push`/`flush`、多行 data、`\r\n`、注释行） | 不碰网络才能单测逐块喂数据 |
-| `src/api/agent.ts` | `streamChat` / `replayRun` / `fetchSessionMessages` + 五个类型守卫 | 传输层只做传输；UI 不写 `as any` |
+| `src/api/agent.ts` | `streamChat` / `replayRun` / `fetchSessionMessages` / `fetchSessions` + 五个类型守卫 | 传输层只做传输；UI 不写 `as any` |
 | `src/utils/chatStream.ts` | `applyAgentEvent(bubble, event)` 归约器 + `historyToBubbles` | 事件→界面是纯函数，可被 10 条单测钉死 |
 | `src/views/chat/ChatView.vue` | 只负责渲染、滚动、输入法、错误重试、401 跳登录 | 组件里没有业务判断 |
 
@@ -477,6 +477,7 @@ S1 的运行时是一堆 HTTP 接口，用户看不见。这一节记录把它�
 ### 13.2 交互约定
 
 - 会话 id 存 `localStorage['petlumina-agent-session']`，进页面先 `fetchSessionMessages` 回放历史；服务端 404（内存模式重启）就静默换新会话；
+- 顶栏「历史会话」打开底部面板（`fetchSessions`，每次打开重拉）：列出本人会话，显示标题/时间/消息数，当前会话高亮；选中后先清空气泡再回读，避免串会话（BACKLOG A2）；
 - 流式期间气泡带 `▍` 光标，工具调用显示成 chip（`chat.tool.<name>`），引用 chip 可点，`kind=log` 跳 `/log/{id}`；
 - 401/`unauthorized` 清 `satoken` 并跳登录；其余错误保留最后一条用户消息给"重试"；
 - Enter 发送、Shift+Enter 换行，`event.isComposing` 保护中文输入法；

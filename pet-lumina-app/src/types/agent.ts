@@ -75,6 +75,21 @@ export interface AgentMessage {
   create_time?: string | null
 }
 
+/** 会话摘要（GET /agent/sessions）：不含 user_id，本来就是自己的 */
+export interface AgentSessionItem {
+  id: string
+  pet_id?: string | null
+  channel: string
+  title: string
+  message_count: number
+  create_time?: string | null
+}
+
+export interface AgentSessionPage {
+  total: number
+  items: AgentSessionItem[]
+}
+
 /** 聊天面板里的一条气泡（比后端 Message 多了流式状态） */
 export interface ChatBubble {
   id: string
