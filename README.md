@@ -13,21 +13,28 @@
   <img src="https://img.shields.io/badge/MyBatis--Plus-3.5-red.svg" alt="MyBatis-Plus" />
   <img src="https://img.shields.io/badge/Sa--Token-1.39-orange.svg" alt="Sa-Token" />
   <img src="https://img.shields.io/badge/ECharts-5.5-AA344D.svg" alt="ECharts" />
+  <img src="https://img.shields.io/badge/Python-3.12-3776AB.svg" alt="Python" />
+  <img src="https://img.shields.io/badge/FastAPI-0.162-009688.svg" alt="FastAPI" />
+  <img src="https://img.shields.io/badge/LangGraph-1.2-1C3C3C.svg" alt="LangGraph" />
 </p>
 
-**三端架构：移动端 App + Web 管理后台 + 后端服务**
+**四端架构：移动端 App + Web 管理后台 + 后端服务 + AI Agent 运行时**
 
 </div>
 
 ## 项目概述
 
-PetLumina 是一个面向宠物主人的智能生活管理与社区互动平台，采用三端分离架构：
+PetLumina 是一个面向宠物主人的智能生活管理与社区互动平台，采用四端分离架构：
 
 | 端 | 路径 | 技术栈 | 说明 |
 |---|---|---|---|
 | **移动端 App** | `pet-lumina-app/` | Vue 3.5 + Vant 4 + Tailwind CSS 3 + Pinia | 宠物主人使用的移动 Web App |
 | **Web 管理后台** | `pet-lumina-web/` | Vue 3.5 + Element Plus 2.8 + ECharts 5 + Tailwind CSS 4 | 管理员使用的 Web 后台 |
-| **后端服务** | `backend/` | Spring Boot 2.7 + MyBatis-Plus 3.5 + Sa-Token 1.39 + Redis | RESTful API 服务 |
+| **后端服务** | `backend/` | Spring Boot 2.7 + MyBatis-Plus 3.5 + Sa-Token 1.39 + Redis | 业务真源：RESTful API + 数据库 |
+| **AI Agent 运行时** | `backend-agent/` | Python 3.12 + FastAPI + LangGraph 1.2 | 对话编排、工具调用、长期记忆、旁路任务 |
+
+> Agent 不直接读业务表：它带着用户的 `satoken` 调 `backend/` 的 `/api/v1`，权限模型只有一份。
+> 设计与决策记录见 [`docs/`](./docs/README.md)（ADR / SPEC / SDD / REPORT 四类文档）。
 
 ## 页面预览
 
@@ -82,6 +89,7 @@ PetLumina 是一个面向宠物主人的智能生活管理与社区互动平台�
 | **个人中心** | 用户资料编辑、头像 COS 上传、宠物档案管理、账号安全设置 |
 | **认证系统** | 登录、注册、密码重置、验证码校验 |
 | **UI 交互** | 果冻动画、玻璃态面板、胶囊导航栏、卡片悬浮/呼吸/脉动常驻动效 |
+| **AI 对话** | 首页「问 Lumina」入口 → 全屏对话页：SSE 流式输出、工具调用提示、引用可点回原记录、断线按游标续传 |
 
 ### Web 管理后台 (pet-lumina-web)
 
@@ -100,6 +108,7 @@ PetLumina 是一个面向宠物主人的智能生活管理与社区互动平台�
 | **系统设置** | 版本信息、功能开关、系统配置 |
 | **个人中心** | 管理员资料、安全设置、登录历史 |
 | **UI 交互** | 果冻动画、毛玻璃面板、胶囊侧边栏/导航栏、卡片悬浮效果、Element Plus 中文 |
+| **会话工作台** | 全部 Agent 会话：意图/路由、每轮运行轨迹（步骤/耗时/token）、引用、账号长期记忆、全局用量趋势 |
 
 ### 后端 API (backend)
 
@@ -118,6 +127,18 @@ PetLumina 是一个面向宠物主人的智能生活管理与社区互动平台�
 | **生活记录** | 5 | CRUD + 分页列表 |
 | **文件上传** | 2 | 通用上传/图片上传(含魔数校验) |
 | **管理端** | 16 | 用户/宠物/帖子/评论/话题/记录/健康/通知管理 + Dashboard + 违规管理 |
+
+### AI Agent 运行时 (backend-agent)
+
+| 能力 | 落地方式 | 说明 |
+|---|---|---|
+| **三层调度** | 规则路由 → L1 直答 / L2 ReAct（≤6 步工具）/ L3 规划 | 寒暄不花 token，查数据才走工具 |
+| **工具调用** | 工具网关六道防线：白名单、通道、每轮预算、参数校验、副作用隐藏、审计摘要 | 参数里出现 `user_id` 一律拒绝，身份只从 token 来 |
+| **长期记忆** | `memory_fact`（事实，带置信度）+ 规则抽取 + 三态算子（ADD/UPDATE/NOOP） | 记"名字/过敏/体重"这类低风险事实，不猜 |
+| **旁路任务** | `TaskQueue`（内存 / Redis 两实现）+ 死信重放 + 启动补偿 | 记忆抽取与审计写库移出响应路径，崩溃不丢 |
+| **韧性** | 用户级配额（429 + `Retry-After`）、用户维度幂等键、LLM/后端双熔断 | 重试不重复执行、不重复计费 |
+| **可观测** | 单行 JSON 日志 + `x-request-id` + `/readyz` 四检（repo/model/两个熔断） | 一条请求从 `run started` 到 `run finished` 能串起来 |
+| **契约** | SSE 五事件（route/tool/delta/done/error）+ `id:` 游标续传 | 断网重连不重放已计费内容 |
 
 ## 技术架构
 
@@ -175,6 +196,20 @@ PetLumina 是一个面向宠物主人的智能生活管理与社区互动平台�
 | `common/StatCard` | 统计卡片 |
 | `common/SearchBar` | 搜索栏 |
 
+### Agent 运行时 (backend-agent)
+
+| 技术 | 版本 | 用途 |
+|---|---|---|
+| Python | 3.12 | 运行时 |
+| FastAPI + Uvicorn | 0.162 / 0.54 | HTTP + SSE |
+| LangGraph + checkpoint | 1.2 / 4.3 | 图编排与检查点（`thread_id = run_id`） |
+| httpx | 0.28 | 调用 LLM 与业务后端（共享连接池） |
+| Pydantic v2 | 2.14 | 工具参数校验（`extra=forbid`） |
+| aiomysql | 0.3 | 会话 / 消息 / 运行 / 记忆落库 |
+| redis-py | 8.1（RESP2） | 事件存储、限流、旁路任务队列 |
+| ruff | 0.17 | lint 门禁 |
+| pytest + pytest-asyncio | 9.2 / 1.4 | 142 项契约测试 |
+
 ## 快速开始
 
 ### 环境要求
@@ -182,7 +217,8 @@ PetLumina 是一个面向宠物主人的智能生活管理与社区互动平台�
 - Node.js 18+
 - Java 8+
 - MySQL 8.0+
-- Redis 6.0+
+- Redis 6.0+（Agent 用 Redis 5 亦可，客户端已固定 RESP2）
+- Python 3.12+（仅 AI Agent 运行时需要）
 
 ### 后端启动
 
@@ -232,7 +268,42 @@ npm install
 npm run dev        # http://localhost:3000
 ```
 
+### AI Agent 服务启动
+
+```bash
+cd backend-agent
+
+# 1. 建虚拟环境并装依赖（Python 3.12）
+python -m venv .venv
+.venv\Scripts\python -m pip install -r requirements.txt      # Linux/macOS: .venv/bin/python
+
+# 2. 建 Agent 自己的表（3 个脚本按序执行）
+mysql -u root -p petlumina < ../backend/sql/v2.10-agent.sql
+mysql -u root -p petlumina < ../backend/sql/v2.11-agent-memory.sql
+mysql -u root -p petlumina < ../backend/sql/v2.12-agent-idempotency.sql
+
+# 3. 配置（复制后改 LLM key 与后端地址；不配 key 则只有 /healthz 可用）
+cp .env.example .env
+
+# 4. 启动（默认 :8099）
+.venv\Scripts\python -m uvicorn app.main:app --host 127.0.0.1 --port 8099
+```
+
+关键环境变量（全部带 `PET_AGENT_` 前缀，完整清单见 `backend-agent/README.md`）：
+
+| 变量 | 默认 | 说明 |
+|---|---|---|
+| `PET_AGENT_ENV` | `dev` | 生产会强制校验密钥、禁用 header 鉴权 |
+| `PET_AGENT_LLM_API_KEY` / `LLM_BASE_URL` / `LLM_MODEL` | — / — / `deepseek-chat` | OpenAI 兼容接口 |
+| `PET_AGENT_BACKEND_BASE_URL` | `http://localhost:8080/api/v1` | 业务真源（透传用户 `satoken`） |
+| `PET_AGENT_REPO_BACKEND` | `memory` | `memory`（重启即空）/ `mysql` |
+| `PET_AGENT_EVENT_BACKEND` / `RATE_LIMIT_BACKEND` / `TASK_BACKEND` | `memory` / `memory` / `off` | 生产切 `redis` |
+
+健康检查：`GET http://127.0.0.1:8099/healthz`（存活）与 `/readyz`（依赖就绪，含两项熔断状态）。
+
 ## 项目结构
+
+三端业务概览：
 
 ```text
 ai-PetShop/
@@ -297,7 +368,92 @@ ai-PetShop/
     └── web端/                       # 管理后台截图 (9张)
 ```
 
+完整结构（含 Agent 运行时与文档体系）：
+
+```text
+ai-PetShop/
+├── backend/                         # Spring Boot 业务真源（13 个用户端 Controller + 8 个管理端）
+│   └── sql/                         # init.sql / seed.sql / update.sql
+│                                    # + v2.10-agent.sql / v2.11-agent-memory.sql / v2.12-agent-idempotency.sql
+│
+├── backend-agent/                   # Python Agent 运行时
+│   ├── app/
+│   │   ├── api/                     # 路由 / 依赖注入 / 可观测中间件 / 应用装配
+│   │   ├── graph/                   # LangGraph 图：route → prepare → agent ↔ tools
+│   │   ├── runtime/                 # Runner（SSE 事件）+ 事件存储（内存 / Redis Stream）
+│   │   ├── tools/                   # 工具规格 / 注册表 / 网关六道防线 / 业务客户端
+│   │   ├── storage/                 # 仓储协议 + 内存实现 + MySQL 实现（同一套契约测试）
+│   │   ├── memory/                  # 事实抽取规则 / 三态算子 / 记忆服务
+│   │   ├── tasks/                   # 旁路任务队列（内存 / Redis）+ 消费者 + worker
+│   │   ├── llm/                     # ChatModel 协议 / OpenAI 兼容实现 / 脚本化桩
+│   │   ├── core/                    # 错误模型 / ID 生成 / 日志 / 熔断 / 限流 / Redis 客户端
+│   │   └── domain/                  # 领域模型 / 事件 / 意图路由
+│   ├── tests/                       # 142 项契约级测试 + 本地桩（Java / LLM）
+│   ├── evals/                       # 23 条评测用例 + 三套阈值门禁
+│   ├── scripts/                     # 5 个真进程冒烟脚本
+│   ├── Dockerfile                   # 多阶段构建 + 非 root
+│   └── requirements.txt             # 精确锁定（意图见 requirements.in）
+│
+├── docs/                            # 文档地图：ADR / SPEC / SDD / PLAN / REPORT
+│   ├── adr/                         # 9 条架构决策（为什么这么选）
+│   ├── spec/                        # 对外契约（HTTP/SSE 与前端 UI）
+│   ├── sdd/                         # 分层与依赖规则、部署、质量属性
+│   ├── plans/                       # 每一步的计划与完成情况
+│   └── reports/                     # 每次交付的测试报告（贴真实输出）
+│
+├── .github/workflows/
+│   ├── deploy.yml                   # App 构建 → GitHub Pages
+│   └── agent-ci.yml                 # Agent：ruff + pytest + evals + 镜像构建
+│
+├── pet-lumina-app/                  # 移动端（27 路由）
+├── pet-lumina-web/                  # 管理后台（19 路由）
+└── image/                           # 项目截图
+```
+
+## 质量门禁与文档
+
+Agent 侧的验收是"可复现命令"，不是口头结论：
+
+```powershell
+cd backend-agent
+$env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:yourpwd@127.0.0.1:3306/petlumina"
+.venv\Scripts\python -m pytest            # 142 passed（含真机 MySQL 契约）
+.venv\Scripts\python -m evals.run         # routing 15/15、safety 6/6、memory 2/2
+.venv\Scripts\python -m scripts.e2e_smoke          # 10/10（SSE / 续传 / 越权）
+.venv\Scripts\python -m scripts.p1_smoke           # 9/9（配额 / 记忆 / 用量）
+.venv\Scripts\python -m scripts.admin_smoke        # 6/6（管理端权限与查询）
+.venv\Scripts\python -m scripts.idempotency_smoke  # 8/8（同 key 不重复执行）
+.venv\Scripts\python -m scripts.tasks_smoke        # 8/8（死信重放 / 队列现场）
+.venv\Scripts\ruff.exe check .            # All checks passed
+```
+
+前端：
+
+```bash
+cd pet-lumina-app && npm run build && npm test    # vue-tsc + vitest（SSE 解析器 20 例）
+cd pet-lumina-web && npm run build                # 管理端类型检查
+```
+
+文档入口：[`docs/README.md`](./docs/README.md)（四类文档职责 + 索引），
+面向决策的背景见 [`docs/pet-agent-architecture.md`](./docs/pet-agent-architecture.md)。
+
 ## 更新日志
+
+### v2.10 (2026-11-08)
+
+**AI Agent 运行时 + 管理端会话工作台**
+
+- 新增 `backend-agent/`：Python 3.12 + FastAPI + LangGraph，独立进程（:8099），业务权限仍由 `backend/` 判定
+- 对话链路：SSE 五事件（route/tool/delta/done/error）+ `id:` 游标续传；L1 直答 / L2 ReAct 分层，寒暄不花 token
+- 工具网关六道防线：白名单、通道限制、每轮预算、参数校验（拒绝伪造 `user_id`）、副作用默认隐藏、审计只存摘要
+- 长期记忆：规则抽取事实（名字/过敏/体重等）+ 三态算子（ADD/UPDATE/NOOP），管理端可查"这个账号记住了什么"
+- 工程基线：单行 JSON 日志 + `x-request-id`、`/readyz` 四检、依赖精确锁定、多阶段非 root 镜像、CI（ruff + pytest + evals + build）
+- 韧性：用户级配额（429 + `Retry-After`）、用户维度幂等键（重试只执行一次）、LLM/后端双熔断
+- 旁路任务：`TaskQueue`（内存 / Redis）+ 启动补偿 + 死信重放 + 队列现场接口
+- App：首页「问 Lumina」入口 + 全屏对话页（流式、工具提示、引用回跳、历史会话恢复）
+- 管理端：会话工作台（会话列表 / 详情：对话流 + 运行轨迹 + 长期记忆 / 全局用量）
+- 文档体系：9 条 ADR、2 份 SPEC、1 份 SDD、5 份 PLAN、8 份 REPORT（见 `docs/README.md`）
+- 验收：142 单测、23 条评测、5 个真进程冒烟（10/9/6/8/8）、`ruff` 全绿
 
 ### v2.7 (2026-06-03)
 
