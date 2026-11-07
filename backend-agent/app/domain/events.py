@@ -7,9 +7,10 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from enum import Enum
-from typing import Any, Mapping
+from typing import Any
 
 
 class EventType(str, Enum):
@@ -26,7 +27,7 @@ class Event:
     data: Mapping[str, Any] = field(default_factory=dict)
     seq: int = 0
 
-    def with_seq(self, seq: int) -> "Event":
+    def with_seq(self, seq: int) -> Event:
         return Event(type=self.type, data=self.data, seq=seq)
 
     def to_sse(self) -> str:

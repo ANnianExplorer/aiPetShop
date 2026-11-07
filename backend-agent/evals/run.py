@@ -22,14 +22,17 @@ import argparse
 import asyncio
 import json
 import sys
+from collections.abc import Awaitable, Callable
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Any, Awaitable, Callable
+from typing import Any
 
 import httpx
+
 from app.config import Settings
 from app.domain.models import ToolResult
+from app.domain.router import classify
 from app.storage import InMemoryRepository
 from app.tools import (
     BackendClient,
@@ -38,7 +41,6 @@ from app.tools import (
     ToolPolicy,
     build_registry,
 )
-from app.domain.router import classify
 
 CASES_PATH = Path(__file__).with_name("cases.jsonl")
 REPORT_DIR = Path(__file__).with_name("reports")
@@ -190,7 +192,7 @@ async def main(argv: list[str]) -> int:
 
     failed = [s for s in suites.values() if s.rate < s.threshold]
     report = {
-        "generated_at": datetime.now(timezone.utc).isoformat(),
+        "generated_at": datetime.now(UTC).isoformat(),
         "suites": [
             {
                 "name": s.name,

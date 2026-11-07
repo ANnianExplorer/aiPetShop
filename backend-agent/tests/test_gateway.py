@@ -5,6 +5,9 @@ from __future__ import annotations
 from typing import Any
 
 import pytest
+from conftest import make_http
+from pydantic import BaseModel, ConfigDict
+
 from app.tools import (
     BackendClient,
     ToolAudit,
@@ -14,9 +17,6 @@ from app.tools import (
     ToolRegistry,
     ToolSpec,
 )
-from pydantic import BaseModel, ConfigDict
-
-from conftest import make_http
 
 called: list[str] = []
 

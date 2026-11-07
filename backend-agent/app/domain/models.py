@@ -64,7 +64,7 @@ class Citation:
         return {"kind": self.kind, "id": self.id, "label": self.label, "locator": self.locator}
 
     @classmethod
-    def from_dict(cls, raw: dict[str, Any]) -> "Citation":
+    def from_dict(cls, raw: dict[str, Any]) -> Citation:
         return cls(
             kind=str(raw.get("kind") or "record"),
             id=str(raw.get("id") or ""),
@@ -152,7 +152,7 @@ class Usage:
     def total(self) -> int:
         return self.prompt_tokens + self.completion_tokens
 
-    def __add__(self, other: "Usage") -> "Usage":
+    def __add__(self, other: Usage) -> Usage:
         return Usage(
             self.prompt_tokens + other.prompt_tokens,
             self.completion_tokens + other.completion_tokens,

@@ -10,7 +10,8 @@ from __future__ import annotations
 
 import json
 import time
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
 from ..domain.models import Citation, Route, Step, StepKind, StepStatus, ToolResult
 from ..domain.router import classify
@@ -98,7 +99,7 @@ def make_nodes(
             "completion_tokens": reply.usage.completion_tokens,
         }
         if not reply.tool_calls:
-            update["answer_messages"] = messages + [assistant]
+            update["answer_messages"] = [*messages, assistant]
         return update
 
     async def tools_node(state: AgentState) -> dict[str, Any]:

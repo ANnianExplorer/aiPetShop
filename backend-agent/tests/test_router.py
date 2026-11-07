@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import pytest
+
 from app.domain.models import Intent, Route
 from app.domain.router import classify
 

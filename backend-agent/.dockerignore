@@ -1,0 +1,17 @@
+.venv
+**/__pycache__
+**/*.pyc
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+tests
+evals
+scripts
+docs
+*.md
+pytest.ini
+pyproject.toml
+!pyproject.toml
+.ruff_cache

@@ -8,8 +8,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Awaitable, Callable
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Awaitable, Callable, Type
+from typing import TYPE_CHECKING, Any
 
 from pydantic import BaseModel
 
@@ -24,7 +25,7 @@ class ToolContext:
     user_id: str
     token: str
     run_id: str
-    backend: "BackendClient"
+    backend: BackendClient
     pet_id: str | None = None
     auto_commit: bool = False
 
@@ -36,7 +37,7 @@ ToolHandler = Callable[[Any, ToolContext], Awaitable[dict[str, Any]]]
 class ToolSpec:
     name: str
     description: str
-    args_model: Type[BaseModel]
+    args_model: type[BaseModel]
     handler: ToolHandler
     side_effect: bool = False
     tags: frozenset[str] = field(default_factory=frozenset)

@@ -7,9 +7,10 @@ MySQL 用例默认跳过；设置 `PET_AGENT_TEST_MYSQL_DSN`（例如
 from __future__ import annotations
 
 import os
-from typing import Callable
+from collections.abc import Callable
 
 import pytest
+
 from app.core.errors import Forbidden, NotFound
 from app.domain.models import Intent, Message, Role, Route, Run, RunStatus, Step, StepKind, Usage
 from app.storage import AgentRepository, InMemoryRepository, MySqlRepository

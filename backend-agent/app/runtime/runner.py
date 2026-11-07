@@ -10,12 +10,16 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
+import logging
 import time
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
-from typing import Any, AsyncIterator
+from typing import Any
 
 from ..config import Settings
 from ..core.errors import AgentError, ModelNotConfigured, RunTimeout
+from ..core.logging import log_event, run_id_var, user_id_var
 from ..domain.events import Event, EventType
 from ..domain.models import Message, Role, Run, RunStatus, StepKind, Usage, dedupe_citations
 from ..domain.router import classify
@@ -26,6 +30,7 @@ from ..tools import ToolGateway
 from .eventlog import RunEventLog
 
 FALLBACK_ANSWER = "（这次没有生成内容，换个说法再问我一次？）"
+run_log = logging.getLogger("agent.run")
 
 
 @dataclass(frozen=True)
@@ -70,6 +75,7 @@ class AgentRunner:
             return
 
         started = time.perf_counter()
+        user_id_var.set(caller.user_id)
         decision = classify(cmd.message)
         run_id: str | None = None
         terminal = False
@@ -94,6 +100,18 @@ class AgentRunner:
             )
             run_id = run.id
             self._gateway.reset_run(run_id)
+            run_id_var.set(run_id)
+            log_event(
+                run_log,
+                logging.INFO,
+                "run started",
+                user_id=caller.user_id,
+                session_id=session.id,
+                route=decision.route.value,
+                intent=decision.intent.value,
+                channel=cmd.channel,
+                msg_chars=len(cmd.message),
+            )
 
             yield self._record(
                 run_id,
@@ -128,7 +146,7 @@ class AgentRunner:
                     ),
                     timeout=self._settings.run_deadline_s,
                 )
-            except asyncio.TimeoutError as exc:
+            except TimeoutError as exc:
                 raise RunTimeout(f"运行超过 {self._settings.run_deadline_s:.0f} 秒未完成") from exc
 
             steps = list(result.get("steps") or [])
@@ -196,6 +214,19 @@ class AgentRunner:
             latency_ms = int((time.perf_counter() - started) * 1000)
             await self._repo.finish_run(run_id, RunStatus.SUCCEEDED, usage, latency_ms)
             terminal = True
+            log_event(
+                run_log,
+                logging.INFO,
+                "run finished",
+                session_id=session.id,
+                route=decision.route.value,
+                steps=len(steps),
+                citations=len(citations),
+                prompt_tokens=usage.prompt_tokens,
+                completion_tokens=usage.completion_tokens,
+                answer_chars=len(answer),
+                latency_ms=latency_ms,
+            )
 
             yield self._record(
                 run_id,
@@ -233,7 +264,7 @@ class AgentRunner:
         finally:
             if run_id is not None and not terminal:
                 # 客户端断开 / 任务被取消：run 不能永远停在 running
-                try:
+                with contextlib.suppress(Exception):
                     await self._repo.finish_run(
                         run_id,
                         RunStatus.CANCELLED,
@@ -241,23 +272,28 @@ class AgentRunner:
                         int((time.perf_counter() - started) * 1000),
                         "客户端断开或任务被取消",
                     )
-                except Exception:
-                    pass
 
     # ------------------------------------------------------------------ 内部
     async def _finish_failed(self, run_id: str | None, err: AgentError, started: float) -> None:
         if run_id is None:
             return
-        try:
+        latency_ms = int((time.perf_counter() - started) * 1000)
+        with contextlib.suppress(Exception):
             await self._repo.finish_run(
                 run_id,
                 RunStatus.FAILED,
                 Usage(),
-                int((time.perf_counter() - started) * 1000),
+                latency_ms,
                 err.message[:500],
             )
-        except Exception:
-            pass
+        log_event(
+            run_log,
+            logging.WARNING,
+            "run failed",
+            code=err.code,
+            retryable=err.retryable,
+            latency_ms=latency_ms,
+        )
 
     def _record(self, run_id: str | None, event: Event) -> Event:
         if run_id is None:

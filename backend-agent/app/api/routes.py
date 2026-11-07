@@ -2,19 +2,21 @@
 
 from __future__ import annotations
 
-from typing import AsyncIterator
+import logging
+from collections.abc import AsyncIterator
 
 from fastapi import APIRouter, Query, Request
-from fastapi.responses import StreamingResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from ..config import Settings
 from ..core.errors import Forbidden, InvalidRequest, NotFound, Unauthorized
-from ..domain.events import Event
-from ..runtime import Caller, ChatCommand, RunEventLog, AgentRunner
+from ..core.logging import log_event
+from ..runtime import AgentRunner, Caller, ChatCommand, RunEventLog
 from ..storage.base import AgentRepository
 from .schemas import ChatRequest, HealthOut, MessageOut, MessagesOut
 
 router = APIRouter()
+ready_log = logging.getLogger("agent.readiness")
 
 SSE_HEADERS = {
     "Cache-Control": "no-cache",
@@ -34,7 +36,6 @@ def _token(request: Request) -> str:
 
 
 async def _identity(request: Request):
-    settings: Settings = request.app.state.settings
     resolver = request.app.state.identity
     try:
         return await resolver.resolve(
@@ -63,6 +64,34 @@ async def healthz(request: Request) -> HealthOut:
         graph_ready=request.app.state.graph is not None,
         auth_mode=settings.auth_mode,
     )
+
+
+@router.get("/readyz")
+async def readyz(request: Request) -> JSONResponse:
+    """就绪探针：区分「进程活着」（/healthz）与「能接流量」（本接口）。
+
+    存储不可用或模型未配置都返回 503，让编排系统不要把流量打进来。
+    """
+    settings: Settings = request.app.state.settings
+    checks: dict[str, str] = {}
+    ready = True
+
+    try:
+        await _repo(request).ping()
+        checks["repo"] = "ok"
+    except Exception as exc:  # 依赖失败不能伪装成 200，也不能把堆栈返回给调用方
+        checks["repo"] = type(exc).__name__
+        ready = False
+
+    if settings.model_configured:
+        checks["model"] = "ok"
+    else:
+        checks["model"] = "not_configured"
+        ready = False
+
+    payload = {"status": "ready" if ready else "degraded", "checks": checks}
+    log_event(ready_log, logging.WARNING if not ready else logging.INFO, "readiness check", **checks)
+    return JSONResponse(payload, status_code=200 if ready else 503)
 
 
 @router.post("/agent/chat")

@@ -4,13 +4,12 @@ from __future__ import annotations
 
 from typing import Any
 
-import pytest
+from conftest import make_http, make_settings
+
 from app.domain.models import StepKind
 from app.graph import build_graph
 from app.llm import LLMReply, ScriptedModel, ToolCall
 from app.tools import BackendClient, ToolGateway, ToolPolicy, build_registry
-
-from conftest import make_http, make_settings
 
 
 def make_graph(model: ScriptedModel, *, max_hops: int = 6) -> Any:

@@ -1,0 +1,5 @@
+# 开发/CI 依赖：= 运行时 + 检查工具
+-r requirements.txt
+pytest==9.2.0
+pytest-asyncio==1.4.1.post1
+ruff==0.17.4

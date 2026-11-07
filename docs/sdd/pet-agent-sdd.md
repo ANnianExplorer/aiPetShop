@@ -157,6 +157,27 @@ cd ..\pet-lumina-app; npm run dev
 
 生产形态（S2 之后）：`backend-agent` 多副本 + 共享 Redis 事件缓冲 + MySQL；SSE 前面放支持 `X-Accel-Buffering: no` 的网关。
 
+### 8.1 容器与探针（S1.6 P0）
+
+| 项 | 约定 |
+| --- | --- |
+| 镜像 | `backend-agent/Dockerfile` 多阶段构建（builder 装依赖，runtime 只带 venv + `app/`） |
+| 用户 | 非 root：`appuser`，`USER appuser` |
+| 端口 | 8099，`uvicorn ... --proxy-headers --forwarded-allow-ips=*` |
+| Liveness | `HEALTHCHECK` 打 `GET /healthz`（不查外部依赖） |
+| Readiness | 编排系统调 `GET /readyz`：存储不可用 / 模型未配置 → 503 |
+| 依赖 | `requirements.txt` 精确版本；`requirements.in` 记人类意图；`requirements-dev.txt` 带 ruff/pytest |
+| CI | `.github/workflows/agent-ci.yml`：ruff → pytest → evals → docker build（失败即红） |
+
+### 8.2 可观测（S1.6 P0）
+
+| 项 | 约定 |
+| --- | --- |
+| 日志 | 单行 JSON（`app/core/logging.py`），必含 `ts/level/logger/msg` |
+| 关联字段 | `request_id`（中间件生成/透传）、`user_id`、`run_id`（contextvars 自动附加） |
+| 打点位置 | HTTP 访问、run 开始/结束/失败、工具调用（含 `args_digest` 与耗时）、就绪检查 |
+| 不记录 | 消息原文、回答原文、工具参数原文、密钥（`repr=False`） |
+
 ## 9. 质量属性
 
 | 属性 | 设计手段 | 验收 |
@@ -167,6 +188,7 @@ cd ..\pet-lumina-app; npm run dev
 | 不失控 | hop 上限 + 调用预算 + 运行超时 | `test_gateway.py` / `test_graph_l2.py` |
 | 可审计 | `agent_run/step` + `tool_call_log(args_digest)` | 审计只存摘要的断言 |
 | 可替换 | 分层 + 依赖注入 | 换 `ChatModel`/`AgentRepository` 不改业务 |
+| 可观测 | `x-request-id` + 单行 JSON 日志 + `/readyz` | `test_observability.py`（10 例）；真进程日志实测含 `request_id/user_id/run_id` |
 
 ## 10. 扩展点
 

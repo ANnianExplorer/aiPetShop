@@ -1,4 +1,4 @@
-﻿# backend-agent · PetLumina Agent Runtime
+# backend-agent · PetLumina Agent Runtime
 
 宠物智能体的**执行引擎层**。不替代 Spring Boot 后端：业务真源（用户/宠物/健康/记录）仍在 Java + MySQL，
 本服务只负责「调度 + 工具 + 记忆 + 运行轨迹」，通过用户自己的 `satoken` 调 `/api/v1/*` 取数。
@@ -38,8 +38,9 @@ App / 管理端 ──SSE──>  api/          传输层：鉴权、请求校�
 | `app/storage/` | `base`（Protocol）/`memory`/`mysql` | 两套实现共用一份契约测试 |
 | `app/graph/` | `state`/`nodes`/`builder` | hop 与调用预算都有硬上限 |
 | `app/runtime/` | `eventlog`/`runner` | 事件可续传；run 终态不可改 |
-| `app/api/` | `deps`/`schemas`/`routes`/`app` | 依赖全部注入，测试不需要真模型/真库 |
-| `tests/` | 契约级单测 | 45 项，不依赖网络/MySQL/密钥 |
+| `app/api/` | `deps`/`schemas`/`routes`/`app`/`observability` | 依赖全部注入，测试不需要真模型/真库 |
+| `app/core/` | `errors`/`ids`/`logging` | 错误模型、19 位雪花 id、单行 JSON 日志 |
+| `tests/` | 契约级单测 | 59 项，不依赖网络/MySQL/密钥 |
 | `evals/` | 评测用例 + 阈值 runner | 23 条用例，不过阈值就退出码非 0 |
 
 ## 快速开始
@@ -47,7 +48,7 @@ App / 管理端 ──SSE──>  api/          传输层：鉴权、请求校�
 ```bash
 cd backend-agent
 python -m venv .venv
-.venv\Scripts\python -m pip install -r requirements.txt
+.venv\Scripts\python -m pip install -r requirements.txt   # 精确锁定版本
 copy .env.example .env          # 填 PET_AGENT_LLM_API_KEY
 .venv\Scripts\python -m uvicorn app.main:app --port 8099
 ```
@@ -55,9 +56,18 @@ copy .env.example .env          # 填 PET_AGENT_LLM_API_KEY
 验证：
 
 ```bash
-curl http://localhost:8099/healthz
-.venv\Scripts\python -m pytest -q          # 45 passed
-.venv\Scripts\python -m evals.run          # routing/safety/memory 三套件
+curl http://localhost:8099/healthz    # 进程活着
+curl http://localhost:8099/readyz     # 能接流量（存储+模型都 ok 才是 200）
+.venv\Scripts\python -m pytest        # 59 passed
+.venv\Scripts\python -m evals.run     # routing/safety/memory 三套件，硬阈值
+.venv\Scripts\ruff.exe check .        # 静态检查
+```
+
+容器（多阶段、非 root、带 HEALTHCHECK）：
+
+```bash
+docker build -t pet-agent .
+docker run -p 8099:8099 -e PET_AGENT_LLM_API_KEY=... pet-agent
 ```
 
 切 MySQL（S1 默认 `memory`，重启即清空）：
@@ -85,15 +95,20 @@ mysql -u root -p < backend/sql/v2.10-agent.sql
 | `PET_AGENT_MAX_TOOL_CALLS_PER_RUN` | `8` | 单次运行的**工具调用总预算**（防死循环烧钱） |
 | `PET_AGENT_HISTORY_LIMIT` | `20` | 每次带给模型的历史消息条数 |
 | `PET_AGENT_RUN_DEADLINE_S` | `60` | 单次运行墙钟上限，超时落 `RunTimeout` |
+| `PET_AGENT_LOG_LEVEL` | `INFO` | 结构化日志级别；CI/本地排障用 `DEBUG` |
 
 ## 接口
 
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
-| GET | `/healthz` | repo 模式、模型是否就绪、工具清单、图是否构建成功 |
+| GET | `/healthz` | 进程存活：repo 模式、模型是否配置、工具清单、图是否构建成功 |
+| GET | `/readyz` | 能否接流量：存储 `SELECT 1` + 模型已配置；否则 503（不回堆栈） |
 | POST | `/agent/chat` | SSE；头 `satoken`（或 `Authorization: Bearer`），body `{message, session_id?, pet_id?, channel?}` |
 | GET | `/agent/runs/{run_id}/events` | 断线续传；支持 `?after=N` 与 `Last-Event-ID` |
 | GET | `/agent/sessions/{id}/messages` | 历史消息（App 进聊天页） |
+
+所有响应都带 `x-request-id`（自带则回传，≤64 字符），日志行里同样带这个字段——
+一条请求从 `run started` 到 `run finished` 可以用它串起来，不用去猜。
 
 SSE 契约（每个事件都带 `id:`，可直接当游标用）：
 
@@ -119,10 +134,12 @@ event: error   data: {code, message, retryable}
 
 ## 测试与评测
 
-- `pytest -q` → 45 项：路由、网关六道防线、存储契约（内存/MySQL 同一套断言）、图（L1/L2/hop 上限/坏参数）、API（SSE 事件序列、续传三种方式等价、越权、失败收敛）。
+- `ruff check .` → 静态检查（配置在 `pyproject.toml`，CI 第一道门）。
+- `pytest` → 59 项：路由、网关六道防线、存储契约（内存/MySQL 同一套断言）、图（L1/L2/hop 上限/坏参数）、API（SSE 事件序列、续传三种方式等价、越权、失败收敛）、可观测（request_id/日志字段/readyz 降级）。
 - `python -m evals.run` → 三套件、阈值硬卡：`routing ≥ 95%`、`safety = 100%`、`memory = 100%`。
   用例在 `evals/cases.jsonl`，加一行就是加一条回归；报告落 `evals/reports/latest.json`。
-- 两者都不需要真模型：`ScriptedModel` 把模型的输出变成脚本，测的是**我们的编排**，不是模型的智商。
+- 三者都不需要真模型：`ScriptedModel` 把模型的输出变成脚本，测的是**我们的编排**，不是模型的智商。
+- CI：`.github/workflows/agent-ci.yml` 依次跑 ruff → pytest → evals → `docker build`，任一红则不入主线。
 
 ### 真进程冒烟（唯一能证明"SSE 真的能连"的那一层）
 

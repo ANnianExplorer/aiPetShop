@@ -1,0 +1,11 @@
+# 直接依赖（人类意图）：允许小版本升级，方便评审"我们到底依赖了什么"。
+# 真正安装请用 requirements.txt（精确版本），升级流程见 docs/plans/s1.6-production-hardening.md。
+langgraph>=1.0
+langgraph-checkpoint-redis>=0.4,<0.7
+fastapi>=0.115
+uvicorn[standard]>=0.30
+httpx>=0.27
+pydantic>=2.7
+pydantic-settings>=2.3
+redis>=5
+aiomysql>=0.2

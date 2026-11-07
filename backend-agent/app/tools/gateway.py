@@ -11,18 +11,24 @@
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
+import logging
 import time
+from collections.abc import Awaitable, Callable, Mapping
 from dataclasses import dataclass, field
-from typing import Any, Awaitable, Callable, Mapping
+from typing import Any
 
 from pydantic import ValidationError
 
 from ..core.errors import AgentError
+from ..core.logging import log_event
 from ..domain.models import ToolResult
 from .registry import ToolRegistry
 from .spec import ToolContext
+
+tool_log = logging.getLogger("agent.tool")
 
 
 @dataclass(frozen=True)
@@ -174,6 +180,16 @@ class ToolGateway:
     ) -> ToolResult:
         if result.latency_ms == 0:
             result.latency_ms = int((time.perf_counter() - started) * 1000)
+        log_event(
+            tool_log,
+            logging.INFO if result.ok else logging.WARNING,
+            "tool call",
+            tool=name,
+            ok=result.ok,
+            code=result.code,
+            latency_ms=result.latency_ms,
+            args_digest=_digest(raw_args),
+        )
         if self._auditor is not None:
             audit = ToolAudit(
                 run_id=ctx.run_id,
@@ -183,11 +199,9 @@ class ToolGateway:
                 latency_ms=result.latency_ms,
                 args_digest=_digest(raw_args),
             )
-            try:
+            with contextlib.suppress(Exception):
+                # 审计失败不能影响主流程；失败原因由 agent.tool 日志记录
                 await self._auditor(audit)
-            except Exception:
-                # 审计失败不能影响主流程，但也不能静默吞掉——交给上层日志
-                pass
         return result
 
 

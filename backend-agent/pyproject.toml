@@ -1,0 +1,24 @@
+[tool.ruff]
+line-length = 110
+target-version = "py312"
+extend-exclude = [".venv", "evals/reports"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "RUF"]
+ignore = [
+    "E501",   # 行长由 line-length 统一约束，格式化负责
+    "B008",   # FastAPI 依赖注入依赖函数调用，属框架惯例
+    "RUF001", # 中文标点不视为歧义字符
+    "RUF002",
+    "RUF003",
+    "UP042",  # 保留 (str, Enum)：与 pydantic/serde 的 .value 语义更直观，不换 StrEnum
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["app"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["SIM117"]  # 测试里嵌套 async with 更直观
+
+[tool.ruff.format]
+quote-style = "double"

@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-from typing import Any, AsyncIterator
+from collections.abc import AsyncIterator
+from typing import Any
 
 import httpx
-import pytest
+from conftest import AUTH_HEADERS, make_http, make_settings, parse_sse
+
 from app.api import create_app
 from app.core.errors import ModelError
 from app.llm import LLMReply, ScriptedModel, ToolCall
 from app.storage import InMemoryRepository
-
-from conftest import AUTH_HEADERS, make_http, make_settings, parse_sse
 
 
 async def build_client(

@@ -37,7 +37,7 @@
 
 | 文档 | 版本 | 内容 |
 | --- | --- | --- |
-| [spec/agent-runtime-api.md](spec/agent-runtime-api.md) | v1.0 | `/healthz`、`POST /agent/chat`、事件续传、消息回读的请求/响应/事件/错误码/不变量 |
+| [spec/agent-runtime-api.md](spec/agent-runtime-api.md) | v1.1 | `/healthz`、`/readyz`、`POST /agent/chat`、事件续传、消息回读的请求/响应/事件/错误码/不变量 |
 | [spec/web-chat-ui.md](spec/web-chat-ui.md) | v1.0 | 对话页状态机、交互、持久化键、错误映射、布局约束、i18n 键、非目标 |
 
 ### ADR
@@ -50,6 +50,14 @@
 | [ADR-0004](adr/0004-checkpoint-thread-id.md) | LangGraph checkpointer 的 `thread_id` 用 `run_id` | Accepted |
 | [ADR-0005](adr/0005-layer-dependency-rules.md) | 单向依赖分层 + 依赖全注入 | Accepted |
 | [ADR-0006](adr/0006-web-sse-client.md) | 前端用 `fetch + ReadableStream` 自研 SSE 客户端 | Accepted |
+| [ADR-0007](adr/0007-observability-baseline.md) | 可观测基线：JSON 日志 + request_id + `/readyz`，不引入 APM | Accepted |
+| [ADR-0008](adr/0008-dependency-lock-and-ci.md) | 依赖精确锁定 + CI 门禁 + 非 root 容器 | Accepted |
+
+### PLAN
+
+| 文档 | 范围 | 状态 |
+| --- | --- | --- |
+| [plans/s1.6-production-hardening.md](plans/s1.6-production-hardening.md) | S1.6 生产化加固：P0 工程基线 → P3 管理端，每阶段带可执行验收 | P0 已完成，P1 待启动 |
 
 ### REPORT
 
@@ -57,6 +65,7 @@
 | --- | --- | --- |
 | [reports/2026-11-07-s1.5-runtime.md](reports/2026-11-07-s1.5-runtime.md) | S1.5 分层运行时 | 45 单测 / 23 评测 / 10 项真进程冒烟 全绿 |
 | [reports/2026-11-07-web-chat.md](reports/2026-11-07-web-chat.md) | App 聊天页接入 | build 通过、20 前端单测、浏览器端到端走通 |
+| [reports/2026-11-07-s1.6-p0.md](reports/2026-11-07-s1.6-p0.md) | S1.6 P0 工程基线 | ruff/pytest 59/evals/e2e 10-10 全绿；抓到 4 个真实缺陷；docker 未本机验证（无 docker） |
 
 ## 3. 新增文档怎么起头
 

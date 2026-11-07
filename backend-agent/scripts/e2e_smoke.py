@@ -21,8 +21,8 @@ from __future__ import annotations
 
 import json
 import sys
-from dataclasses import dataclass, field
-from typing import Any, Iterator
+from dataclasses import dataclass
+from typing import Any
 
 import httpx
 
@@ -90,7 +90,6 @@ def main() -> int:
         # ---- L2
         r2 = chat(client, "上次疫苗是什么时候", session_id)
         e2 = events(r2)
-        names2 = [e["event"] for e in e2]
         done = next((e["data"] for e in e2 if e["event"] == "done"), {})
         tools = [e["data"]["name"] for e in e2 if e["event"] == "tool"]
         results.append(

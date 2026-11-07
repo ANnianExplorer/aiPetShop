@@ -6,8 +6,8 @@
 
 from __future__ import annotations
 
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import AsyncIterator
 
 import httpx
 from fastapi import FastAPI, Request
@@ -16,12 +16,14 @@ from fastapi.responses import JSONResponse
 
 from ..config import Settings
 from ..core.errors import AgentError
+from ..core.logging import configure_logging
 from ..graph import build_graph
 from ..llm import ChatModel, build_model
 from ..runtime import AgentRunner, RunEventLog
 from ..storage import AgentRepository, create_repository
 from ..tools import BackendClient, ToolAudit, ToolGateway, ToolPolicy, build_registry
 from .deps import IdentityResolver
+from .observability import RequestContextMiddleware
 from .routes import router
 
 
@@ -33,6 +35,7 @@ def create_app(
     http_client: httpx.AsyncClient | None = None,
 ) -> FastAPI:
     settings = settings or Settings()
+    configure_logging(settings.log_level)
     http_owned = http_client is None
     http = http_client or httpx.AsyncClient(
         timeout=httpx.Timeout(settings.backend_timeout_s, connect=5.0)
@@ -93,6 +96,9 @@ def create_app(
                 await http.aclose()
 
     app = FastAPI(title="PetLumina Pet-Agent", version="0.2.0", lifespan=lifespan)
+    # Starlette 的中间件是「后加的先执行」：
+    # CORS 先加 → 在内层，负责给真实响应补跨域头；请求上下文后加 → 在最外层，
+    # 保证连 CORS 预检、异常响应都带 x-request-id 和访问日志。
     app.add_middleware(
         CORSMiddleware,
         allow_origins=list(settings.cors_origins),
@@ -100,6 +106,7 @@ def create_app(
         allow_headers=["*"],
         allow_credentials=False,
     )
+    app.add_middleware(RequestContextMiddleware)
 
     app.state.settings = settings
     app.state.repo = repository

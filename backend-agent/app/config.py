@@ -59,12 +59,15 @@ class Settings(BaseSettings):
     allowed_channels: tuple[str, ...] = ("app", "web", "internal")
     cors_origins: tuple[str, ...] = ("*",)
 
+    # ---- 可观测 ----
+    log_level: str = "INFO"
+
     @property
     def model_configured(self) -> bool:
         return bool(self.llm_api_key)
 
     @model_validator(mode="after")
-    def _guard(self) -> "Settings":
+    def _guard(self) -> Settings:
         if self.repo_backend == "mysql" and not self.mysql_dsn:
             raise ValueError("PET_AGENT_REPO_BACKEND=mysql 时必须提供 PET_AGENT_MYSQL_DSN")
         if self.env == "prod":

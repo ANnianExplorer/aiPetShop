@@ -218,33 +218,32 @@ class MySqlRepository:
         if not steps:
             return
         pool = await self._ensure_pool()
-        async with pool.acquire() as conn:
-            async with conn.cursor() as cur:
-                await cur.execute(
-                    "SELECT COALESCE(MAX(seq),0) FROM agent_step WHERE run_id=%s", (int(run_id),)
+        async with pool.acquire() as conn, conn.cursor() as cur:
+            await cur.execute(
+                "SELECT COALESCE(MAX(seq),0) FROM agent_step WHERE run_id=%s", (int(run_id),)
+            )
+            row = await cur.fetchone()
+            base = max(start_seq, int(row[0]) + 1 if row else start_seq)
+            rows = [
+                (
+                    int(new_id()),
+                    int(run_id),
+                    base + offset,
+                    step.kind.value,
+                    step.name[:64],
+                    json.dumps(step.input, ensure_ascii=False) if step.input else None,
+                    (step.output_digest or "")[:512] or None,
+                    step.status.value,
+                    int(step.latency_ms),
+                    (step.error or "")[:512] or None,
                 )
-                row = await cur.fetchone()
-                base = max(start_seq, int(row[0]) + 1 if row else start_seq)
-                rows = [
-                    (
-                        int(new_id()),
-                        int(run_id),
-                        base + offset,
-                        step.kind.value,
-                        step.name[:64],
-                        json.dumps(step.input, ensure_ascii=False) if step.input else None,
-                        (step.output_digest or "")[:512] or None,
-                        step.status.value,
-                        int(step.latency_ms),
-                        (step.error or "")[:512] or None,
-                    )
-                    for offset, step in enumerate(steps)
-                ]
-                await cur.executemany(
-                    "INSERT INTO agent_step (id,run_id,seq,kind,name,input,output_digest,"
-                    "status,latency_ms,error) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
-                    rows,
-                )
+                for offset, step in enumerate(steps)
+            ]
+            await cur.executemany(
+                "INSERT INTO agent_step (id,run_id,seq,kind,name,input,output_digest,"
+                "status,latency_ms,error) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                rows,
+            )
 
     async def finish_run(
         self,
@@ -296,6 +295,13 @@ class MySqlRepository:
                 " VALUES (%s,%s,%s,%s,%s,%s,%s)",
                 (int(new_id()), int(run_id), name[:64], args_digest, int(ok), code, latency_ms),
             )
+
+    async def ping(self) -> None:
+        """`/readyz` 用：真正拿连接执行一次 `SELECT 1`，而不是只看连接池对象是否存在。"""
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn, conn.cursor() as cur:
+            await cur.execute("SELECT 1")
+            await cur.fetchone()
 
     async def aclose(self) -> None:
         if self._pool is not None:

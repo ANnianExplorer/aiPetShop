@@ -147,6 +147,10 @@ class InMemoryRepository:
     def tool_calls(self) -> list[dict[str, Any]]:
         return list(self._tool_calls)
 
+    async def ping(self) -> None:
+        # 内存实现永远可用；保留此方法是为了让 /readyz 不必区分实现
+        return None
+
     async def aclose(self) -> None:
         return None
 

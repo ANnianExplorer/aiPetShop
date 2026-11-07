@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from typing import Any, AsyncIterator, Sequence
+from collections.abc import AsyncIterator, Sequence
+from typing import Any
 
 from ..domain.models import Usage
 from .base import ChatModel, LLMReply, StreamChunk

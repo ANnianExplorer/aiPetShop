@@ -40,6 +40,35 @@ Base URL：dev `http://localhost:8099`；路径前缀 `/`（不带 `/api/v1`，�
 
 `model_configured=false` 或 `graph_ready=false` 时服务仍存活，但 `/agent/chat` 会立刻回 `model_not_configured`。
 
+## 3.1 `GET /readyz`
+
+区分「进程活着」（`/healthz`）与「能接流量」（本接口）。不带鉴权，供编排系统探活。
+
+200（就绪）：
+
+```json
+{"status": "ready", "checks": {"repo": "ok", "model": "ok"}}
+```
+
+503（未就绪）：`checks` 里对应项给出原因，且**不返回堆栈**：
+
+```json
+{"status": "degraded", "checks": {"repo": "ConnectionError", "model": "ok"}}
+```
+
+| 检查项 | 通过条件 | 失败取值 |
+| --- | --- | --- |
+| `repo` | 存储真正可用：内存版恒 ok；MySQL 版执行 `SELECT 1` | 异常类名（如 `ConnectionError`） |
+| `model` | `PET_AGENT_LLM_API_KEY` 非空 | `not_configured` |
+
+## 3.2 通用响应头与日志字段
+
+| 项 | 规则 |
+| --- | --- |
+| `x-request-id` | 调用方可自带（≤64 字符）；缺失时服务端生成 `uuid4().hex` 并回写 |
+| 日志 | 每行一条 JSON，必含 `ts/level/logger/msg`，并自动附加 `request_id`；有会话上下文时附加 `user_id` / `run_id` |
+| 敏感数据 | 日志**不记录**消息原文，只记 `msg_chars`、`answer_chars`、`args_digest`(16 位摘要) |
+
 ## 4. `POST /agent/chat`
 
 ### 4.1 请求
@@ -133,14 +162,17 @@ data: {"text":"9月1日打过疫苗，"}
 | I6 | `steps.seq` 连续（1,2,3…），`agent_message` 只含 user/assistant | `test_repository_contract.py` |
 | I7 | 审计只存参数摘要（sha256 前 16 位），不存原文 | `test_gateway.py::test_audit_stores_digest_only` |
 | I8 | `done.usage` = 图内累计 + 流式 usage（不重不漏） | `test_api.py::test_l1_event_sequence` |
+| I9 | 每个响应都带 `x-request-id`（自带则原样回传，超 64 字符截断） | `test_observability.py::test_request_id_propagated_from_caller` |
+| I10 | 存储不可用或模型未配置时 `/readyz` 返回 503，且不回堆栈 | `test_observability.py::test_readyz_*` |
 
 ## 8. 验收用例（可执行）
 
 ```powershell
 cd backend-agent
-.\.venv\Scripts\python -m pytest          # 45 passed
+.\.venv\Scripts\python -m pytest          # 59 passed
 .\.venv\Scripts\python -m evals.run       # routing 15/15, safety 6/6, memory 2/2
 .\.venv\Scripts\python -m scripts.e2e_smoke   # 10/10
+.\.venv\Scripts\ruff.exe check .          # All checks passed
 ```
 
 ## 9. 变更记录
@@ -148,3 +180,4 @@ cd backend-agent
 | 版本 | 日期 | 变更 |
 | --- | --- | --- |
 | v1.0 | 2026-11-07 | 初版：从 S1.5 实现反推并冻结，含 I1–I8 不变量 |
+| v1.1 | 2026-11-07 | 增 `/readyz`、`x-request-id`、日志字段约定与 I9–I10（S1.6 P0） |
