@@ -79,6 +79,7 @@
 | [reports/2026-11-08-s1.9b-deadletter.md](reports/2026-11-08-s1.9b-deadletter.md) | S1.9-b 启动补偿 + 死信重放 + 队列现场 | 142 单测、五个冒烟 10/9/6/8/8、真机"在途 1 条 → 重启回收 → 落库"闭环；修 3 个问题（import 顺序、未用 Any、不变量编号乱序） |
 | [reports/2026-11-08-a2-session-list.md](reports/2026-11-08-a2-session-list.md) | BACKLOG A2 App 历史会话 | 146 单测、build/vitest 通过、真机隔离与排序验证、Edge 浏览器端到端；修 1 个真实缺陷（同秒会话排序） |
 | [reports/2026-11-08-a1-real-model-smoke.md](reports/2026-11-08-a1-real-model-smoke.md) | BACKLOG A1 真实模型冒烟 | 真 key 13/13：L1 P50 929 ms / P95 1064 ms、L2 调 `search_logs` 且引用 7001、usage 与库里 `agent_run` 一致；顺带发现"强杀进程留下僵死 running"（登记 B3） |
+| [reports/2026-11-08-s1.11-hygiene-debts.md](reports/2026-11-08-s1.11-hygiene-debts.md) | S1.11 卫生债 E1/E3/E4/E5 | 验证码改随机+dev 可配固定码（Java 单测 5 条）、管理端类型门禁改 `vue-tsc -b`（探针证明会报错，顺带修好"帖子图片/标签永远为空"）、社区分类改 code 比对、今日提醒改日期比较（前端单测 37 条） |
 
 ## 3. 新增文档怎么起头
 

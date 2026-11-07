@@ -43,21 +43,13 @@ const handleDelete = async () => {
   } catch {}
 }
 
-const imageList = computed(() => {
-  if (!postData.value?.images) return []
-  try {
-    const parsed = JSON.parse(postData.value.images)
-    return Array.isArray(parsed) ? parsed : []
-  } catch { return [] }
-})
+// 后端 PostVO 直接给的是 imageList/tagList（数组），不是 JSON 字符串；
+// 旧代码读 postData.images 再 JSON.parse，字段不存在 → 永远走 catch → 图片/标签永远空
+const imageList = computed(() => postData.value?.imageList ?? [])
 
-const tagList = computed(() => {
-  if (!postData.value?.tags) return []
-  try {
-    const parsed = JSON.parse(postData.value.tags)
-    return Array.isArray(parsed) ? parsed : []
-  } catch { return [] }
-})
+const tagList = computed(() =>
+  (postData.value?.tagList ?? []).filter(tag => !tag.startsWith('topic:'))
+)
 </script>
 
 <template>

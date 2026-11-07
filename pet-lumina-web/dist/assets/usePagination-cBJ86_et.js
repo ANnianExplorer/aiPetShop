@@ -1,1 +1,0 @@
-import{r as a}from"./index-Bv59lujV.js";function g(t){const e=a(1),r=a(10),o=a(0);return{currentPage:e,pageSize:r,total:o,handleCurrentChange:n=>{e.value=n,t()},handleSizeChange:n=>{r.value=n,e.value=1,t()}}}export{g as u};

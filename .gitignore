@@ -12,3 +12,5 @@ backend/target/
 z-plan/.playwright-cli/
 test-screenshots/
 /backend/.playwright-cli/
+# TypeScript 增量构建缓存（vue-tsc -b 产物）
+*.tsbuildinfo

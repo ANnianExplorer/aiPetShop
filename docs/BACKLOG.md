@@ -11,7 +11,7 @@
 3. 优先级按"卡不卡产品可用"分：P0 阻断、P1 该做、P2 值得做、P3 以后。
 4. 估算是"一个人、熟悉代码"的量级，不是承诺。
 
-统计：**P0 3 条（A1、A2 已交付）· P1 8 条 · P2 9 条 · P3 9 条 · 原项目卫生债 13 条**，原计划 42 条，其中 A1、A2 已完成，剩余 40 条。
+统计：**P0 3 条（A1、A2 已交付）· P1 8 条 · P2 9 条 · P3 9 条 · 原项目卫生债 9 条**，原计划 42 条，其中 A1、A2、E1、E3、E4、E5 已完成（E1/E3/E4/E5 见 `docs/reports/2026-11-08-s1.11-hygiene-debts.md`），剩余 36 条。
 
 ---
 
@@ -78,11 +78,7 @@
 
 | # | 位置 | 问题 | 影响 | 修法 |
 |---|---|---|---|---|
-| E1 | `backend/src/main/java/com/petlumina/backend/controller/user/AuthController.java:138` | `String code = "123456";` 验证码硬编码 | 任何人可注册/重置密码 | 接短信服务；未配置时拒绝启动（dev 白名单） |
 | E2 | `controller/user/NotificationController.java:97-121` | 广播已读只插个人副本，`unread/count` 恒 ≥1 | 红点永远消不掉 | 计数排除已读副本；或加 `user_notification_read` 表 |
-| E3 | `pet-lumina-web/tsconfig.json` + `package.json` | `files: []` + `vue-tsc --noEmit` → 什么都不检查；显式 `-p tsconfig.app.json` 有 8 个错 | 管理端类型安全是假的 | 改 `vue-tsc -b` 并修 8 个错（`PostDetail.vue` 的 images/tags、`PetDetail.vue` 的 feedingCount/feedingTotal/notes） |
-| E4 | `pet-lumina-app/src/views/community/Community.vue:40` | 分类筛选用翻译名比对 | 切语言后列表为空 | 用 `category` code 比对 |
-| E5 | `pet-lumina-app/src/views/schedule/ScheduleList.vue:37` | `remindTime.includes('今天')` 匹配 `yyyy-MM-dd HH:mm` | 今日恒空 | 用日期比较 |
 | E6 | `common/PageRequest` | `sortField`/`sortOrder` 从不生效 | 传了排序参数没效果 | Service 层拼 `orderBy`，或删字段别骗人 |
 | E7 | `exception/GlobalExceptionHandler` | 全部返回 HTTP 200，靠 body `code` 区分 | 网关/监控无法按状态码告警 | 关键错误映射真实 HTTP 状态 |
 | E8 | `service/admin/impl/DashboardServiceImpl.java:75-83` | 7 天趋势在 for 循环里每天发一次 `count()`（7 次 SQL），不是一次聚合 | 数据量大时仪表盘变慢 | 改成一次 `GROUP BY DATE(create_time)`；热门帖作者是否 N+1 未复核，复核后再补条目 |
@@ -109,4 +105,4 @@
 
 1. ~~A2 会话列表~~ ✅ 2026-11-08 已交付（`GET /agent/sessions` + App「历史会话」面板）。
 2. ~~A1 真实模型冒烟~~ ✅ 2026-11-08 已交付（真 key 跑通 L1×3 + L2，并抓到"僵死 run"问题，见 B3）。
-3. **E1 / E3 / E4 / E5 四个小修**（半天内可清，直接提升"完工度"）。
+3. ~~**E1 / E3 / E4 / E5 四个小修**~~ ✅ 已完成（2026-11-08）；下一批小修建议 E2 / E6 / E7。

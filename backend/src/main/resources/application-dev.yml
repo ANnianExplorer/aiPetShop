@@ -63,6 +63,13 @@ cos:
   region: ${COS_REGION}
   host: ${COS_HOST}
 
+# 业务自定义配置
+petlumina:
+  auth:
+    # 仅本地开发 / 自动化测试使用：验证码固定为 123456（本项目未接入短信网关）。
+    # 生产环境不要配置此项，留空即生成随机 6 位验证码。
+    fixed-verify-code: "123456"
+
 # Knife4j
 knife4j:
   enable: true

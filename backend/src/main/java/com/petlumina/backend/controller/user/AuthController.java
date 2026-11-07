@@ -15,7 +15,9 @@ import com.petlumina.backend.model.entity.User;
 import com.petlumina.backend.model.vo.LoginUserVO;
 import com.petlumina.backend.service.user.UserService;
 import com.petlumina.backend.utils.ThrowUtils;
+import com.petlumina.backend.utils.VerifyCodeUtils;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.web.bind.annotation.*;
 
@@ -36,6 +38,12 @@ public class AuthController {
 
     @Resource
     private StringRedisTemplate stringRedisTemplate;
+
+    /**
+     * 本地开发 / 自动化测试用的固定验证码；生产环境不配置即为随机码。
+     */
+    @Value("${petlumina.auth.fixed-verify-code:}")
+    private String fixedVerifyCode;
 
     /**
      * 用户注册
@@ -134,8 +142,8 @@ public class AuthController {
         Boolean exists = stringRedisTemplate.hasKey(redisKey);
         ThrowUtils.throwIf(Boolean.TRUE.equals(exists), ErrorCode.TOO_MANY_REQUEST, "验证码已发送，请稍后再试");
 
-        // 生成验证码 (开发环境固定为 123456)
-        String code = "123456";
+        // 生成验证码：生产环境随机 6 位；只有配置了 petlumina.auth.fixed-verify-code 时才固定
+        String code = VerifyCodeUtils.generate(fixedVerifyCode);
 
         // 存入 Redis
         stringRedisTemplate.opsForValue().set(redisKey, code,

@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import type { Reminder } from '@/types'
 import { reminderApi } from '@/api/reminder'
+import { isToday, isWithinNextDays } from '@/utils/schedule'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -34,9 +35,11 @@ onMounted(() => {
 const filteredReminders = computed(() => {
   switch (activeTab.value) {
     case 'today':
-      return reminders.value.filter(r => r.remindTime.includes('今天') || r.remindTime.includes('上午') || r.remindTime.includes('下午') || r.remindTime.includes('早上'))
+      // 后端存的是 yyyy-MM-dd HH:mm:ss，按本地自然日比较（旧代码用 includes('今天')，永远为空）
+      return reminders.value.filter(r => isToday(r.remindTime))
     case 'week':
-      return reminders.value.filter(r => r.isCompleted === 0)
+      // 未来 7 天且未完成：左闭右开，今天的也算
+      return reminders.value.filter(r => r.isCompleted === 0 && isWithinNextDays(r.remindTime, 7))
     case 'completed':
       return reminders.value.filter(r => r.isCompleted === 1)
     default:

@@ -21,6 +21,11 @@ export interface Pet {
   age?: string
   healthScore?: number
   todaySteps?: number
+  /** 今日已喂次数 / 计划次数（后端 PetVO 同名字段） */
+  feedingCount?: number
+  feedingTotal?: number
+  /** 备注，可能是空串 */
+  notes?: string
   user?: User
   createTime?: string
 }

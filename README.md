@@ -431,8 +431,10 @@ $env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:yourpwd@127.0.0.1:3306/petlumina"
 前端：
 
 ```bash
-cd pet-lumina-app && npm run build && npm test    # vue-tsc + vitest（SSE 解析器 20 例）
-cd pet-lumina-web && npm run build                # 管理端类型检查
+cd pet-lumina-app && npm run build && npm test    # vue-tsc + vitest（37 例：SSE / 聊天流 / 分类 / 提醒日期）
+cd pet-lumina-web && npm run typecheck && npm run build   # 管理端 vue-tsc -b（真检查，不是空转）
+
+cd backend && mvn test                            # 后端单测（含验证码生成器 5 例）
 ```
 
 文档入口：[`docs/README.md`](./docs/README.md)（四类文档职责 + 索引），

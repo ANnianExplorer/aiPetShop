@@ -9,6 +9,7 @@ import PostFeed from '@/components/community/PostFeed.vue'
 import type { Post, Topic } from '@/types'
 import { postApi } from '@/api/post'
 import { topicApi } from '@/api/topic'
+import { matchesCategory, POST_CATEGORY_TABS, type PostCategoryTab } from '@/utils/postCategory'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -23,22 +24,17 @@ const goToNewTopic = () => {
   router.push({ name: 'newTopic' })
 }
 
-const categories = computed(() => [
-  t('community.all'),
-  t('community.cat'),
-  t('community.dog'),
-  t('community.exotic'),
-  t('community.medical')
-])
-const activeCategory = ref('')
+const categories = computed(() =>
+  POST_CATEGORY_TABS.map(key => ({ key, label: t(`community.${key}`) }))
+)
+// 存 key 而不是展示文案：切语言后 key 不变，筛选才不会失效
+const activeCategory = ref<PostCategoryTab>('all')
 const searchQuery = ref('')
 
 const filteredPosts = computed(() => {
   let result = posts.value
 
-  if (activeCategory.value && activeCategory.value !== t('community.all')) {
-    result = result.filter(p => p.category === activeCategory.value)
-  }
+  result = result.filter(p => matchesCategory(p.category, activeCategory.value))
 
   if (searchQuery.value.trim()) {
     const query = searchQuery.value.trim().toLowerCase()
@@ -56,7 +52,6 @@ const topics = ref<Topic[]>([])
 const posts = ref<Post[]>([])
 
 onMounted(async () => {
-  activeCategory.value = t('community.all')
   try {
     const [topicRes, postRes] = await Promise.all([
       topicApi.listPage({ pageSize: 10 }),
@@ -102,14 +97,14 @@ onMounted(async () => {
       <section class="flex gap-sm overflow-x-auto no-scrollbar animate-float-up stagger-3">
         <button
           v-for="cat in categories"
-          :key="cat"
-          @click="activeCategory = cat"
+          :key="cat.key"
+          @click="activeCategory = cat.key"
           class="px-md py-sm rounded-full font-label-bold text-label-bold whitespace-nowrap transition-all duration-300 btn-jelly"
-          :class="activeCategory === cat
+          :class="activeCategory === cat.key
             ? 'bg-primary text-white shadow-lg shadow-primary/20'
             : 'glass-panel text-on-surface-variant hover:bg-white/50'"
         >
-          {{ cat }}
+          {{ cat.label }}
         </button>
       </section>
 
