@@ -11,7 +11,7 @@
 3. 优先级按"卡不卡产品可用"分：P0 阻断、P1 该做、P2 值得做、P3 以后。
 4. 估算是"一个人、熟悉代码"的量级，不是承诺。
 
-统计：**P0 3 条（A2 已交付）· P1 8 条 · P2 9 条 · P3 9 条 · 原项目卫生债 13 条**，原计划 42 条，其中 A2 已完成，剩余 41 条。
+统计：**P0 3 条（A1、A2 已交付）· P1 8 条 · P2 9 条 · P3 9 条 · 原项目卫生债 13 条**，原计划 42 条，其中 A1、A2 已完成，剩余 40 条。
 
 ---
 
@@ -19,7 +19,7 @@
 
 | # | 缺口 | 现状 | 依赖 / 卡点 | 验收标准 | 估算 |
 |---|---|---|---|---|---|
-| A1 | **真实模型没跑过** | 全部验证基于 `tests/stub_llm.py`；`/healthz` 显示 `model_configured` 但从未用真 key 走完一轮 | 需要 `PET_AGENT_LLM_API_KEY`（或任意 OpenAI 兼容端点） | 用真模型完成 1 轮 L1 + 1 轮 L2（触发 `search_logs`），`agent_run` 里 token 与实际账单量级一致（误差 <20%），并记录 P95 首 token 延迟 | 0.5 天 |
+| A1 | ~~**真实模型没跑过**~~ ✅ 已交付（2026-11-08） | 原状：全部验证基于 `tests/stub_llm.py`。现已有 `scripts/real_model_smoke.py` 用真 key 跑通 L1×3 + L2，见 `docs/reports/2026-11-08-a1-real-model-smoke.md` | — | 已验收：L1 P50 首 token 929 ms / P95 1064 ms、L2 调 `search_logs` 且引用 7001、`done.usage` 与 `agent_run` 一致（182/15、2286/108） | ✅ |
 | A2 | ~~**App 没有会话列表**~~ ✅ 已交付（2026-11-08） | 原状：`ChatView.vue` 只用 `localStorage['petlumina-agent-session']` 记住最后一个会话；后端没有 `GET /agent/sessions`。现已有接口（分页 + 按最后消息时间倒序 + 本人隔离）与「历史会话」面板，见 `docs/reports/2026-11-08-a2-session-list.md` | — | 已验收：建 3 个会话、面板切换、刷新后仍在 | ✅ |
 | A3 | **文件 / 图片 / 视频分析（RAG）** | `doc_file` / `doc_chunk` 表未建、无解析管道、无向量库；`Citation.locator` 的 `fileId#page`、`fileId#t=93s` 只是约定 | 需要存储（COS 已有）、解析（PDF/OCR/ffmpeg）、向量库（pgvector 优先） | 上传一张疫苗本照片 → 提问"下次疫苗什么时候" → 答案带可点回原图的引用；`doc_chunk` 有对应行 | 5–8 天 |
 
@@ -31,7 +31,7 @@
 |---|---|---|---|---|---|
 | B1 | **RocketMQ 生产实现（S1.9-c）** | 只有 `TaskQueue` 抽象 + 内存/Redis 实现；ADR-0009 定的是"MQ 在 Java 侧" | 本机无 broker、无 Docker；Java 需引 `rocketmq-spring-boot-starter` | 起一个 broker，Python 侧通过 `TaskQueue` 适配器收发；`tasks_smoke` 在 MQ 后端下 8/8 | 2–3 天 |
 | B2 | **多副本韧性未验证** | 熔断状态在进程内；事件流 / 限流已走 Redis，但没起过两个实例 | 需要反向代理或两端口 + 压测脚本 | 起 2 个实例：同一用户的 SSE 续传在另一实例可读；限流合计 20/min 不被放大 2 倍 | 2 天 |
-| B3 | **`processing` 泄漏扫描** | 只在启动时 `recover` 一次 | 需定期任务 + `XPENDING`/`XAUTOCLAIM` 或等价搬运 | 消费者卡住 60s 后，消息被另一 worker 接手，`processing` 不长期堆积 | 1 天 |
+| B3 | **`processing` 泄漏扫描 + 僵死 run 收敛** | 队列只在启动时 `recover` 一次；**进程被强杀时，在途 `agent_run` 会永远停在 `running`**（A1 实测留下 `1794058693935000000`） | 需定期任务 + `XAUTOCLAIM` 或等价搬运；僵死 run 需先定策略（按 `create_time < now - stale_run_timeout_s` 收敛，还是外部巡检），多副本下不能无脑 cancel 别人的活 run | 消费者卡住 60s 后消息被另一 worker 接手、`processing` 不长期堆积；`running` 超过 15 分钟的运行被标记 `cancelled` 且管理端可见原因 | 1–1.5 天 |
 | B4 | **死信运维只到"手动放回"** | 单 topic、最多 100 条、无自动重试策略、无告警 | 依赖 B3 的扫描器 | 死信 > N 时打 WARN 并可配置自动重试（指数退避）；批量重放（多 topic） | 1 天 |
 | B5 | **可观测缺指标与追踪** | 只有 JSON 日志 + `/readyz`；无 `/metrics`、无 trace | 选型：Prometheus client + 可选 Langfuse（自建） | `/metrics` 暴露 `agent_run_total{status}`、`agent_run_latency_ms`、`agent_tokens_total`、`task_depth`；一次 run 能在 trace 里看到对应 span | 2–3 天 |
 | B6 | **管理端缺"队列页 / 记忆页 / 知识图谱"** | 队列与记忆只有接口；图谱（G6）完全没做 | 前端工作量 | 队列页显示 depth/死信并可一键重放；记忆页可删除单条事实；图谱页至少渲染"宠物—事实—事件"三层 | 3–5 天 |
@@ -108,5 +108,5 @@
 ## 7. 建议的下一步
 
 1. ~~A2 会话列表~~ ✅ 2026-11-08 已交付（`GET /agent/sessions` + App「历史会话」面板）。
-2. **A1 真实模型冒烟**（最小成本、最大信息量）：先确认模型侧没问题，再谈功能。
+2. ~~A1 真实模型冒烟~~ ✅ 2026-11-08 已交付（真 key 跑通 L1×3 + L2，并抓到"僵死 run"问题，见 B3）。
 3. **E1 / E3 / E4 / E5 四个小修**（半天内可清，直接提升"完工度"）。

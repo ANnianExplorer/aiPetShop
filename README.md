@@ -424,6 +424,7 @@ $env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:yourpwd@127.0.0.1:3306/petlumina"
 .venv\Scripts\python -m scripts.admin_smoke        # 6/6（管理端权限与查询）
 .venv\Scripts\python -m scripts.idempotency_smoke  # 8/8（同 key 不重复执行）
 .venv\Scripts\python -m scripts.tasks_smoke        # 8/8（死信重放 / 队列现场）
+.venv\Scripts\python -m scripts.real_model_smoke   # 13/13（需真 key：L1 首 token / L2 工具 / usage 一致）
 .venv\Scripts\ruff.exe check .            # All checks passed
 ```
 
@@ -454,7 +455,7 @@ cd pet-lumina-web && npm run build                # 管理端类型检查
 - App：首页「问 Lumina」入口 + 全屏对话页（流式、工具提示、引用回跳、历史会话恢复）+ **历史会话面板**（`GET /agent/sessions`，列表切换与刷新恢复）
 - 管理端：会话工作台（会话列表 / 详情：对话流 + 运行轨迹 + 长期记忆 / 全局用量）
 - 文档体系：9 条 ADR、2 份 SPEC、1 份 SDD、5 份 PLAN、9 份 REPORT（见 `docs/README.md`）
-- 验收：146 单测、23 条评测、5 个真进程冒烟（10/9/6/8/8）、`ruff` 全绿
+- 验收：146 单测、23 条评测、5 个真进程冒烟（10/9/6/8/8）+ 真实模型冒烟 13/13（L1 P50 929 ms / P95 1064 ms）、`ruff` 全绿
 
 ### v2.7 (2026-06-03)
 

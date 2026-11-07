@@ -78,6 +78,7 @@
 | [reports/2026-11-08-s1.9-task-queue.md](reports/2026-11-08-s1.9-task-queue.md) | S1.9-a 旁路任务队列（TaskQueue） | 134 单测、四个冒烟 10/9/6/8、真机 Redis 队列收发闭环；抓到 3 个真实缺陷（冒烟脚本不自洽、签名不一致、最终一致误判为回归） |
 | [reports/2026-11-08-s1.9b-deadletter.md](reports/2026-11-08-s1.9b-deadletter.md) | S1.9-b 启动补偿 + 死信重放 + 队列现场 | 142 单测、五个冒烟 10/9/6/8/8、真机"在途 1 条 → 重启回收 → 落库"闭环；修 3 个问题（import 顺序、未用 Any、不变量编号乱序） |
 | [reports/2026-11-08-a2-session-list.md](reports/2026-11-08-a2-session-list.md) | BACKLOG A2 App 历史会话 | 146 单测、build/vitest 通过、真机隔离与排序验证、Edge 浏览器端到端；修 1 个真实缺陷（同秒会话排序） |
+| [reports/2026-11-08-a1-real-model-smoke.md](reports/2026-11-08-a1-real-model-smoke.md) | BACKLOG A1 真实模型冒烟 | 真 key 13/13：L1 P50 929 ms / P95 1064 ms、L2 调 `search_logs` 且引用 7001、usage 与库里 `agent_run` 一致；顺带发现"强杀进程留下僵死 running"（登记 B3） |
 
 ## 3. 新增文档怎么起头
 

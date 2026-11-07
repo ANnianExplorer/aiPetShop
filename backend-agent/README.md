@@ -222,6 +222,17 @@ P1 专项（配额/用量/记忆，用独立账号 `token-7007`，限流放最�
 > `TASK_BACKEND=redis`，五个冒烟全部可跑（10/9/6/8/8）。Redis 5 不支持 RESP3，客户端已固定 `protocol=2`。
 > 崩溃恢复：进程启动时先把 `:processing` 里的在途消息搬回队列再开消费，日志 `task inflight recovered on startup`。
 
+真实模型专项（必须有 key，验证"不是本地桩"）：
+
+```bash
+$env:PET_AGENT_LLM_API_KEY = "<key>"; $env:PET_AGENT_LLM_BASE_URL = "https://api.deepseek.com/v1"
+$env:PET_AGENT_LLM_MODEL = "deepseek-chat"
+.venv\Scripts\python -m scripts.real_model_smoke --rounds 3   # 13/13
+```
+
+它量的是三件只有真模型才暴露的事：L1 首 token 延迟（P50/P95）、L2 是否真的调了 `search_logs`、
+`done.usage` 的 token 与库里的 `agent_run` 是否一致。key 只从环境变量读，不落仓库。
+
 ## 记忆是怎么工作的
 
 ```text
