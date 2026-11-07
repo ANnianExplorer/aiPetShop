@@ -34,6 +34,18 @@ class Event:
         payload = json.dumps(self.data, ensure_ascii=False, default=str)
         return f"id: {self.seq}\nevent: {self.type.value}\ndata: {payload}\n\n"
 
+    def to_payload(self) -> dict[str, Any]:
+        """可持久化形态（Redis Stream 用）：事件类型 + 数据 + 序号，不含 SSE 头。"""
+        return {"type": self.type.value, "data": dict(self.data), "seq": self.seq}
+
+    @classmethod
+    def from_payload(cls, raw: Mapping[str, Any]) -> Event:
+        return cls(
+            type=EventType(str(raw.get("type") or EventType.DELTA.value)),
+            data=dict(raw.get("data") or {}),
+            seq=int(raw.get("seq") or 0),
+        )
+
 
 def encode_sse(event: Event) -> str:
     return event.to_sse()

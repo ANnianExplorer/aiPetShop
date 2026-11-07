@@ -37,10 +37,11 @@ App / 管理端 ──SSE──>  api/          传输层：鉴权、请求校�
 | `app/tools/` | `spec`/`registry`/`gateway`/`client`/`pet` | schema 由 pydantic 生成；写操作默认不暴露 |
 | `app/storage/` | `base`（Protocol）/`memory`/`mysql` | 两套实现共用一份契约测试 |
 | `app/graph/` | `state`/`nodes`/`builder` | hop 与调用预算都有硬上限 |
-| `app/runtime/` | `eventlog`/`runner` | 事件可续传；run 终态不可改 |
+| `app/runtime/` | `eventlog`/`runner` | 事件可续传；run 终态不可改；配额与记忆在这里被编排 |
 | `app/api/` | `deps`/`schemas`/`routes`/`app`/`observability` | 依赖全部注入，测试不需要真模型/真库 |
-| `app/core/` | `errors`/`ids`/`logging` | 错误模型、19 位雪花 id、单行 JSON 日志 |
-| `tests/` | 契约级单测 | 59 项，不依赖网络/MySQL/密钥 |
+| `app/core/` | `errors`/`ids`/`logging`/`ratelimit` | 错误模型、19 位雪花 id、单行 JSON 日志、配额 |
+| `app/memory/` | `extract`/`ops`/`service` | 事实抽取（规则）、ADD/UPDATE/NOOP 算子、写入与召回 |
+| `tests/` | 契约级单测 | 92 项，不依赖网络/MySQL/密钥 |
 | `evals/` | 评测用例 + 阈值 runner | 23 条用例，不过阈值就退出码非 0 |
 
 ## 快速开始
@@ -58,7 +59,7 @@ copy .env.example .env          # 填 PET_AGENT_LLM_API_KEY
 ```bash
 curl http://localhost:8099/healthz    # 进程活着
 curl http://localhost:8099/readyz     # 能接流量（存储+模型都 ok 才是 200）
-.venv\Scripts\python -m pytest        # 59 passed
+.venv\Scripts\python -m pytest        # 92 passed
 .venv\Scripts\python -m evals.run     # routing/safety/memory 三套件，硬阈值
 .venv\Scripts\ruff.exe check .        # 静态检查
 ```
@@ -73,10 +74,14 @@ docker run -p 8099:8099 -e PET_AGENT_LLM_API_KEY=... pet-agent
 切 MySQL（S1 默认 `memory`，重启即清空）：
 
 ```bash
-mysql -u root -p < backend/sql/v2.10-agent.sql
+mysql -u root -p < backend/sql/v2.10-agent.sql      # 会话/消息/运行/步骤/工具审计
+mysql -u root -p < backend/sql/v2.11-agent-memory.sql  # 长期记忆两表
 # .env: PET_AGENT_REPO_BACKEND=mysql
 #       PET_AGENT_MYSQL_DSN=mysql://root:密码@localhost:3306/petlumina
 ```
+
+生产形态建议同时切两处（不改代码）：`PET_AGENT_EVENT_BACKEND=redis`（事件流跨副本续传）、
+`PET_AGENT_RATE_LIMIT_BACKEND=redis`（配额多副本共享计数）。
 
 ## 配置
 
@@ -96,6 +101,13 @@ mysql -u root -p < backend/sql/v2.10-agent.sql
 | `PET_AGENT_HISTORY_LIMIT` | `20` | 每次带给模型的历史消息条数 |
 | `PET_AGENT_RUN_DEADLINE_S` | `60` | 单次运行墙钟上限，超时落 `RunTimeout` |
 | `PET_AGENT_LOG_LEVEL` | `INFO` | 结构化日志级别；CI/本地排障用 `DEBUG` |
+| `PET_AGENT_RUN_TOKEN_BUDGET` | `30000` | 单次运行累计 token 上限（0=不限）；超了抛 `budget_exceeded` |
+| `PET_AGENT_RATE_LIMIT_ENABLED` | `true` | 每用户配额开关（关掉只影响限流，不影响预算） |
+| `PET_AGENT_RATE_LIMIT_PER_MINUTE` | `20` | 每分钟对话次数 |
+| `PET_AGENT_RATE_LIMIT_PER_DAY` | `300` | 每日对话次数 |
+| `PET_AGENT_RATE_LIMIT_BACKEND` | `memory` | `memory`（单副本）/ `redis`（多副本共享） |
+| `PET_AGENT_EVENT_BACKEND` | `memory` | `memory` / `redis`（Redis Stream，跨进程续传） |
+| `PET_AGENT_REDIS_URL` | `redis://localhost:6379/0` | 事件流与配额共用 |
 
 ## 接口
 
@@ -106,6 +118,11 @@ mysql -u root -p < backend/sql/v2.10-agent.sql
 | POST | `/agent/chat` | SSE；头 `satoken`（或 `Authorization: Bearer`），body `{message, session_id?, pet_id?, channel?}` |
 | GET | `/agent/runs/{run_id}/events` | 断线续传；支持 `?after=N` 与 `Last-Event-ID` |
 | GET | `/agent/sessions/{id}/messages` | 历史消息（App 进聊天页） |
+| GET | `/agent/memory/me` | 我这个账号（可带 `pet_id`）记住的事实：`{id,key,label,value,confidence,update_time}` |
+| GET | `/agent/usage/me?days=7` | 用量聚合：`runs / prompt_tokens / completion_tokens / total_tokens / avg_latency_ms` |
+
+超配额不建 SSE，直接 `429`：`{code:"rate_limited", detail:{retry_after_s,scope,limit}}` + `Retry-After` 头；
+正常对话响应头带 `X-RateLimit-Limit` / `X-RateLimit-Remaining`。
 
 所有响应都带 `x-request-id`（自带则回传，≤64 字符），日志行里同样带这个字段——
 一条请求从 `run started` 到 `run finished` 可以用它串起来，不用去猜。
@@ -135,7 +152,7 @@ event: error   data: {code, message, retryable}
 ## 测试与评测
 
 - `ruff check .` → 静态检查（配置在 `pyproject.toml`，CI 第一道门）。
-- `pytest` → 59 项：路由、网关六道防线、存储契约（内存/MySQL 同一套断言）、图（L1/L2/hop 上限/坏参数）、API（SSE 事件序列、续传三种方式等价、越权、失败收敛）、可观测（request_id/日志字段/readyz 降级）。
+- `pytest` → 92 项：路由、网关六道防线、存储契约（内存/MySQL 同一套断言）、图（L1/L2/hop 上限/坏参数）、API（SSE 事件序列、续传三种方式等价、越权、失败收敛、429 与配额头、记忆注入与用量聚合）、配额（分钟/日窗口、用户隔离、Redis fail-open、`Retry-After`）、事件存储（两实现同契约：序号、游标、裁剪、坏数据跳过）、记忆（抽取规则、ADD/UPDATE/NOOP、隔离、低置信度过滤）、可观测（request_id/日志字段/readyz 降级）。
 - `python -m evals.run` → 三套件、阈值硬卡：`routing ≥ 95%`、`safety = 100%`、`memory = 100%`。
   用例在 `evals/cases.jsonl`，加一行就是加一条回归；报告落 `evals/reports/latest.json`。
 - 三者都不需要真模型：`ScriptedModel` 把模型的输出变成脚本，测的是**我们的编排**，不是模型的智商。
@@ -154,6 +171,30 @@ event: error   data: {code, message, retryable}
 
 10 项检查：healthz、L1 事件序列、L2 真的调用 `search_logs`、citation 指回记录 7001、用量已结算、
 续传三方式等价、会话回读、越权读他人会话 404。
+
+P1 专项（配额/用量/记忆，用独立账号 `token-7007`，限流放最后一步）：
+
+```bash
+.venv\Scripts\python -m scripts.p1_smoke   # 9/9
+```
+
+检查：记忆初始为空 → 说一句「它叫 Lumina，对牛奶过敏」→ 接口里能查到 `allergy=牛奶`（含标签与置信度）→
+重复同一句话不产生第二条 → 用量按账号聚合 → 打满配额后 `429 + Retry-After`。
+
+## 记忆是怎么工作的
+
+```text
+用户说"它对牛奶过敏"
+   → extract.py：正则抽到 {allergy: 牛奶}，置信度 0.95
+   → ops.py：内存里没有 → ADD
+   → repository.upsert_memory_fact()：唯一键 (user, pet, key) 兜底，重复说不会多一条
+下一轮提问
+   → recall_lines()：过滤 < 0.7 的猜测 → ["过敏：牛奶"]
+   → prepare_node 把它拼进 system 提示（不伪造 user 消息）
+   → 召回/写入抛异常就吞掉，本轮照常回答（记忆是增强，不是单点故障）
+```
+
+`GET /agent/memory/me` 把这层变可核对——抽取错了能看见、能修，而不是等模型胡说才发现。
 
 ## 加一个工具（五步，缺一不可）
 

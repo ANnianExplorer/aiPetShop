@@ -15,7 +15,20 @@ from urllib.parse import unquote, urlparse
 
 from ..core.errors import Forbidden, NotFound
 from ..core.ids import new_id
-from ..domain.models import Intent, Message, Role, Route, Run, RunStatus, Session, Step, Usage
+from ..domain.models import (
+    Citation,
+    Intent,
+    MemoryFact,
+    Message,
+    Role,
+    Route,
+    Run,
+    RunStatus,
+    Session,
+    Step,
+    Usage,
+    UsageSummary,
+)
 
 _INSERT_SESSION = (
     "INSERT INTO agent_session (id,user_id,pet_id,title,channel,status,message_count,"
@@ -303,6 +316,93 @@ class MySqlRepository:
             await cur.execute("SELECT 1")
             await cur.fetchone()
 
+    # ------------------------------------------------------------ 长期记忆
+    async def get_memory_fact(
+        self, user_id: str, pet_id: str | None, key: str
+    ) -> MemoryFact | None:
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn, conn.cursor() as cur:
+            await cur.execute(
+                "SELECT id,user_id,pet_id,fact_key,fact_value,confidence,source,"
+                "create_time,update_time FROM memory_fact"
+                " WHERE user_id=%s AND pet_id=%s AND fact_key=%s AND is_delete=0",
+                (int(user_id), _pet_slot(pet_id), key),
+            )
+            row = await cur.fetchone()
+        return _row_to_fact(row) if row else None
+
+    async def upsert_memory_fact(self, fact: MemoryFact) -> MemoryFact:
+        pool = await self._ensure_pool()
+        fact_id = int(fact.id) if fact.id else int(new_id())
+        async with pool.acquire() as conn, conn.cursor() as cur:
+            # 唯一键 (user_id, pet_id, fact_key)：同一事实只更新不新增
+            await cur.execute(
+                "INSERT INTO memory_fact (id,user_id,pet_id,fact_key,fact_value,"
+                "confidence,source) VALUES (%s,%s,%s,%s,%s,%s,%s)"
+                " ON DUPLICATE KEY UPDATE fact_value=VALUES(fact_value),"
+                " confidence=GREATEST(confidence,VALUES(confidence)),"
+                " source=VALUES(source),update_time=NOW()",
+                (
+                    fact_id,
+                    int(fact.user_id),
+                    _pet_slot(fact.pet_id),
+                    fact.key,
+                    fact.value[:255],
+                    float(fact.confidence),
+                    fact.source[:32],
+                ),
+            )
+            await cur.execute(
+                "SELECT id,user_id,pet_id,fact_key,fact_value,confidence,source,"
+                "create_time,update_time FROM memory_fact"
+                " WHERE user_id=%s AND pet_id=%s AND fact_key=%s",
+                (int(fact.user_id), _pet_slot(fact.pet_id), fact.key),
+            )
+            row = await cur.fetchone()
+        return _row_to_fact(row) if row else fact
+
+    async def list_memory_facts(
+        self, user_id: str, pet_id: str | None, limit: int = 10
+    ) -> list[MemoryFact]:
+        if limit <= 0:
+            return []
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn, conn.cursor() as cur:
+            await cur.execute(
+                "SELECT id,user_id,pet_id,fact_key,fact_value,confidence,source,"
+                "create_time,update_time FROM memory_fact"
+                " WHERE user_id=%s AND pet_id=%s AND is_delete=0"
+                " ORDER BY confidence DESC, update_time DESC LIMIT %s",
+                (int(user_id), _pet_slot(pet_id), int(limit)),
+            )
+            rows = await cur.fetchall()
+        return [_row_to_fact(row) for row in rows]
+
+    # ------------------------------------------------------------ 用量
+    async def usage_summary(self, user_id: str, since: str | None = None) -> UsageSummary:
+        pool = await self._ensure_pool()
+        sql = (
+            "SELECT COUNT(*), COALESCE(SUM(r.prompt_tokens),0),"
+            " COALESCE(SUM(r.completion_tokens),0), COALESCE(AVG(r.latency_ms),0)"
+            " FROM agent_run r JOIN agent_session s ON s.id=r.session_id"
+            " WHERE s.user_id=%s AND r.status='succeeded'"
+        )
+        params: list[Any] = [int(user_id)]
+        if since:
+            sql += " AND r.create_time>=%s"
+            params.append(since)
+        async with pool.acquire() as conn, conn.cursor() as cur:
+            await cur.execute(sql, tuple(params))
+            row = await cur.fetchone()
+        if not row:
+            return UsageSummary()
+        return UsageSummary(
+            runs=int(row[0]),
+            prompt_tokens=int(row[1]),
+            completion_tokens=int(row[2]),
+            avg_latency_ms=int(row[3]),
+        )
+
     async def aclose(self) -> None:
         if self._pool is not None:
             self._pool.close()
@@ -341,8 +441,27 @@ def _is_duplicate(exc: Exception) -> bool:
     return code == 1062
 
 
+def _pet_slot(pet_id: str | None) -> int:
+    """`pet_id` 可空，但唯一键里的 NULL 不参与去重——用 0 当"未指定宠物"的槽位。"""
+    return int(pet_id) if pet_id else 0
+
+
+def _row_to_fact(row: Any) -> MemoryFact:
+    rid, uid, pid, key, value, confidence, source, created, updated = row
+    return MemoryFact(
+        id=str(rid),
+        user_id=str(uid),
+        pet_id=str(pid) if pid else None,
+        key=key,
+        value=value,
+        confidence=float(confidence or 0.0),
+        source=source or "conversation",
+        create_time=str(created) if created else None,
+        update_time=str(updated) if updated else None,
+    )
+
+
 def _load_citations(raw: Any) -> list[Any]:
-    from ..domain.models import Citation
 
     if not raw:
         return []

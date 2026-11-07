@@ -89,6 +89,39 @@ def dedupe_citations(items: list[Citation]) -> list[Citation]:
 
 
 @dataclass
+class MemoryFact:
+    """长期事实记忆：一条 `(user, pet, key) → value`。
+
+    `confidence` 由抽取规则给出，`source` 记录来源（conversation / manual），
+    后续做"记忆可信度衰减"和"用户可纠正"都依赖这两个字段。
+    """
+
+    id: str
+    user_id: str
+    key: str
+    value: str
+    pet_id: str | None = None
+    confidence: float = 0.8
+    source: str = "conversation"
+    create_time: str | None = None
+    update_time: str | None = None
+
+
+@dataclass(frozen=True)
+class UsageSummary:
+    """按用户聚合的用量：给「我这个月花了多少 token」这类问题提供数据。"""
+
+    runs: int = 0
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    avg_latency_ms: int = 0
+
+    @property
+    def total_tokens(self) -> int:
+        return self.prompt_tokens + self.completion_tokens
+
+
+@dataclass
 class Session:
     id: str
     user_id: str

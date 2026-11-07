@@ -103,10 +103,32 @@ class RunTimeout(AgentError):
 
 
 class BudgetExceeded(AgentError):
-    """超出 hop / 工具调用 / 时长预算：不可重试，重试只会继续烧钱。"""
+    """超出 hop / 工具调用 / token / 时长预算：不可重试，重试只会继续烧钱。"""
 
     code = "budget_exceeded"
     http_status = 429
+
+
+class RateLimited(AgentError):
+    """用户级配额耗尽：与 `budget_exceeded` 分开，前端要显示"稍后再试"而不是"出错了"。"""
+
+    code = "rate_limited"
+    http_status = 429
+    retryable = True
+
+    def __init__(
+        self,
+        message: str = "请求太频繁，稍后再试",
+        *,
+        retry_after_s: int = 60,
+        scope: str = "chat",
+        limit: int = 0,
+    ) -> None:
+        super().__init__(
+            message,
+            detail={"retry_after_s": retry_after_s, "scope": scope, "limit": limit},
+        )
+        self.retry_after_s = max(1, int(retry_after_s))
 
 
 class InvalidArguments(AgentError):

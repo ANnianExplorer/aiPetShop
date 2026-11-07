@@ -20,7 +20,13 @@ def build_graph(
     backend_factory: BackendFactory,
     checkpointer: Any = None,
 ) -> Any:
-    nodes = make_nodes(model, gateway, backend_factory, max_hops=settings.max_tool_hops)
+    nodes = make_nodes(
+        model,
+        gateway,
+        backend_factory,
+        max_hops=settings.max_tool_hops,
+        max_tokens=settings.run_token_budget,
+    )
 
     graph = StateGraph(AgentState)
     graph.add_node("route", nodes["route"])

@@ -1,10 +1,11 @@
-"""运行时编排：一次对话 = 建会话 → 存档 → 跑图 → 流式输出 → 落库 → 收尾。
+"""运行时编排：一次对话 = 建会话 → 召回记忆 → 存档 → 跑图 → 流式输出 → 落库 → 收尾。
 
-这里只做「编排」，具体能力在 graph / gateway / storage 里，便于替换。
-三个硬约束：
+这里只做「编排」，具体能力在 graph / gateway / storage / memory 里，便于替换。
+四个硬约束：
 1. 无论成功、失败还是客户端断开，`agent_run` 必须有终态（不留下永远 running 的脏数据）；
-2. 事件先写 `RunEventLog` 再下推，客户端断线可用 `Last-Event-ID` 回放；
-3. 用量按「图内 LLM 调用 + 最终流式生成」相加，不漏算。
+2. 事件先写事件存储再下推，客户端断线可用 `Last-Event-ID` 回放（内存或 Redis，见 ADR-0003）；
+3. 用量按「图内 LLM 调用 + 最终流式生成」相加，不漏算；
+4. 记忆是增强项不是依赖：召回/写入失败只记日志，绝不让对话失败。
 """
 
 from __future__ import annotations
@@ -25,12 +26,14 @@ from ..domain.models import Message, Role, Run, RunStatus, StepKind, Usage, dedu
 from ..domain.router import classify
 from ..graph import SYSTEM_PROMPT
 from ..llm.base import ChatModel
+from ..memory import MemoryService
 from ..storage.base import AgentRepository
 from ..tools import ToolGateway
-from .eventlog import RunEventLog
+from .eventlog import EventStore
 
 FALLBACK_ANSWER = "（这次没有生成内容，换个说法再问我一次？）"
 run_log = logging.getLogger("agent.run")
+memory_log = logging.getLogger("agent.memory")
 
 
 @dataclass(frozen=True)
@@ -58,7 +61,8 @@ class AgentRunner:
         gateway: ToolGateway,
         model: ChatModel | None,
         graph: Any,
-        eventlog: RunEventLog,
+        eventlog: EventStore,
+        memory: MemoryService | None = None,
     ) -> None:
         self._settings = settings
         self._repo = repo
@@ -66,11 +70,13 @@ class AgentRunner:
         self._model = model
         self._graph = graph
         self._eventlog = eventlog
+        self._memory = memory
 
     async def stream(self, cmd: ChatCommand, caller: Caller) -> AsyncIterator[Event]:
         if self._model is None or self._graph is None:
-            yield self._record(
-                None, Event(EventType.ERROR, ModelNotConfigured("模型未配置：请设置 PET_AGENT_LLM_API_KEY").to_payload())
+            yield await self._record(
+                None,
+                Event(EventType.ERROR, ModelNotConfigured("模型未配置：请设置 PET_AGENT_LLM_API_KEY").to_payload()),
             )
             return
 
@@ -85,6 +91,7 @@ class AgentRunner:
                 cmd.session_id, caller.user_id, cmd.pet_id, cmd.channel, cmd.message[:24]
             )
             history = await self._repo.history(session.id, self._settings.history_limit)
+            memory_lines = await self._recall(caller.user_id, cmd.pet_id)
             user_message = await self._repo.add_message(
                 Message(id="", session_id=session.id, role=Role.USER, content=cmd.message)
             )
@@ -111,9 +118,10 @@ class AgentRunner:
                 intent=decision.intent.value,
                 channel=cmd.channel,
                 msg_chars=len(cmd.message),
+                memory_facts=len(memory_lines),
             )
 
-            yield self._record(
+            yield await self._record(
                 run_id,
                 Event(
                     EventType.ROUTE,
@@ -135,6 +143,7 @@ class AgentRunner:
                 "pet_id": cmd.pet_id,
                 "run_id": run_id,
                 "history": history,
+                "memory_lines": memory_lines,
                 "citations": [],
                 "hops": 0,
             }
@@ -153,7 +162,7 @@ class AgentRunner:
             await self._repo.add_steps(run_id, steps)
             for step in steps:
                 if getattr(step, "kind", None) == StepKind.TOOL:
-                    yield self._record(
+                    yield await self._record(
                         run_id,
                         Event(
                             EventType.TOOL,
@@ -181,7 +190,7 @@ class AgentRunner:
             async for chunk in self._model.stream(answer_messages):
                 if chunk.text:
                     parts.append(chunk.text)
-                    yield self._record(run_id, Event(EventType.DELTA, {"text": chunk.text}))
+                    yield await self._record(run_id, Event(EventType.DELTA, {"text": chunk.text}))
                 if chunk.usage is not None:
                     stream_usage = chunk.usage
 
@@ -208,6 +217,7 @@ class AgentRunner:
                         "intent": decision.intent.value,
                         "reason": decision.reason,
                         "model": self._model.name,
+                        "memory_facts": len(memory_lines),
                     },
                 )
             )
@@ -228,7 +238,9 @@ class AgentRunner:
                 latency_ms=latency_ms,
             )
 
-            yield self._record(
+            await self._observe(caller.user_id, cmd.pet_id, cmd.message)
+
+            yield await self._record(
                 run_id,
                 Event(
                     EventType.DONE,
@@ -253,11 +265,11 @@ class AgentRunner:
         except AgentError as exc:
             terminal = True
             await self._finish_failed(run_id, exc, started)
-            yield self._record(run_id, Event(EventType.ERROR, exc.to_payload()))
+            yield await self._record(run_id, Event(EventType.ERROR, exc.to_payload()))
         except Exception as exc:  # 兜底：任何未预期异常都要落一条可排查的错误
             terminal = True
             await self._finish_failed(run_id, AgentError(f"{type(exc).__name__}: {exc}"), started)
-            yield self._record(
+            yield await self._record(
                 run_id,
                 Event(EventType.ERROR, {"code": "internal_error", "message": "服务内部错误", "retryable": False}),
             )
@@ -272,6 +284,22 @@ class AgentRunner:
                         int((time.perf_counter() - started) * 1000),
                         "客户端断开或任务被取消",
                     )
+
+    # ------------------------------------------------------------------ 记忆
+    async def _recall(self, user_id: str, pet_id: str | None) -> list[str]:
+        if self._memory is None:
+            return []
+        try:
+            return await self._memory.recall_lines(user_id, pet_id)
+        except Exception as exc:  # 记忆不可用不影响对话
+            log_event(memory_log, logging.WARNING, "memory recall failed", error=type(exc).__name__)
+            return []
+
+    async def _observe(self, user_id: str, pet_id: str | None, text: str) -> None:
+        if self._memory is None:
+            return
+        with contextlib.suppress(Exception):
+            await self._memory.observe(user_id, pet_id, text)
 
     # ------------------------------------------------------------------ 内部
     async def _finish_failed(self, run_id: str | None, err: AgentError, started: float) -> None:
@@ -295,7 +323,7 @@ class AgentRunner:
             latency_ms=latency_ms,
         )
 
-    def _record(self, run_id: str | None, event: Event) -> Event:
+    async def _record(self, run_id: str | None, event: Event) -> Event:
         if run_id is None:
             return event
-        return self._eventlog.append(run_id, event)
+        return await self._eventlog.append(run_id, event)

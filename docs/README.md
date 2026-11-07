@@ -57,7 +57,7 @@
 
 | 文档 | 范围 | 状态 |
 | --- | --- | --- |
-| [plans/s1.6-production-hardening.md](plans/s1.6-production-hardening.md) | S1.6 生产化加固：P0 工程基线 → P3 管理端，每阶段带可执行验收 | P0 已完成，P1 待启动 |
+| [plans/s1.6-production-hardening.md](plans/s1.6-production-hardening.md) | S1.6 生产化加固：P0 工程基线 → P3 记忆扩展，每阶段带可执行验收 | P0、P1 已完成，P2 待启动 |
 
 ### REPORT
 
@@ -66,6 +66,7 @@
 | [reports/2026-11-07-s1.5-runtime.md](reports/2026-11-07-s1.5-runtime.md) | S1.5 分层运行时 | 45 单测 / 23 评测 / 10 项真进程冒烟 全绿 |
 | [reports/2026-11-07-web-chat.md](reports/2026-11-07-web-chat.md) | App 聊天页接入 | build 通过、20 前端单测、浏览器端到端走通 |
 | [reports/2026-11-07-s1.6-p0.md](reports/2026-11-07-s1.6-p0.md) | S1.6 P0 工程基线 | ruff/pytest 59/evals/e2e 10-10 全绿；抓到 4 个真实缺陷；docker 未本机验证（无 docker） |
+| [reports/2026-11-08-s1.6-p1.md](reports/2026-11-08-s1.6-p1.md) | S1.6 P1 配额/事件总线/记忆/用量 | 92 单测 + 23 评测 + e2e 10/10 + P1 冒烟 9/9 + Edge 浏览器端到端；Redis/MySQL 未真机联调 |
 
 ## 3. 新增文档怎么起头
 

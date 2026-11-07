@@ -443,7 +443,15 @@ DSH 本身就是一个 harness（本仓库的会话就跑在它上面：skills /
 模型第一次被调用时 `messages` 是空的——测试用脚本模型看不出来，只有接真 SSE 才暴露。
 现在 `route → prepare` 是必经边，并加了那条回归断言。**这就是"能跑"和"对"的差别。**
 
-**S1 未做**（下一步）：管理端会话工作台、Langfuse 追踪、`agent_run` 与 trace 对齐的自动化校验。
+**S1.6 P0/P1（工程化，不改业务语义）**：
+
+| 轮次 | 内容 | 证据 |
+| --- | --- | --- |
+| P0 | 单行 JSON 日志 + `x-request-id`、`/readyz`、依赖锁定、多阶段 Dockerfile、CI（ruff → pytest → evals → docker build） | `docs/reports/2026-11-07-s1.6-p0.md`：59 passed、evals 100%、e2e 10/10 |
+| P1 | 每用户配额（429 + `Retry-After`）、单 run token 预算、事件总线 Redis Stream 选项、长期记忆（`memory_fact`/`memory_episode` + 抽取算子 + 召回注入）、用量聚合接口 | `docs/reports/2026-11-08-s1.6-p1.md`：92 passed、P1 冒烟 9/9、浏览器端到端 |
+
+**S1 未做**（下一步）：管理端会话工作台、Langfuse 追踪、`agent_run` 与 trace 对齐的自动化校验、
+Redis/MySQL 真机联调、幂等键与熔断（已挪到 S1.6 P2）。
 
 ---
 

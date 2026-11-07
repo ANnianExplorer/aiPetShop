@@ -40,6 +40,29 @@ class HealthOut(BaseModel):
     auth_mode: str
 
 
+class UsageOut(BaseModel):
+    days: int
+    runs: int
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+    avg_latency_ms: int
+
+
+class MemoryFactOut(BaseModel):
+    id: str
+    key: str
+    label: str
+    value: str
+    confidence: float
+    update_time: str | None = None
+
+
+class MemoryOut(BaseModel):
+    pet_id: str | None
+    facts: list[MemoryFactOut]
+
+
 class ErrorOut(BaseModel):
     code: str
     message: str

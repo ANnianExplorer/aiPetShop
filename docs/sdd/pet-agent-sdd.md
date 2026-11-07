@@ -92,7 +92,7 @@ sequenceDiagram
 
 > 缺陷记录：S1 最初 `route → agent` 跳过 `prepare`，模型第一次调用拿到空 `messages`，一个工具都不会调；脚本模型的单测全绿，只有真 SSE 暴露。现在 `route → prepare` 是必经边，并加了回归断言（`tests/test_graph_l2.py`）。
 
-## 5. 数据模型（`backend/sql/v2.10-agent.sql`）
+## 5. 数据模型（`backend/sql/v2.10-agent.sql` + `v2.11-agent-memory.sql`）
 
 | 表 | 关键列 | 不变量 |
 | --- | --- | --- |
@@ -101,6 +101,8 @@ sequenceDiagram
 | `agent_run` | `id`, `session_id`, `status`, `route`, `prompt_tokens`, `completion_tokens`, `latency_ms`, `error_code` | 必须落到终态（succeeded/failed/cancelled） |
 | `agent_step` | `id`, `run_id`, `seq`, `kind`, `name`, `status`, `latency_ms`, `error` | `(run_id, seq)` 连续 |
 | `tool_call_log` | `id`, `run_id`, `tool_name`, `args_digest`, `ok`, `error_code`, `latency_ms` | 只存 sha256 前 16 位摘要，不存原文 |
+| `memory_fact` | `id`, `user_id`, `pet_id`, `fact_key`, `fact_value`, `confidence`, `source` | 唯一键 `(user_id, pet_id, fact_key)`；`pet_id=0` 表示无宠物维度 |
+| `memory_episode` | `id`, `user_id`, `pet_id`, `session_id`, `summary`, `detail`, `occurred_at`, `embedding_id` | 表内不存向量，只存向量库 ID |
 
 ID：19 位雪花（毫秒 13 + 节点 2 + 序号 4），对外一律字符串，对齐 Java 的 `Long → String` 序列化。
 
@@ -116,7 +118,8 @@ ID：19 位雪花（毫秒 13 + 节点 2 + 序号 4），对外一律字符串�
 | `InvalidRequest` | `invalid_request` | 400 | 否 | 空消息、字段非法 |
 | `InvalidArguments` | `invalid_arguments` | 400 | 否 | 工具参数校验失败 |
 | `ToolDenied` | `tool_denied` | 403 | 否 | 白名单/通道禁用 |
-| `BudgetExceeded` | `budget_exceeded` | 429 | 否 | 单 run 工具调用超预算 |
+| `BudgetExceeded` | `budget_exceeded` | 429 | 否 | 单 run 工具调用/token 超预算 |
+| `RateLimited` | `rate_limited` | 429 | 是（等窗口） | 用户分钟/日配额用尽；带 `Retry-After` |
 | `ModelNotConfigured` | `model_not_configured` | 503 | 否 | 未配密钥 |
 | `ModelError` | `model_error` | 502 | 是 | 上游 5xx/超时 |
 | `RunTimeout` | `run_timeout` | 504 | 是 | 超过 `run_deadline_s` |
@@ -140,6 +143,14 @@ SSE 里错误以 `event: error` 出现，载荷 `{code, message, retryable, deta
 | `PET_AGENT_RUN_DEADLINE_S` | 见 `config.py` | 单 run 超时 |
 | `PET_AGENT_ALLOWED_CHANNELS` | `app,web,internal` | 通道白名单 |
 | `PET_AGENT_CORS_ORIGINS` | dev 放开 | 生产必须收敛 |
+| `PET_AGENT_RUN_TOKEN_BUDGET` | `30000` | 单 run 累计 token 上限（0=不限） |
+| `PET_AGENT_RATE_LIMIT_ENABLED` | `true` | 是否启用每用户配额 |
+| `PET_AGENT_RATE_LIMIT_PER_MINUTE` | `20` | 每分钟对话次数 |
+| `PET_AGENT_RATE_LIMIT_PER_DAY` | `300` | 每日对话次数 |
+| `PET_AGENT_RATE_LIMIT_BACKEND` | `memory` | `memory`（单副本）/ `redis`（多副本共享） |
+| `PET_AGENT_EVENT_BACKEND` | `memory` | `memory` / `redis`（Redis Stream，跨进程续传） |
+| `PET_AGENT_REDIS_URL` | `redis://localhost:6379/0` | 事件流与配额共用 |
+| `PET_AGENT_LOG_LEVEL` | `INFO` | 日志级别 |
 
 ## 8. 部署（dev）
 
@@ -177,6 +188,19 @@ cd ..\pet-lumina-app; npm run dev
 | 关联字段 | `request_id`（中间件生成/透传）、`user_id`、`run_id`（contextvars 自动附加） |
 | 打点位置 | HTTP 访问、run 开始/结束/失败、工具调用（含 `args_digest` 与耗时）、就绪检查 |
 | 不记录 | 消息原文、回答原文、工具参数原文、密钥（`repr=False`） |
+
+### 8.3 配额、事件总线与记忆（S1.6 P1）
+
+| 子系统 | 模块 | 关键约定 |
+| --- | --- | --- |
+| 配额 | `app/core/ratelimit.py` | 分钟窗口 + 日窗口双计数；内存实现滑动窗口（`deque[float]`），Redis 实现 `INCR` + `EXPIRE`；Redis 故障 **fail-open** 放行并打 `rate limiter unavailable`；超限 → `429` + `Retry-After`，**不建 SSE、不落 run** |
+| Token 预算 | `app/graph/nodes.py` | 每轮 `spent = prompt + completion + 本轮 reply.usage.total`，超 `run_token_budget` 抛 `BudgetExceeded`，run 落 failed |
+| 事件总线 | `app/runtime/eventlog.py` | `EventStore` 协议两实现：内存（capacity 截断 + ttl 清理）与 Redis Stream（`INCR` 序号 → `XADD maxlen` → `EXPIRE`，读 `XRANGE`，坏 payload 跳过）；`after`/`Last-Event-ID` 语义两实现完全一致 |
+| 记忆写入 | `app/memory/extract.py` + `ops.py` | 规则抽取（名字/年龄/体重/过敏/忌口/爱吃/疫苗）+ 置信度阈值；`ADD/UPDATE/NOOP` 三态，重复同一句话不产生第二条 |
+| 记忆召回 | `app/memory/service.py` | 召回低置信度过滤后拼成 `标签：值` 进 system 提示；**不伪造 user 消息**；召回/写入异常一律吞掉，降级为无记忆 |
+| 用量 | `storage.usage_summary` | 只统计 `succeeded`，按 `agent_session.user_id` 归属，`AVG(latency_ms)` |
+
+记忆不进向量的边界：`memory_episode` 只存摘要与向量 ID，检索走外部向量库（S2）；事实记忆用精确键查询，不用语义检索——记错比记不住更贵。
 
 ## 9. 质量属性
 

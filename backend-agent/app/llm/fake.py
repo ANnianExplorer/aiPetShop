@@ -27,6 +27,8 @@ class ScriptedModel(ChatModel):
         self._fail_complete = fail_complete
         self._fail_stream = fail_stream
         self.calls: list[list[dict[str, Any]]] = []
+        # L1 直答不经过 complete()，系统提示直接喂给 stream()——两条路径都要能断言
+        self.stream_calls: list[list[dict[str, Any]]] = []
         self.tool_names: list[str] = []
 
     @property
@@ -45,6 +47,7 @@ class ScriptedModel(ChatModel):
         return self._replies.pop(0)
 
     async def stream(self, messages: list[dict[str, Any]]) -> AsyncIterator[StreamChunk]:
+        self.stream_calls.append([dict(m) for m in messages])
         if self._fail_stream is not None:
             raise self._fail_stream
         for chunk in self._chunks:

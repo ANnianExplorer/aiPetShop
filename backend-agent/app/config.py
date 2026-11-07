@@ -50,10 +50,21 @@ class Settings(BaseSettings):
     # ---- 运行预算 ----
     max_tool_hops: int = Field(default=6, ge=1, le=20)
     max_tool_calls_per_run: int = Field(default=8, ge=1, le=50)
+    # 单次 run 的 token 上限（0 表示不限）：超了立即中止，不让一次提问烧穿预算
+    run_token_budget: int = Field(default=30000, ge=0)
     history_limit: int = Field(default=20, ge=0, le=100)
     run_deadline_s: float = Field(default=60.0, gt=0)
     event_log_capacity: int = Field(default=512, ge=16)
     event_log_ttl_s: float = Field(default=900.0, gt=0)
+    # 事件流后端：memory 只能单副本续传；redis 用 Stream 支持多副本
+    event_backend: Literal["memory", "redis"] = "memory"
+
+    # ---- 配额 ----
+    rate_limit_enabled: bool = True
+    rate_limit_per_minute: int = Field(default=20, ge=1)
+    rate_limit_per_day: int = Field(default=300, ge=1)
+    rate_limit_backend: Literal["memory", "redis"] = "memory"
+    redis_url: str = Field(default="redis://localhost:6379/0", repr=False)
 
     # ---- 通道策略 ----
     allowed_channels: tuple[str, ...] = ("app", "web", "internal")

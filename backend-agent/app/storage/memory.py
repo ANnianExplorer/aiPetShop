@@ -7,7 +7,17 @@ from typing import Any
 
 from ..core.errors import Forbidden, NotFound
 from ..core.ids import new_id
-from ..domain.models import Message, Role, Run, RunStatus, Session, Step, Usage
+from ..domain.models import (
+    MemoryFact,
+    Message,
+    Role,
+    Run,
+    RunStatus,
+    Session,
+    Step,
+    Usage,
+    UsageSummary,
+)
 
 
 class InMemoryRepository:
@@ -17,6 +27,7 @@ class InMemoryRepository:
         self._runs: dict[str, dict[str, Any]] = {}
         self._steps: dict[str, list[Step]] = {}
         self._tool_calls: list[dict[str, Any]] = []
+        self._facts: dict[tuple[str, str, str], MemoryFact] = {}
 
     # ------------------------------------------------------------ 会话
     async def get_or_create_session(
@@ -150,6 +161,63 @@ class InMemoryRepository:
     async def ping(self) -> None:
         # 内存实现永远可用；保留此方法是为了让 /readyz 不必区分实现
         return None
+
+    # ------------------------------------------------------------ 长期记忆
+    async def get_memory_fact(
+        self, user_id: str, pet_id: str | None, key: str
+    ) -> MemoryFact | None:
+        return self._facts.get((user_id, pet_id or "", key))
+
+    async def upsert_memory_fact(self, fact: MemoryFact) -> MemoryFact:
+        slot = (fact.user_id, fact.pet_id or "", fact.key)
+        existing = self._facts.get(slot)
+        if existing is not None and not fact.id:
+            fact.id = existing.id
+            fact.create_time = existing.create_time
+        if not fact.id:
+            fact.id = new_id()
+        fact.create_time = fact.create_time or _now()
+        fact.update_time = _now()
+        self._facts[slot] = fact
+        return fact
+
+    async def list_memory_facts(
+        self, user_id: str, pet_id: str | None, limit: int = 10
+    ) -> list[MemoryFact]:
+        if limit <= 0:
+            return []
+        items = [
+            f
+            for (uid, pid, _key), f in self._facts.items()
+            if uid == user_id and pid == (pet_id or "")
+        ]
+        items.sort(key=lambda f: (f.confidence, f.update_time or ""), reverse=True)
+        return items[:limit]
+
+    # ------------------------------------------------------------ 用量
+    async def usage_summary(self, user_id: str, since: str | None = None) -> UsageSummary:
+        runs = 0
+        prompt = 0
+        completion = 0
+        latencies: list[int] = []
+        for record in self._runs.values():
+            run: Run = record["run"]
+            if record["status"] is not RunStatus.SUCCEEDED:
+                continue
+            session = self._sessions.get(run.session_id)
+            if session is None or session.user_id != user_id:
+                continue
+            runs += 1
+            prompt += record["usage"].prompt_tokens
+            completion += record["usage"].completion_tokens
+            latencies.append(int(record["latency_ms"]))
+        avg = int(sum(latencies) / len(latencies)) if latencies else 0
+        return UsageSummary(
+            runs=runs,
+            prompt_tokens=prompt,
+            completion_tokens=completion,
+            avg_latency_ms=avg,
+        )
 
     async def aclose(self) -> None:
         return None

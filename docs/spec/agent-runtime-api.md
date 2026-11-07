@@ -1,7 +1,7 @@
-# 规格：Agent Runtime HTTP/SSE 契约 v1.0
+# 规格：Agent Runtime HTTP/SSE 契约 v1.2
 
 - 状态：Frozen（实现已按此验收；破坏性变更需升 v2）
-- 日期：2026-11-07
+- 日期：2026-11-07（v1.2 更新 2026-11-08）
 - 实现：`backend-agent/app/api/`
 - 关联：[SDD](../sdd/pet-agent-sdd.md) · [ADR-0003](../adr/0003-sse-event-contract.md)
 
@@ -88,7 +88,17 @@ Base URL：dev `http://localhost:8099`；路径前缀 `/`（不带 `/api/v1`，�
 
 ### 4.2 响应
 
-`200 text/event-stream`，头：`Cache-Control: no-cache`、`Connection: keep-alive`、`X-Accel-Buffering: no`。
+`200 text/event-stream`，头：`Cache-Control: no-cache`、`Connection: keep-alive`、`X-Accel-Buffering: no`，
+以及配额头（`rate_limit_enabled=true` 时）：`X-RateLimit-Limit`（窗口上限）、`X-RateLimit-Remaining`（本窗口剩余）。
+
+超配额时**不建立 SSE**，直接 `429`：
+
+```json
+{ "code": "rate_limited", "message": "请求太频繁，请稍后再试", "retryable": true,
+  "detail": { "retry_after_s": 37, "scope": "chat", "limit": 20 } }
+```
+
+响应头必须带 `Retry-After`（秒，≥1）。
 
 每条事件：
 
@@ -150,6 +160,32 @@ data: {"text":"9月1日打过疫苗，"}
 
 只返回 `user` / `assistant`（不含 system、tool）；他人会话 → `404`。
 
+## 6.1 `GET /agent/memory/me`
+
+我这个账号（可限定某只宠物）的长期事实记忆。用于"它到底记住了什么"、抽取质量核对与排障。
+
+| 参数 | 默认 | 约束 |
+| --- | --- | --- |
+| `pet_id` | 空 | ≤32；为空表示不带宠物维度的事实 |
+| `limit` | 20 | 1–50，按 `confidence DESC, update_time DESC` |
+
+200：
+
+```json
+{ "pet_id": null, "facts": [
+  { "id": "1794025553768000002", "key": "allergy", "label": "过敏", "value": "牛奶",
+    "confidence": 0.95, "update_time": "2026-11-07 12:25:53" }
+] }
+```
+
+## 6.2 `GET /agent/usage/me`
+
+| 参数 | 默认 | 约束 |
+| --- | --- | --- |
+| `days` | 7 | 1–90，按 `agent_run.create_time` 过滤 |
+
+200：`{days, runs, prompt_tokens, completion_tokens, total_tokens, avg_latency_ms}`，只统计 `status='succeeded'` 的 run。
+
 ## 7. 不变量（必须永远成立）
 
 | 编号 | 断言 | 验证 |
@@ -164,14 +200,18 @@ data: {"text":"9月1日打过疫苗，"}
 | I8 | `done.usage` = 图内累计 + 流式 usage（不重不漏） | `test_api.py::test_l1_event_sequence` |
 | I9 | 每个响应都带 `x-request-id`（自带则原样回传，超 64 字符截断） | `test_observability.py::test_request_id_propagated_from_caller` |
 | I10 | 存储不可用或模型未配置时 `/readyz` 返回 503，且不回堆栈 | `test_observability.py::test_readyz_*` |
+| I11 | 超配额返回 `429 rate_limited` + `Retry-After`，且**不产生** run/消息（不落库、不计费） | `test_api.py::test_rate_limit_returns_429_with_retry_after` |
+| I12 | 记忆只从**本人**对话抽取，只能被本人召回；同一 `(user, pet, key)` 只有一条 | `test_memory.py::test_memory_is_isolated_by_pet_and_user`、`test_memory_fact_upsert_dedupes_by_key` |
+| I13 | 记忆写入/召回失败不影响本轮回答（降级为无记忆） | `app/runtime/runner.py` 的 `_recall`/`_observe` 兜底；`test_api.py::test_recalled_memory_is_injected_into_system_prompt` |
 
 ## 8. 验收用例（可执行）
 
 ```powershell
 cd backend-agent
-.\.venv\Scripts\python -m pytest          # 59 passed
+.\.venv\Scripts\python -m pytest          # 92 passed
 .\.venv\Scripts\python -m evals.run       # routing 15/15, safety 6/6, memory 2/2
 .\.venv\Scripts\python -m scripts.e2e_smoke   # 10/10
+.\.venv\Scripts\python -m scripts.p1_smoke    # 9/9（配额/用量/记忆）
 .\.venv\Scripts\ruff.exe check .          # All checks passed
 ```
 
@@ -181,3 +221,4 @@ cd backend-agent
 | --- | --- | --- |
 | v1.0 | 2026-11-07 | 初版：从 S1.5 实现反推并冻结，含 I1–I8 不变量 |
 | v1.1 | 2026-11-07 | 增 `/readyz`、`x-request-id`、日志字段约定与 I9–I10（S1.6 P0） |
+| v1.2 | 2026-11-08 | 增 `/agent/memory/me`、`/agent/usage/me`、429 与配额头、I11–I13（S1.6 P1） |

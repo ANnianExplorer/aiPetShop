@@ -111,3 +111,35 @@ async def test_audit_tool_call(repo: AgentRepository) -> None:
     await repo.audit_tool_call("run-1", "search_logs", True, None, 12, "abc123")
     if isinstance(repo, InMemoryRepository):
         assert repo.tool_calls()[0]["name"] == "search_logs"
+
+
+# ---------------------------------------------------------------- 长期记忆（两套实现同一套断言）
+
+async def test_memory_fact_upsert_dedupes_by_key(repo: AgentRepository) -> None:
+    from app.domain.models import MemoryFact
+
+    first = await repo.upsert_memory_fact(
+        MemoryFact(id="", user_id="1001", pet_id="5001", key="allergy", value="\u725b\u5976", confidence=0.9)
+    )
+    second = await repo.upsert_memory_fact(
+        MemoryFact(id="", user_id="1001", pet_id="5001", key="allergy", value="\u725b\u5976", confidence=0.5)
+    )
+    assert first.id and second.id == first.id, "\u5355\u4e00\u4e8b\u5b9e\u53ea\u80fd\u6709\u4e00\u884c"
+
+    facts = await repo.list_memory_facts("1001", "5001")
+    assert len(facts) == 1
+    assert facts[0].value == "\u725b\u5976"
+
+
+async def test_memory_fact_is_scoped_by_pet_and_user(repo: AgentRepository) -> None:
+    from app.domain.models import MemoryFact
+
+    await repo.upsert_memory_fact(MemoryFact(id="", user_id="1001", pet_id="5001", key="allergy", value="A"))
+    await repo.upsert_memory_fact(MemoryFact(id="", user_id="1001", pet_id="5002", key="allergy", value="B"))
+    await repo.upsert_memory_fact(MemoryFact(id="", user_id="1002", pet_id="5001", key="allergy", value="C"))
+
+    assert [f.value for f in await repo.list_memory_facts("1001", "5001")] == ["A"]
+    assert [f.value for f in await repo.list_memory_facts("1001", "5002")] == ["B"]
+    assert [f.value for f in await repo.list_memory_facts("1002", "5001")] == ["C"]
+    assert await repo.get_memory_fact("1001", "5001", "allergy") is not None
+    assert await repo.get_memory_fact("1001", "5001", "missing") is None

@@ -1,7 +1,10 @@
 """应用装配：把配置、存储、工具、模型、图、运行时串起来，并暴露给测试替换的点。
 
-`create_app()` 的所有依赖都可以注入（model / repo / http_client），
-所以测试不需要真模型、真 MySQL，也不需要 monkeypatch 全局变量。
+`create_app()` 的所有依赖都可以注入（model / repo / http_client / limiter / event_store），
+所以测试不需要真模型、真 MySQL、真 Redis，也不需要 monkeypatch 全局变量。
+
+依赖关系是单向的：api → runtime → graph → tools/storage/llm/memory → domain。
+这里只做「接线」，任何业务判断都不该出现在这个文件里。
 """
 
 from __future__ import annotations
@@ -15,11 +18,14 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from ..config import Settings
-from ..core.errors import AgentError
+from ..core.errors import AgentError, RateLimited
 from ..core.logging import configure_logging
+from ..core.ratelimit import RateLimiter, create_rate_limiter
 from ..graph import build_graph
 from ..llm import ChatModel, build_model
-from ..runtime import AgentRunner, RunEventLog
+from ..memory import MemoryService
+from ..runtime import AgentRunner
+from ..runtime.eventlog import EventStore, create_event_store
 from ..storage import AgentRepository, create_repository
 from ..tools import BackendClient, ToolAudit, ToolGateway, ToolPolicy, build_registry
 from .deps import IdentityResolver
@@ -33,6 +39,8 @@ def create_app(
     model: ChatModel | None = None,
     repo: AgentRepository | None = None,
     http_client: httpx.AsyncClient | None = None,
+    limiter: RateLimiter | None = None,
+    event_store: EventStore | None = None,
 ) -> FastAPI:
     settings = settings or Settings()
     configure_logging(settings.log_level)
@@ -74,15 +82,18 @@ def create_app(
     graph = (
         build_graph(model, gateway, settings, backend_factory) if model is not None else None
     )
-    eventlog = RunEventLog(settings.event_log_capacity, settings.event_log_ttl_s)
+    store = event_store or create_event_store(settings)
+    memory = MemoryService(repository)
     runner = AgentRunner(
         settings=settings,
         repo=repository,
         gateway=gateway,
         model=model,
         graph=graph,
-        eventlog=eventlog,
+        eventlog=store,
+        memory=memory,
     )
+    rate_limiter = limiter or create_rate_limiter(settings)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
@@ -90,12 +101,14 @@ def create_app(
             yield
         finally:
             await repository.aclose()
+            await store.aclose()
+            await rate_limiter.aclose()
             if model is not None and model_owned:
                 await model.aclose()
             if http_owned:
                 await http.aclose()
 
-    app = FastAPI(title="PetLumina Pet-Agent", version="0.2.0", lifespan=lifespan)
+    app = FastAPI(title="PetLumina Pet-Agent", version="0.3.0", lifespan=lifespan)
     # Starlette 的中间件是「后加的先执行」：
     # CORS 先加 → 在内层，负责给真实响应补跨域头；请求上下文后加 → 在最外层，
     # 保证连 CORS 预检、异常响应都带 x-request-id 和访问日志。
@@ -113,13 +126,19 @@ def create_app(
     app.state.gateway = gateway
     app.state.registry = registry
     app.state.graph = graph
-    app.state.eventlog = eventlog
+    app.state.eventlog = store
     app.state.runner = runner
+    app.state.memory = memory
+    app.state.limiter = rate_limiter
     app.state.identity = IdentityResolver(settings, http)
 
     @app.exception_handler(AgentError)
     async def _agent_error(_: Request, exc: AgentError) -> JSONResponse:
-        return JSONResponse(status_code=exc.http_status, content=exc.to_payload())
+        headers = {}
+        if isinstance(exc, RateLimited):
+            # 客户端据此决定退避，不用猜
+            headers["Retry-After"] = str(exc.retry_after_s)
+        return JSONResponse(status_code=exc.http_status, content=exc.to_payload(), headers=headers)
 
     app.include_router(router)
     return app

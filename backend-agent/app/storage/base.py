@@ -11,7 +11,16 @@ from __future__ import annotations
 
 from typing import Any, Protocol
 
-from ..domain.models import Message, Run, RunStatus, Session, Step, Usage
+from ..domain.models import (
+    MemoryFact,
+    Message,
+    Run,
+    RunStatus,
+    Session,
+    Step,
+    Usage,
+    UsageSummary,
+)
 
 
 class AgentRepository(Protocol):
@@ -60,5 +69,19 @@ class AgentRepository(Protocol):
     async def ping(self) -> None:
         """就绪探针：连接可用则正常返回，否则抛异常（/readyz 据此判定 503）。"""
         ...
+
+    # ---- 长期记忆 ----
+    async def get_memory_fact(
+        self, user_id: str, pet_id: str | None, key: str
+    ) -> MemoryFact | None: ...
+
+    async def upsert_memory_fact(self, fact: MemoryFact) -> MemoryFact: ...
+
+    async def list_memory_facts(
+        self, user_id: str, pet_id: str | None, limit: int = 10
+    ) -> list[MemoryFact]: ...
+
+    # ---- 用量 ----
+    async def usage_summary(self, user_id: str, since: str | None = None) -> UsageSummary: ...
 
     async def aclose(self) -> None: ...

@@ -13,6 +13,7 @@ import time
 from collections.abc import Callable
 from typing import Any
 
+from ..core.errors import BudgetExceeded
 from ..domain.models import Citation, Route, Step, StepKind, StepStatus, ToolResult
 from ..domain.router import classify
 from ..llm.base import ChatModel
@@ -37,6 +38,7 @@ def make_nodes(
     backend_factory: BackendFactory,
     *,
     max_hops: int,
+    max_tokens: int = 0,
 ) -> dict[str, Callable[[AgentState], Any]]:
     async def route_node(state: AgentState) -> dict[str, Any]:
         decision = classify(state["question"])
@@ -55,7 +57,14 @@ def make_nodes(
         }
 
     async def prepare_node(state: AgentState) -> dict[str, Any]:
-        messages: list[dict[str, Any]] = [{"role": "system", "content": SYSTEM_PROMPT}]
+        system = SYSTEM_PROMPT
+        memory_lines = list(state.get("memory_lines") or [])
+        if memory_lines:
+            # 记忆拼在 system 里而不是伪造一轮 user 消息：模型不会把它当成"用户刚说的"
+            system += "\n\n已知的这只宠物的事实（来自你之前的对话，可直接使用）：\n" + "\n".join(
+                f"- {line}" for line in memory_lines
+            )
+        messages: list[dict[str, Any]] = [{"role": "system", "content": system}]
         messages.extend(state.get("history") or [])
         messages.append({"role": "user", "content": state["question"]})
         update: dict[str, Any] = {"messages": messages}
@@ -68,6 +77,15 @@ def make_nodes(
         started = time.perf_counter()
         messages = list(state["messages"])
         reply = await model.complete(messages, gateway.schemas_for(state["channel"]))
+
+        spent = (
+            int(state.get("prompt_tokens") or 0)
+            + int(state.get("completion_tokens") or 0)
+            + reply.usage.total
+        )
+        if max_tokens and spent > max_tokens:
+            # 在下一轮工具/生成之前叫停：已经烧掉的算沉没成本，不能再滚
+            raise BudgetExceeded(f"本次对话已超过 {max_tokens} token 预算")
 
         assistant: dict[str, Any] = {"role": "assistant", "content": reply.text}
         if reply.tool_calls:

@@ -21,6 +21,8 @@ class AgentState(TypedDict, total=False):
     pet_id: str | None
     run_id: str
     history: list[dict[str, Any]]
+    # 长期记忆里召回的事实（由 runtime 查库后注入，图本身不碰存储）
+    memory_lines: list[str]
 
     # 过程
     route: Route

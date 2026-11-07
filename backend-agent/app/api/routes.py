@@ -4,16 +4,28 @@ from __future__ import annotations
 
 import logging
 from collections.abc import AsyncIterator
+from datetime import datetime, timedelta
 
 from fastapi import APIRouter, Query, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from ..config import Settings
-from ..core.errors import Forbidden, InvalidRequest, NotFound, Unauthorized
+from ..core.errors import Forbidden, InvalidRequest, NotFound, RateLimited, Unauthorized
 from ..core.logging import log_event
-from ..runtime import AgentRunner, Caller, ChatCommand, RunEventLog
+from ..core.ratelimit import RateLimiter
+from ..memory import label_of
+from ..runtime import AgentRunner, Caller, ChatCommand
+from ..runtime.eventlog import EventStore
 from ..storage.base import AgentRepository
-from .schemas import ChatRequest, HealthOut, MessageOut, MessagesOut
+from .schemas import (
+    ChatRequest,
+    HealthOut,
+    MemoryFactOut,
+    MemoryOut,
+    MessageOut,
+    MessagesOut,
+    UsageOut,
+)
 
 router = APIRouter()
 ready_log = logging.getLogger("agent.readiness")
@@ -105,6 +117,20 @@ async def chat(payload: ChatRequest, request: Request) -> StreamingResponse:
         raise InvalidRequest("message 不能为空")
 
     identity = await _identity(request)
+    limiter: RateLimiter = request.app.state.limiter
+    quota_headers: dict[str, str] = {}
+    if settings.rate_limit_enabled:
+        decision = await limiter.hit(identity.user_id)
+        if not decision.allowed:
+            raise RateLimited(
+                "请求太频繁，请稍后再试",
+                retry_after_s=decision.retry_after_s,
+                scope=decision.scope,
+                limit=decision.limit,
+            )
+        quota_headers["X-RateLimit-Limit"] = str(decision.limit)
+        quota_headers["X-RateLimit-Remaining"] = str(decision.remaining)
+
     runner: AgentRunner = request.app.state.runner
     command = ChatCommand(
         message=message,
@@ -117,7 +143,11 @@ async def chat(payload: ChatRequest, request: Request) -> StreamingResponse:
         async for event in runner.stream(command, Caller(identity.user_id, identity.token)):
             yield event.to_sse()
 
-    return StreamingResponse(events(), media_type="text/event-stream", headers=SSE_HEADERS)
+    return StreamingResponse(
+        events(),
+        media_type="text/event-stream",
+        headers={**SSE_HEADERS, **quota_headers},
+    )
 
 
 @router.get("/agent/runs/{run_id}/events")
@@ -139,14 +169,58 @@ async def replay_run(
     last_header = request.headers.get("last-event-id") or ""
     after_seq = after if after is not None else (int(last_header) if last_header.isdigit() else 0)
 
-    log: RunEventLog = request.app.state.eventlog
-    pending = log.events(run_id, after_seq)
+    log: EventStore = request.app.state.eventlog
+    pending = await log.events(run_id, after_seq)
 
     async def replay() -> AsyncIterator[str]:
         for event in pending:
             yield event.to_sse()
 
     return StreamingResponse(replay(), media_type="text/event-stream", headers=SSE_HEADERS)
+
+
+@router.get("/agent/usage/me", response_model=UsageOut)
+async def usage_me(
+    request: Request,
+    days: int = Query(default=7, ge=1, le=90),
+) -> UsageOut:
+    """我这个账号最近 N 天的用量：给"这个月花了多少"和成本排查用。"""
+    identity = await _identity(request)
+    since = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
+    summary = await _repo(request).usage_summary(identity.user_id, since)
+    return UsageOut(
+        days=days,
+        runs=summary.runs,
+        prompt_tokens=summary.prompt_tokens,
+        completion_tokens=summary.completion_tokens,
+        total_tokens=summary.total_tokens,
+        avg_latency_ms=summary.avg_latency_ms,
+    )
+
+
+@router.get("/agent/memory/me", response_model=MemoryOut)
+async def memory_me(
+    request: Request,
+    pet_id: str | None = Query(default=None, max_length=32),
+    limit: int = Query(default=20, ge=1, le=50),
+) -> MemoryOut:
+    """我这个账号（可选某只宠物）的长期事实记忆：给"它记住了什么"和排障用。"""
+    identity = await _identity(request)
+    facts = await _repo(request).list_memory_facts(identity.user_id, pet_id, limit)
+    return MemoryOut(
+        pet_id=pet_id,
+        facts=[
+            MemoryFactOut(
+                id=f.id,
+                key=f.key,
+                label=label_of(f.key),
+                value=f.value,
+                confidence=f.confidence,
+                update_time=f.update_time,
+            )
+            for f in facts
+        ],
+    )
 
 
 @router.get("/agent/sessions/{session_id}/messages", response_model=MessagesOut)

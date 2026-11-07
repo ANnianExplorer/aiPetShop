@@ -209,3 +209,90 @@ async def test_empty_message_rejected(client: httpx.AsyncClient) -> None:
     )
     assert response.status_code == 400
     assert response.json()["code"] == "invalid_request"
+
+
+# ---------------------------------------------------------------- P1 配额 / 用量 / 记忆
+
+async def test_rate_limit_returns_429_with_retry_after() -> None:
+    settings = make_settings(rate_limit_per_minute=1, rate_limit_per_day=10)
+    model = ScriptedModel()
+    async with await build_client(model, settings=settings) as client:
+        first = await client.post(
+            "/agent/chat", json={"message": "hello"}, headers=AUTH_HEADERS
+        )
+        assert first.status_code == 200
+        assert first.headers["x-ratelimit-limit"] == "1"
+        assert first.headers["x-ratelimit-remaining"] == "0"
+
+        second = await client.post(
+            "/agent/chat", json={"message": "hello again"}, headers=AUTH_HEADERS
+        )
+
+    assert second.status_code == 429
+    assert second.json()["code"] == "rate_limited"
+    assert int(second.headers["Retry-After"]) >= 1
+    assert second.json()["detail"]["scope"] == "chat"
+
+
+async def test_usage_endpoint_aggregates_succeeded_runs() -> None:
+    model = ScriptedModel()
+    async with await build_client(model) as client:
+        await chat(client, "hi")
+        await chat(client, "hi again")
+        response = await client.get("/agent/usage/me?days=7", headers=AUTH_HEADERS)
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["days"] == 7
+    assert body["runs"] == 2
+    assert body["prompt_tokens"] == 20
+    assert body["completion_tokens"] == 8
+    assert body["total_tokens"] == 28
+
+
+async def test_recalled_memory_is_injected_into_system_prompt() -> None:
+    from app.domain.models import MemoryFact
+
+    repo = InMemoryRepository()
+    await repo.upsert_memory_fact(
+        MemoryFact(id="", user_id="1001", pet_id=None, key="allergy", value="\u725b\u5976", confidence=0.95)
+    )
+    model = ScriptedModel()
+    async with await build_client(model, repo=repo) as client:
+        await chat(client, "\u5b83\u5bf9\u4ec0\u4e48\u8fc7\u654f")
+
+    system = model.stream_calls[0][0]
+    assert system["role"] == "system"
+    assert "\u8fc7\u654f\uff1a\u725b\u5976" in system["content"]
+
+
+async def test_conversation_learns_fact_for_next_turn() -> None:
+    repo = InMemoryRepository()
+    model = ScriptedModel()
+    async with await build_client(model, repo=repo) as client:
+        events = await chat(client, "\u5b83\u53ebLumina\uff0c\u5bf9\u725b\u5976\u8fc7\u654f")
+        session_id = events[0]["data"]["session_id"]
+        await chat(client, "\u5b83\u5bf9\u4ec0\u4e48\u8fc7\u654f", session_id=session_id)
+
+    facts = await repo.list_memory_facts("1001", None)
+    assert {f.key: f.value for f in facts} == {"pet_name": "Lumina", "allergy": "\u725b\u5976"}
+    assert "\u8fc7\u654f\uff1a\u725b\u5976" in model.stream_calls[-1][0]["content"]
+
+async def test_memory_endpoint_lists_learned_facts() -> None:
+    repo = InMemoryRepository()
+    model = ScriptedModel()
+    async with await build_client(model, repo=repo) as client:
+        await chat(client, "\u5b83\u53ebLumina\uff0c\u5bf9\u725b\u5976\u8fc7\u654f")
+        response = await client.get("/agent/memory/me", headers=AUTH_HEADERS)
+
+    assert response.status_code == 200
+    body = response.json()
+    facts = {f["key"]: f["value"] for f in body["facts"]}
+    assert facts == {"pet_name": "Lumina", "allergy": "\u725b\u5976"}
+    assert {f["label"] for f in body["facts"]} == {"\u5ba0\u7269\u540d\u5b57", "\u8fc7\u654f"}
+    assert all(0 < f["confidence"] <= 1 for f in body["facts"])
+
+
+async def test_memory_endpoint_requires_token(client: httpx.AsyncClient) -> None:
+    response = await client.get("/agent/memory/me")
+    assert response.status_code == 401
