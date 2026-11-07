@@ -245,6 +245,9 @@ cd ..\pet-lumina-app; npm run dev
 | 幂等 | 记忆按 `(user, pet, key)` upsert；审计消息 id 作 `tool_call_log.id` + `INSERT IGNORE` | 重复投递不会写两条 |
 | 一致性 | 开启队列后记忆写入是**最终一致**（秒级） | `GET /agent/memory/me` 可能短暂读到旧值；`TASK_BACKEND=off` 时即时 |
 | 默认值 | `TASK_BACKEND=off` | 行为与 S1.8 一致；生产按需显式打开，避免"悄悄变成异步" |
+| 启动补偿 | `lifespan` 里先 `tasks.recover(TOPICS)` 再 `worker.start()` | 顺序反了会与 consumer 抢同一条消息；真机日志 `task inflight recovered on startup` |
+| 死信重放 | `POST /agent/admin/tasks/dead-letters/replay` | `attempt` 重置为 1；未知 topic 400；写 `admin.access` 审计 |
+| 现场可观测 | `GET /agent/admin/tasks` | `enabled/backend/processed/failed` + 每 topic 的 `depth` 与 `dead_letters`；`off` 时 `enabled=false` |
 
 ## 9. 质量属性
 

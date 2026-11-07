@@ -14,7 +14,7 @@ from __future__ import annotations
 import contextlib
 import json
 import logging
-from collections.abc import Awaitable, Mapping
+from collections.abc import Awaitable, Mapping, Sequence
 from typing import Any, Protocol
 
 from ..core.logging import log_event
@@ -133,6 +133,48 @@ class RedisTaskQueue:
         if moved:
             log_event(task_log, logging.WARNING, "task inflight recovered", topic=topic, moved=moved)
         return moved
+
+    async def recover(self, topics: Sequence[str] | None = None) -> int:
+        total = 0
+        for topic in topics or ():
+            total += await self.recover_inflight(topic)
+        return total
+
+    async def replay_dead_letter(self, topic: str, *, limit: int = 10) -> int:
+        """死信搬回主队列，`attempt` 重置为 1；返回条数。
+
+        用 `RPOPLPUSH` 逐条搬（原子），再把搬过来的那条替换成 attempt=1 的副本：
+        死信列表是 `LPUSH` 进的，尾部是最早的那条，先重放它符合"先进先出"。
+        """
+        if limit <= 0:
+            return 0
+        replayed = 0
+        for _ in range(limit):
+            raw = await self._redis.rpoplpush(self._dlq_key(topic), self._topic_key(topic))
+            if raw is None:
+                break
+            await self._redis.lrem(self._topic_key(topic), 1, raw)
+            try:
+                message = TaskMessage.from_json(json.loads(raw))
+            except (ValueError, KeyError, TypeError):
+                # 坏到连结构都没有：留在死信里，别把主队列污染了
+                await self._redis.lpush(self._dlq_key(topic), raw)
+                continue
+            retried = TaskMessage(
+                id=message.id,
+                topic=message.topic,
+                key=message.key,
+                payload=message.payload,
+                attempt=1,
+            )
+            await self._redis.lpush(
+                self._topic_key(topic), json.dumps(retried.to_json(), ensure_ascii=False)
+            )
+            replayed += 1
+        if replayed:
+            log_event(task_log, logging.WARNING, "task dead letter replayed",
+                      topic=topic, replayed=replayed)
+        return replayed
 
     async def aclose(self) -> None:
         closer: Awaitable[None] | None = getattr(self._redis, "aclose", None)

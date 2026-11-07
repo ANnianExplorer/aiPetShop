@@ -139,3 +139,31 @@ class AdminUsageOut(BaseModel):
     total_tokens: int
     avg_latency_ms: int
     by_day: list[AdminDayUsage]
+
+
+class AdminTaskTopicOut(BaseModel):
+    """一个 topic 的现场：还没消费的、卡在死信里的。"""
+
+    topic: str
+    depth: int
+    dead_letters: int
+
+
+class AdminTasksOut(BaseModel):
+    """`TASK_BACKEND=off` 时 `enabled=false`，两个计数恒为 0——不是故障，是没启用。"""
+
+    enabled: bool
+    backend: str
+    processed: int
+    failed: int
+    topics: list[AdminTaskTopicOut]
+
+
+class ReplayDeadLetterRequest(BaseModel):
+    topic: str = Field(min_length=1, max_length=64)
+    limit: int = Field(default=10, ge=1, le=100)
+
+
+class ReplayDeadLetterOut(BaseModel):
+    topic: str
+    replayed: int

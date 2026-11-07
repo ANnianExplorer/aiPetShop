@@ -16,6 +16,7 @@ from conftest import AUTH_HEADERS, make_http, make_settings
 from app.api import create_app
 from app.llm import ScriptedModel
 from app.storage import InMemoryRepository
+from app.tasks import TOPIC_AUDIT_TOOL, TOPIC_MEMORY_OBSERVE, InProcessTaskQueue
 
 ADMIN_HEADERS = {"satoken": "token-admin", "x-user-id": "9001", "x-user-role": "admin"}
 
@@ -153,3 +154,75 @@ async def test_forged_header_role_is_ignored_in_backend_mode() -> None:
             headers={"satoken": "token-1001", "x-user-id": "9001", "x-user-role": "admin"},
         )
     assert resp.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_admin_tasks_reports_disabled_when_backend_off(
+    client: httpx.AsyncClient,
+) -> None:
+    """`TASK_BACKEND=off` 不是故障：要能一眼看出「没启用」，而不是以为队列空了。"""
+    denied = await client.get("/agent/admin/tasks", headers=AUTH_HEADERS)
+    assert denied.status_code == 403
+
+    resp = await client.get("/agent/admin/tasks", headers=ADMIN_HEADERS)
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["enabled"] is False
+    assert body["backend"] == "off"
+    assert {t["topic"] for t in body["topics"]} == {TOPIC_MEMORY_OBSERVE, TOPIC_AUDIT_TOOL}
+
+
+@pytest.mark.asyncio
+async def test_admin_replays_dead_letters(settings) -> None:
+    """死信要能被放回队列重试，且 attempt 归零——否则一失败又立刻进死信。"""
+    queue = InProcessTaskQueue(topic=TOPIC_AUDIT_TOOL, max_attempts=2)
+    # 造一条死信：取出来两次都 nack
+    await queue.publish(TOPIC_AUDIT_TOOL, key="run:tool", payload={"name": "get_pet_profile"})
+    for _ in range(2):
+        message = await queue.receive(TOPIC_AUDIT_TOOL, timeout_s=0.05)
+        assert message is not None
+        await queue.nack(message, error="boom")
+
+    app = create_app(
+        settings,
+        model=ScriptedModel(),
+        repo=InMemoryRepository(),
+        http_client=make_http(),
+        task_queue=queue,
+    )
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://agent"
+    ) as http:
+        before = await http.get("/agent/admin/tasks", headers=ADMIN_HEADERS)
+        assert before.json()["enabled"] is True
+        dead_before = {t["topic"]: t["dead_letters"] for t in before.json()["topics"]}
+        assert dead_before[TOPIC_AUDIT_TOOL] == 1
+
+        denied = await http.post(
+            "/agent/admin/tasks/dead-letters/replay",
+            json={"topic": TOPIC_AUDIT_TOOL},
+            headers=AUTH_HEADERS,
+        )
+        assert denied.status_code == 403
+
+        replay = await http.post(
+            "/agent/admin/tasks/dead-letters/replay",
+            json={"topic": TOPIC_AUDIT_TOOL},
+            headers=ADMIN_HEADERS,
+        )
+        assert replay.status_code == 200
+        assert replay.json() == {"topic": TOPIC_AUDIT_TOOL, "replayed": 1}
+
+        after = await http.get("/agent/admin/tasks", headers=ADMIN_HEADERS)
+        dead_after = {t["topic"]: t["dead_letters"] for t in after.json()["topics"]}
+        assert dead_after[TOPIC_AUDIT_TOOL] == 0
+
+        unknown = await http.post(
+            "/agent/admin/tasks/dead-letters/replay",
+            json={"topic": "agent.nope"},
+            headers=ADMIN_HEADERS,
+        )
+        assert unknown.status_code == 400
+
+    replayed = await queue.receive(TOPIC_AUDIT_TOOL, timeout_s=0.05)
+    assert replayed is not None and replayed.attempt == 1

@@ -14,7 +14,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Awaitable, Callable, Mapping
+from collections.abc import Awaitable, Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Any, Protocol, runtime_checkable
 
@@ -77,6 +77,19 @@ class TaskQueue(Protocol):
 
     async def dead_letters(self, topic: str) -> list[TaskMessage]:
         """死信列表（验收/排障用），两种后端同签名。"""
+
+    async def recover(self, topics: Sequence[str] | None = None) -> int:
+        """把崩溃时卡在「在途」里的消息搬回待消费队列，返回条数。
+
+        进程启动时调用一次：上次异常退出时 `receive` 过但没 `ack` 的消息，
+        否则会永远躺在 processing 里。内存实现没有在途态，返回 0。
+        """
+
+    async def replay_dead_letter(self, topic: str, *, limit: int = 10) -> int:
+        """把死信搬回队列重试，`attempt` 重置为 1；返回搬了几条。
+
+        死信不是垃圾桶：修好下游（或补完数据）之后要能把它们放回来。
+        """
 
     async def aclose(self) -> None: ...
 

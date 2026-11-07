@@ -1,7 +1,7 @@
-# 规格：Agent Runtime HTTP/SSE 契约 v1.5
+# 规格：Agent Runtime HTTP/SSE 契约 v1.6
 
 - 状态：Frozen（实现已按此验收；破坏性变更需升 v2）
-- 日期：2026-11-08（v1.5 注明旁路队列下的记忆最终一致；v1.4 增幂等键与熔断；v1.3 增管理端）
+- 日期：2026-11-08（v1.6 增队列运维接口与 I19–I21；v1.5 记忆最终一致；v1.4 幂等与熔断；v1.3 管理端）
 - 实现：`backend-agent/app/api/`
 - 关联：[SDD](../sdd/pet-agent-sdd.md) · [ADR-0003](../adr/0003-sse-event-contract.md)
 
@@ -222,6 +222,21 @@ data: {"text":"9月1日打过疫苗，"}
 
 审计：每次读取**他人**会话或记忆都写一条 `admin.access` 日志，字段 `admin_id`、`target_user`、`session_id`（记忆为 `scope=memory`），**不记录消息正文与记忆值**。
 
+## 6.4 管理端队列运维接口（S1.9）
+
+旁路任务队列的现场与死信重放。同样要求 `role == "admin"`。
+
+| 接口 | 参数 | 返回 |
+| --- | --- | --- |
+| `GET /agent/admin/tasks` | — | `{enabled, backend, processed, failed, topics:[{topic, depth, dead_letters}]}`；`TASK_BACKEND=off` 时 `enabled=false`、计数为 0（不是故障） |
+| `POST /agent/admin/tasks/dead-letters/replay` | body `{topic, limit}`（`limit` 1–100，默认 10） | `{topic, replayed}`；未知 topic `400`，队列未启用 `404` |
+
+约定：
+
+- 重放把死信搬回待消费队列，**`attempt` 重置为 1**（否则消费失败一次就又进死信）；
+- 重放本身写 `admin.access`，`scope=tasks.replay:<topic>`；
+- 死信列表只留最近 `TASK_MAX_ATTEMPTS` 轮之后的条目，不做无限堆积（超过 `limit` 的留在死信里，可多次重放）。
+
 ## 7. 不变量（必须永远成立）
 
 | 编号 | 断言 | 验证 |
@@ -244,6 +259,9 @@ data: {"text":"9月1日打过疫苗，"}
 | I16 | 同用户同 `client_message_id` 重试只执行一次：不重复调模型、不重复落消息、不重复计费 | `test_idempotency.py::test_same_key_does_not_execute_twice`、`scripts.idempotency_smoke` |
 | I17 | 熔断打开后新请求快速失败 `503 circuit_open` + `Retry-After`，**不再打下游**；401/422 不计入失败 | `test_circuit.py::test_opens_after_threshold_and_fails_fast`、`test_client_errors_do_not_trip_breaker` |
 | I18 | 熔断打开时 `/readyz` 返回 503 且 `checks["circuit:*"] == "open"`，`/healthz` 仍 200 | `test_circuit.py::test_readyz_reports_open_circuit` |
+| I19 | 进程启动时先把「在途」消息搬回队列再开消费，崩溃不丢任务 | `test_task_queue.py::test_recover_returns_inflight_messages`；真机日志 `task inflight recovered on startup` |
+| I20 | 死信重放后 `attempt` 归零，否则一次失败又立刻进死信 | `test_task_queue.py::test_replay_dead_letter_resets_attempt` |
+| I21 | 队列现场与死信重放只有 `role == "admin"` 可访问 | `test_admin.py::test_admin_replays_dead_letters` |
 
 ## 8. 验收用例（可执行）
 
@@ -251,12 +269,13 @@ data: {"text":"9月1日打过疫苗，"}
 cd backend-agent
 # 含真机仓储契约测试（需要 DSN，否则跳过 mysql 变体）
 $env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:yzh521@127.0.0.1:3306/petlumina"
-.\.venv\Scripts\python -m pytest              # 122 passed
+.\.venv\Scripts\python -m pytest              # 142 passed
 .\.venv\Scripts\python -m evals.run           # routing 15/15, safety 6/6, memory 2/2
 .\.venv\Scripts\python -m scripts.e2e_smoke       # 10/10
 .\.venv\Scripts\python -m scripts.p1_smoke        # 9/9（配额/用量/记忆）
 .\.venv\Scripts\python -m scripts.admin_smoke     # 6/6（管理端权限与列表/详情/用量）
 .\.venv\Scripts\python -m scripts.idempotency_smoke  # 8/8（幂等键）
+.\.venv\Scripts\python -m scripts.tasks_smoke        # 8/8（队列现场/死信重放）
 .\.venv\Scripts\ruff.exe check .              # All checks passed
 ```
 
@@ -270,3 +289,4 @@ $env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:yzh521@127.0.0.1:3306/petlumina"
 | v1.3 | 2026-11-08 | 增 6.3 管理端只读接口、`admin.access` 审计、I14–I15（S1.7） |
 | v1.4 | 2026-11-08 | 增 `client_message_id` 幂等语义、`503 circuit_open`、`/readyz` 熔断检查、I16–I18（S1.8 P2） |
 | v1.5 | 2026-11-08 | `/agent/memory/me` 补一致性说明：`TASK_BACKEND=memory\|redis` 时写入最终一致（S1.9-a）；验收命令 122 passed、补 `idempotency_smoke` |
+| v1.6 | 2026-11-08 | 增 6.4 队列运维接口（查看现场 + 死信重放）、I19–I21（启动补偿/重放归零/仅管理员）；验收命令 142 passed、补 `tasks_smoke`（S1.9-b） |

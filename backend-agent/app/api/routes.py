@@ -17,6 +17,7 @@ from ..memory import label_of
 from ..runtime import AgentRunner, Caller, ChatCommand
 from ..runtime.eventlog import EventStore
 from ..storage.base import AgentRepository
+from ..tasks import TOPICS
 from .schemas import (
     AdminDayUsage,
     AdminRunOut,
@@ -24,6 +25,8 @@ from .schemas import (
     AdminSessionItem,
     AdminSessionList,
     AdminStepOut,
+    AdminTasksOut,
+    AdminTaskTopicOut,
     AdminUsageOut,
     ChatRequest,
     HealthOut,
@@ -31,6 +34,8 @@ from .schemas import (
     MemoryOut,
     MessageOut,
     MessagesOut,
+    ReplayDeadLetterOut,
+    ReplayDeadLetterRequest,
     UsageOut,
 )
 
@@ -441,3 +446,64 @@ async def admin_usage(
             AdminDayUsage(day=d.day, runs=d.runs, tokens=d.tokens) for d in overview.by_day
         ],
     )
+
+
+@router.get("/agent/admin/tasks", response_model=AdminTasksOut)
+async def admin_tasks(request: Request) -> AdminTasksOut:
+    """旁路队列现场：剩多少没消费、死信堆了多少、worker 处理/失败计数。
+
+    死信是「该被看见」的东西——不提供这个接口，死信就只是日志里的一行。
+    """
+    await _admin_identity(request)
+    settings: Settings = request.app.state.settings
+    queue = request.app.state.tasks
+    worker = request.app.state.task_worker
+    if queue is None:
+        return AdminTasksOut(
+            enabled=False,
+            backend=settings.task_backend,
+            processed=0,
+            failed=0,
+            topics=[AdminTaskTopicOut(topic=t, depth=0, dead_letters=0) for t in TOPICS],
+        )
+    topics: list[AdminTaskTopicOut] = []
+    for topic in TOPICS:
+        topics.append(
+            AdminTaskTopicOut(
+                topic=topic,
+                depth=await queue.depth(topic),
+                dead_letters=len(await queue.dead_letters(topic)),
+            )
+        )
+    return AdminTasksOut(
+        enabled=True,
+        backend=settings.task_backend,
+        processed=worker.processed if worker is not None else 0,
+        failed=worker.failed if worker is not None else 0,
+        topics=topics,
+    )
+
+
+@router.post("/agent/admin/tasks/dead-letters/replay", response_model=ReplayDeadLetterOut)
+async def admin_replay_dead_letter(
+    request: Request,
+    payload: ReplayDeadLetterRequest,
+) -> ReplayDeadLetterOut:
+    """把死信放回队列重试（`attempt` 重置为 1）。修完下游之后用，不用重启进程。"""
+    admin = await _admin_identity(request)
+    queue = request.app.state.tasks
+    if queue is None:
+        raise NotFound("任务队列未启用")
+    if payload.topic not in TOPICS:
+        raise InvalidRequest(f"未知 topic：{payload.topic}")
+    log_event(
+        admin_log,
+        logging.INFO,
+        "admin.access",
+        admin_id=admin.user_id,
+        target_user="",
+        scope=f"tasks.replay:{payload.topic}",
+        limit=payload.limit,
+    )
+    replayed = await queue.replay_dead_letter(payload.topic, limit=payload.limit)
+    return ReplayDeadLetterOut(topic=payload.topic, replayed=replayed)

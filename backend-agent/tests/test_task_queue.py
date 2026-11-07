@@ -242,3 +242,56 @@ def test_redis_payload_is_json_roundtrip() -> None:
     )
     parsed = TaskMessage.from_json(json.loads(raw))
     assert parsed.payload == {"a": [1, 2]}
+
+
+async def test_recover_returns_inflight_messages(queue) -> None:
+    """启动补偿：进程崩溃时卡在「在途」的消息必须能回到待消费队列。"""
+    await queue.publish("t", key="k", payload={})
+    message = await queue.receive("t", timeout_s=0.05)
+    assert message is not None
+
+    recovered = await queue.recover(["t"])
+    if isinstance(queue, RedisTaskQueue):
+        assert recovered == 1
+        again = await queue.receive("t", timeout_s=0.05)
+        assert again is not None and again.id == message.id
+    else:
+        # 内存实现没有在途态：消息被取走就是被取走，不做假承诺
+        assert recovered == 0
+
+
+async def test_replay_dead_letter_resets_attempt(queue) -> None:
+    await queue.publish("t", key="k", payload={"n": 1})
+    for _ in range(2):  # max_attempts=2：第 2 次 nack 进死信
+        message = await queue.receive("t", timeout_s=0.05)
+        assert message is not None
+        await queue.nack(message, error="boom")
+
+    dead = await queue.dead_letters("t")
+    assert len(dead) == 1
+    assert dead[0].attempt == 2
+
+    assert await queue.replay_dead_letter("t", limit=10) == 1
+    assert await queue.dead_letters("t") == []
+    assert await queue.depth("t") == 1
+
+    replayed = await queue.receive("t", timeout_s=0.05)
+    assert replayed is not None
+    assert replayed.id == dead[0].id
+    assert replayed.attempt == 1  # 重新开始计数，否则一失败就又进死信
+
+
+async def test_replay_dead_letter_respects_limit(queue) -> None:
+    for index in range(3):
+        await queue.publish("t", key=f"k{index}", payload={})
+        message = await queue.receive("t", timeout_s=0.05)
+        assert message is not None
+        await queue.nack(message, error="boom")
+        message = await queue.receive("t", timeout_s=0.05)
+        assert message is not None
+        await queue.nack(message, error="boom")
+    assert len(await queue.dead_letters("t")) == 3
+
+    assert await queue.replay_dead_letter("t", limit=2) == 2
+    assert len(await queue.dead_letters("t")) == 1
+    assert await queue.depth("t") == 2

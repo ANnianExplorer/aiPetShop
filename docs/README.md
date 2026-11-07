@@ -61,7 +61,7 @@
 | [plans/s1.6-production-hardening.md](plans/s1.6-production-hardening.md) | S1.6 生产化加固：P0 工程基线 → P3 记忆扩展，每阶段带可执行验收 | P0、P1 已完成，P2 待启动 |
 | [plans/s1.7-admin-workbench.md](plans/s1.7-admin-workbench.md) | S1.7 管理端「会话工作台」：权限模型、4 个只读接口、两个页面 | 已完成 |
 | [plans/s1.8-p2-resilience.md](plans/s1.8-p2-resilience.md) | S1.8 P2 韧性与真机联调：真机落库、Redis 兼容、幂等键、熔断 | 已完成 |
-| [plans/s1.9-task-queue.md](plans/s1.9-task-queue.md) | S1.9 任务队列：把记忆抽取/审计挪出请求路径，RocketMQ 作为生产实现 | S1.9-a 已完成；S1.9-b 待启动 |
+| [plans/s1.9-task-queue.md](plans/s1.9-task-queue.md) | S1.9 任务队列：把记忆抽取/审计挪出请求路径，RocketMQ 作为生产实现 | S1.9-a、S1.9-b 已完成；RocketMQ 待启动 |
 
 ### REPORT
 
@@ -74,6 +74,7 @@
 | [reports/2026-11-08-s1.7-admin.md](reports/2026-11-08-s1.7-admin.md) | S1.7 管理端会话工作台 | 101 单测 + 管理端冒烟 6/6 + vue-tsc/build 通过 + Edge 浏览器端到端；MySQL 版查询仅契约测试 |
 | [reports/2026-11-08-s1.8-p2.md](reports/2026-11-08-s1.8-p2.md) | S1.8 P2 韧性与真机联调 | 122 单测（含 MySQL 契约）、四个冒烟 10/9/6/8 全绿、真机 MySQL 8.0.29 + Redis 5.0.14；抓到 5 个真实缺陷（RESP3、幂等维度、脚本清空文件等） |
 | [reports/2026-11-08-s1.9-task-queue.md](reports/2026-11-08-s1.9-task-queue.md) | S1.9-a 旁路任务队列（TaskQueue） | 134 单测、四个冒烟 10/9/6/8、真机 Redis 队列收发闭环；抓到 3 个真实缺陷（冒烟脚本不自洽、签名不一致、最终一致误判为回归） |
+| [reports/2026-11-08-s1.9b-deadletter.md](reports/2026-11-08-s1.9b-deadletter.md) | S1.9-b 启动补偿 + 死信重放 + 队列现场 | 142 单测、五个冒烟 10/9/6/8/8、真机"在途 1 条 → 重启回收 → 落库"闭环；修 3 个问题（import 顺序、未用 Any、不变量编号乱序） |
 
 ## 3. 新增文档怎么起头
 

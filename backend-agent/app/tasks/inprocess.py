@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 
 from ..core.logging import log_event
 from .base import TaskMessage, TaskQueueFull, make_message
@@ -75,6 +75,35 @@ class InProcessTaskQueue:
     async def dead_letters(self, topic: str) -> list[TaskMessage]:
         """与 Redis 实现保持同一签名（异步），否则调用方要为两种后端写两套代码。"""
         return list(self._dlq.get(topic, ()))
+
+    async def recover(self, topics: Sequence[str] | None = None) -> int:
+        """内存队列没有「在途」状态：消息要么在队列里，要么已经被处理。"""
+        return 0
+
+    async def replay_dead_letter(self, topic: str, *, limit: int = 10) -> int:
+        pending = self._dlq.get(topic, [])
+        if limit <= 0 or not pending:
+            return 0
+        take = pending[:limit]
+        del pending[: len(take)]
+        replayed = 0
+        for message in take:
+            retried = TaskMessage(
+                id=message.id,
+                topic=message.topic,
+                key=message.key,
+                payload=message.payload,
+                attempt=1,
+            )
+            try:
+                self._queue(topic).put_nowait(retried)
+            except asyncio.QueueFull:
+                # 放不回去就留在死信里，不丢
+                pending.append(message)
+                break
+            replayed += 1
+        log_event(task_log, logging.INFO, "task dead letter replayed", topic=topic, replayed=replayed)
+        return replayed
 
     async def aclose(self) -> None:
         self._queues.clear()

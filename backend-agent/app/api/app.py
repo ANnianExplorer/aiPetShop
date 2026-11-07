@@ -9,6 +9,8 @@
 
 from __future__ import annotations
 
+import contextlib
+import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 
@@ -20,7 +22,7 @@ from fastapi.responses import JSONResponse
 from ..config import Settings
 from ..core.circuit import CircuitBreaker
 from ..core.errors import AgentError, CircuitOpen, RateLimited
-from ..core.logging import configure_logging
+from ..core.logging import configure_logging, log_event
 from ..core.ratelimit import RateLimiter, create_rate_limiter
 from ..graph import build_graph
 from ..llm import ChatModel, build_model
@@ -36,6 +38,8 @@ from ..tools import BackendClient, ToolAudit, ToolGateway, ToolPolicy, build_reg
 from .deps import IdentityResolver
 from .observability import RequestContextMiddleware
 from .routes import router
+
+task_log = logging.getLogger("agent.task")
 
 
 def create_app(
@@ -139,6 +143,14 @@ def create_app(
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+        # 先补偿上一次进程崩在「在途」里的消息，再开消费协程：
+        # 顺序反了会和新 consumer 抢同一条消息。
+        if tasks is not None:
+            with contextlib.suppress(Exception):
+                recovered = await tasks.recover(list(TOPICS))
+                if recovered:
+                    log_event(task_log, logging.WARNING, "task inflight recovered on startup",
+                              recovered=recovered)
         if worker is not None:
             await worker.start()
         try:
