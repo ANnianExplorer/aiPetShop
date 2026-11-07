@@ -1,0 +1,16 @@
+# 本地私有配置示例：复制成 application-local.yml（已被 .gitignore 忽略）
+#
+# 用法：
+#   1. 在 backend/ 目录下执行 cp application-local.yml.example application-local.yml
+#   2. 把下面的口令改成你本机 MySQL 的口令
+#   3. 启动后端（工作目录必须是 backend/，否则 Spring 读不到这个文件）
+#
+# 也可以不用这个文件，直接用环境变量：
+#   PETLUMINA_DB_USERNAME / PETLUMINA_DB_PASSWORD / PETLUMINA_DB_URL
+#
+# 生产环境请用环境变量或配置中心，不要把口令写进任何进版本库的文件。
+
+petlumina:
+  db:
+    username: root
+    password: change-me

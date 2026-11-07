@@ -27,7 +27,7 @@
 | 文档 | 内容 |
 | --- | --- |
 | [pet-agent-architecture.md](pet-agent-architecture.md) | Pet-Agent 总体方案：五条原则、分层架构、六大能力、12 张表、开源选型、四阶段路线图、成本与风险、§10 harness 选型、§11 GitHub 调研、§12 S1 落地、§13 Web 接入 |
-| [BACKLOG.md](BACKLOG.md) | 未完成事项清单：P0 3 条 / P1 8 条 / P2 9 条 / P3 9 条 / 原项目卫生债 6 条（E1–E7 已修），每条带现状、卡点、验收标准与估算 |
+| [BACKLOG.md](BACKLOG.md) | 未完成事项清单：P0 3 条 / P1 8 条 / P2 9 条 / P3 9 条 / 原项目卫生债 4 条（E1–E8、E13 已修），每条带现状、卡点、验收标准与估算 |
 
 ### SDD
 
@@ -81,6 +81,7 @@
 | [reports/2026-11-08-a1-real-model-smoke.md](reports/2026-11-08-a1-real-model-smoke.md) | BACKLOG A1 真实模型冒烟 | 真 key 13/13：L1 P50 929 ms / P95 1064 ms、L2 调 `search_logs` 且引用 7001、usage 与库里 `agent_run` 一致；顺带发现"强杀进程留下僵死 running"（登记 B3） |
 | [reports/2026-11-08-s1.11-hygiene-debts.md](reports/2026-11-08-s1.11-hygiene-debts.md) | S1.11 卫生债 E1/E3/E4/E5 | 验证码改随机+dev 可配固定码（Java 单测 5 条）、管理端类型门禁改 `vue-tsc -b`（探针证明会报错，顺带修好"帖子图片/标签永远为空"）、社区分类改 code 比对、今日提醒改日期比较（前端单测 37 条） |
 | [reports/2026-11-08-s1.12-e2-e6-e7.md](reports/2026-11-08-s1.12-e2-e6-e7.md) | S1.12 卫生债 E2/E6/E7 | 广播已读改独立表（未读 2→1→0，列表不重复）、`sortField` 白名单生效（升/降序与注入回落真机验证）、错误码映射 400/401/404（curl 实测状态码）；Java 10 单测、两端 build 通过 |
+| [reports/2026-11-08-s1.13-e8-e13.md](reports/2026-11-08-s1.13-e8-e13.md) | S1.13 卫生债 E8/E13 | 仪表盘趋势/类型分布改聚合、热门帖作者改批量查（SQL 日志 1 次 GROUP BY、0 次逐日查询，数字与库内对账一致）；数据库口令移出仓库（环境变量 / `application-local.yml`，缺口令时首次查库报 `Access denied`，全仓库 grep 明文为 0） |
 
 ## 3. 新增文档怎么起头
 

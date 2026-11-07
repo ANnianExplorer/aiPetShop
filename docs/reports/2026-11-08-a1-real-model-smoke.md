@@ -108,7 +108,7 @@
 ```powershell
 cd backend-agent
 $env:PET_AGENT_ENV="dev"; $env:PET_AGENT_REPO_BACKEND="mysql"
-$env:PET_AGENT_MYSQL_DSN="mysql://root:yzh521@127.0.0.1:3306/petlumina"
+$env:PET_AGENT_MYSQL_DSN="mysql://root:<本机口令>@127.0.0.1:3306/petlumina"
 $env:PET_AGENT_AUTH_MODE="backend"; $env:PET_AGENT_BACKEND_BASE_URL="http://127.0.0.1:8097/api/v1"
 $env:PET_AGENT_LLM_BASE_URL="https://api.deepseek.com/v1"; $env:PET_AGENT_LLM_MODEL="deepseek-chat"
 $env:PET_AGENT_LLM_API_KEY="<your-key>"          # 不要写进 .env 或仓库

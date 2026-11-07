@@ -284,7 +284,7 @@ App 的历史入口。只返回 **token 解析出的本人**会话，不接受 `
 ```powershell
 cd backend-agent
 # 含真机仓储契约测试（需要 DSN，否则跳过 mysql 变体）
-$env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:yzh521@127.0.0.1:3306/petlumina"
+$env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:<本机口令>@127.0.0.1:3306/petlumina"
 .\.venv\Scripts\python -m pytest              # 146 passed
 .\.venv\Scripts\python -m evals.run           # routing 15/15, safety 6/6, memory 2/2
 .\.venv\Scripts\python -m scripts.e2e_smoke       # 10/10

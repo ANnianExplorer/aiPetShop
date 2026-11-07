@@ -238,10 +238,14 @@ export COS_BUCKET=your_bucket
 export COS_REGION=ap-shanghai
 export COS_HOST=https://your-cdn.com
 
-# 4. 修改数据库连接配置
-# src/main/resources/application-dev.yml
+# 4. 配置数据库口令（二选一，仓库里不放明文口令）
+#    方式 A：环境变量
+export PETLUMINA_DB_USERNAME=root
+export PETLUMINA_DB_PASSWORD=your_password
+#    方式 B：本地私有文件（已被 .gitignore 忽略）
+cp application-local.yml.example application-local.yml   # 然后改成你的口令
 
-# 5. 启动
+# 5. 启动（工作目录必须是 backend/，否则读不到 application-local.yml）
 mvn spring-boot:run
 ```
 

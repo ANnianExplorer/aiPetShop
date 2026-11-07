@@ -14,3 +14,8 @@ test-screenshots/
 /backend/.playwright-cli/
 # TypeScript 增量构建缓存（vue-tsc -b 产物）
 *.tsbuildinfo
+# 本地私有配置（数据库口令等），只提交 .example
+backend/application-local.yml
+# 本地排障用的临时日志/输出
+*.tmp-*
+.tmp-*

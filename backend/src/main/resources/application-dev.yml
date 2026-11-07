@@ -2,12 +2,20 @@ server:
   port: 8080
 
 spring:
+  # 本地私有配置（数据库口令等），可选：文件不存在也能启动。
+  # 仓库里不放任何真实口令；拷贝 application-local.yml.example 改成本地文件即可。
+  config:
+    import: optional:file:./application-local.yml
   # MySQL
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    url: jdbc:mysql://localhost:3306/petlumina?useSSL=false&serverTimezone=Asia/Shanghai
-    username: root
-    password: yzh521
+    url: ${PETLUMINA_DB_URL:jdbc:mysql://localhost:3306/petlumina?useSSL=false&serverTimezone=Asia/Shanghai}
+    username: ${PETLUMINA_DB_USERNAME:${petlumina.db.username:root}}
+    # 口令只从环境变量或 application-local.yml 读，默认空字符串。
+    # 注意：HikariCP 是懒连接，缺口令时应用仍能启动，但第一次查库会报
+    # `Access denied for user 'root'@'localhost' (using password: NO)`——这是预期行为，
+    # 比"仓库里放一个明文口令、上线忘了改"要安全得多。
+    password: ${PETLUMINA_DB_PASSWORD:${petlumina.db.password:}}
   application:
     name: pet-backend
   servlet:

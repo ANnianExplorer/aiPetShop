@@ -11,7 +11,7 @@
 3. 优先级按"卡不卡产品可用"分：P0 阻断、P1 该做、P2 值得做、P3 以后。
 4. 估算是"一个人、熟悉代码"的量级，不是承诺。
 
-统计：**P0 3 条（A1、A2 已交付）· P1 8 条 · P2 9 条 · P3 9 条 · 原项目卫生债 6 条**，原计划 42 条，其中 A1、A2、E1、E2、E3、E4、E5、E6、E7 已完成（E1/E3/E4/E5 见 `docs/reports/2026-11-08-s1.11-hygiene-debts.md`；E2/E6/E7 见 `docs/reports/2026-11-08-s1.12-e2-e6-e7.md`），剩余 33 条。
+统计：**P0 3 条（A1、A2 已交付）· P1 8 条 · P2 9 条 · P3 9 条 · 原项目卫生债 4 条**，原计划 42 条，其中 A1、A2、E1、E2、E3、E4、E5、E6、E7、E8、E13 已完成（E1/E3/E4/E5 见 `docs/reports/2026-11-08-s1.11-hygiene-debts.md`；E2/E6/E7 见 `docs/reports/2026-11-08-s1.12-e2-e6-e7.md`；E8/E13 见 `docs/reports/2026-11-08-s1.13-e8-e13.md`），剩余 31 条。
 
 ---
 
@@ -72,18 +72,16 @@
 
 ---
 
-## 5. 原项目卫生债（S0，已定位；E1–E7 已修，剩 6 条）
+## 5. 原项目卫生债（S0，已定位；E1–E8、E13 已修，剩 4 条）
 
 这些不是 Agent 引入的，但会拖累"企业级"的说法。
 
 | # | 位置 | 问题 | 影响 | 修法 |
 |---|---|---|---|---|
-| E8 | `service/admin/impl/DashboardServiceImpl.java:75-83` | 7 天趋势在 for 循环里每天发一次 `count()`（7 次 SQL），不是一次聚合 | 数据量大时仪表盘变慢 | 改成一次 `GROUP BY DATE(create_time)`；热门帖作者是否 N+1 未复核，复核后再补条目 |
 | E9 | `pet-lumina-web/src/views/content/ViolationManage.vue` | 全本地 mock，`// TODO: call API`，无 api 模块 | 页面是假的 | 后端补违规接口，或先隐藏入口 |
 | E10 | `pet-lumina-web` AddUser/EditUser | 提交只弹 toast；EditUser 预填硬编码"森林语者/138-xxxx-8888" | 管理端"能看不能改" | 接真实 create/update 接口 |
 | E11 | `pet-lumina-app` 多页 | 41 处 `as any`（另有 1 处只是注释）、`currentPet.value!.id` 非空断言（`RecordHealthData.vue:187`、`AddPlan.vue:66`）、假数据残留（`WeeklyHealthDetail.vue:98-116`、`BentoDashboard.vue`、`UserInfo.vue:66-81`） | 类型形同虚设，改错要等运行时报错 | 先把 `as any` 换成真实类型（41 处有清单，可逐个清），再处理假数据 |
 | E12 | `TopicController.java:172` + `PostServiceImpl.java:78-86` | `tags` 里搜 `"topic:<id>"` 的隐式约定，只有"从话题页发帖"会写 | 数据关联靠约定，易断 | 加 `post_topic` 关联表，或写清契约 |
-| E13 | `backend/src/main/resources/application-dev.yml:6-10` | 数据库密码明文（`root/yzh521`）、COS 占位 | 泄露风险 | 改环境变量 + `.env.example` |
 
 ---
 
@@ -104,3 +102,4 @@
 2. ~~A1 真实模型冒烟~~ ✅ 2026-11-08 已交付（真 key 跑通 L1×3 + L2，并抓到"僵死 run"问题，见 B3）。
 3. ~~**E1 / E3 / E4 / E5 四个小修**~~ ✅ 已完成（2026-11-08）。
 4. ~~**E2 / E6 / E7 三个小修**~~ ✅ 已完成（2026-11-08）：广播已读改用 `notification_read` 表、`sortField` 白名单生效、错误码映射真实 HTTP 状态；下一批建议 E8 / E13（仪表盘 N+1、明文密码）。
+5. ~~**E8 / E13**~~ ✅ 已完成（2026-11-08）：仪表盘趋势改一次 `GROUP BY`、宠物分布改聚合、热门帖作者改批量查；数据库口令移出仓库（环境变量 / `application-local.yml`，且在全仓库清掉了明文）。见 `docs/reports/2026-11-08-s1.13-e8-e13.md`。
