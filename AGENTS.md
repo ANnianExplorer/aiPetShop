@@ -44,6 +44,13 @@ cd pet-lumina-app && npm run preview
 - Backend directory is currently empty (placeholder for future API)
 - All data is mocked in the Pinia store - no actual API calls implemented yet
 
+## 临时文件与清理约定
+- 跑测试/起服务产生的日志**不要落在仓库里**：统一写到 `%TEMP%`（如 `$env:TEMP\petlumina-agent.log`）。
+- 开发过程中确实需要在仓库内留临时文件时，一律用 `.tmp-` 前缀（已 gitignore），任务结束前删除。
+- 不提交：`.vscode/`、`.venv/`、`node_modules/`、`__pycache__/`、`.pytest_cache/`、`.ruff_cache/`、`backend-agent/data/`、`backend/application-local.yml`。
+- 每轮交付前跑一次 `git status --porcelain`，除上述忽略项外应为空；有残留文件先清理再提交。
+
+
 ## GitHub Pages
 - 构建输出目录：`pet-lumina-app/dist`（已在仓库中）
 - CI workflow: `.github/workflows/deploy.yml`

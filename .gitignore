@@ -6,16 +6,28 @@ ai-pet-app/
 .idea/
 .claude/
 z-plan
+z-plan/.playwright-cli/
 backend/target/
 /backend/target/
-.claude/
-z-plan/.playwright-cli/
-test-screenshots/
 /backend/.playwright-cli/
+test-screenshots/
+
 # TypeScript 增量构建缓存（vue-tsc -b 产物）
 *.tsbuildinfo
+
 # 本地私有配置（数据库口令等），只提交 .example
 backend/application-local.yml
-# 本地排障用的临时日志/输出
+
+# Python 缓存与虚拟环境
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.venv/
+
+# Agent 运行时落盘目录（上传文档等）
+backend-agent/data/
+
+# 本地排障用的临时日志/输出：统一 .tmp-* 前缀，跑完即删
 *.tmp-*
 .tmp-*
