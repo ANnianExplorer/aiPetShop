@@ -69,6 +69,12 @@ class Settings(BaseSettings):
     circuit_threshold: int = Field(default=5, ge=1, le=100)
     circuit_cooldown_s: float = Field(default=30.0, gt=0)
 
+    # ---- 旁路任务队列（S1.9）----
+    # off: 旁路工作同步执行（默认，行为与 S1.8 一致）；memory: 进程内队列；redis: 列表队列
+    task_backend: Literal["off", "memory", "redis"] = "off"
+    task_queue_size: int = Field(default=1000, ge=1)
+    task_max_attempts: int = Field(default=3, ge=1, le=10)
+
     # ---- 通道策略 ----
     allowed_channels: tuple[str, ...] = ("app", "web", "internal")
     cors_origins: tuple[str, ...] = ("*",)

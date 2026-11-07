@@ -39,9 +39,10 @@ App / 管理端 ──SSE──>  api/          传输层：鉴权、请求校�
 | `app/graph/` | `state`/`nodes`/`builder` | hop 与调用预算都有硬上限 |
 | `app/runtime/` | `eventlog`/`runner` | 事件可续传；run 终态不可改；配额与记忆在这里被编排 |
 | `app/api/` | `deps`/`schemas`/`routes`/`app`/`observability` | 依赖全部注入，测试不需要真模型/真库 |
-| `app/core/` | `errors`/`ids`/`logging`/`ratelimit` | 错误模型、19 位雪花 id、单行 JSON 日志、配额 |
+| `app/core/` | `errors`/`ids`/`logging`/`ratelimit`/`circuit`/`redis_client` | 错误模型、19 位雪花 id、单行 JSON 日志、配额、熔断、RESP2 兼容的 Redis 客户端 |
 | `app/memory/` | `extract`/`ops`/`service` | 事实抽取（规则）、ADD/UPDATE/NOOP 算子、写入与召回 |
-| `tests/` | 契约级单测 | 92 项，不依赖网络/MySQL/密钥 |
+| `app/tasks/` | `base`/`inprocess`/`redis`/`consumers`/`worker` | 旁路任务队列：记忆抽取与审计出请求路径；队列满退回同步 |
+| `tests/` | 契约级单测 | 134 项，不依赖网络/MySQL/密钥 |
 | `evals/` | 评测用例 + 阈值 runner | 23 条用例，不过阈值就退出码非 0 |
 
 ## 快速开始
@@ -59,7 +60,7 @@ copy .env.example .env          # 填 PET_AGENT_LLM_API_KEY
 ```bash
 curl http://localhost:8099/healthz    # 进程活着
 curl http://localhost:8099/readyz     # 能接流量（存储+模型都 ok 才是 200）
-.venv\Scripts\python -m pytest        # 122 passed（设 PET_AGENT_TEST_MYSQL_DSN 时含真机契约）
+.venv\Scripts\python -m pytest        # 134 passed（设 PET_AGENT_TEST_MYSQL_DSN 时含真机契约）
 .venv\Scripts\python -m evals.run     # routing/safety/memory 三套件，硬阈值
 .venv\Scripts\ruff.exe check .        # 静态检查
 ```
@@ -111,6 +112,9 @@ mysql -u root -p < backend/sql/v2.12-agent-idempotency.sql  # 幂等键（S1.8 P
 | `PET_AGENT_REDIS_URL` | `redis://localhost:6379/0` | 事件流与配额共用（客户端固定 RESP2，兼容 Redis 5） |
 | `PET_AGENT_CIRCUIT_THRESHOLD` | `5` | 连续失败多少次打开熔断 |
 | `PET_AGENT_CIRCUIT_COOLDOWN_S` | `30` | 熔断冷却期，过后放一个探测请求 |
+| `PET_AGENT_TASK_BACKEND` | `off` | `off`（同步）/ `memory`（单进程队列）/ `redis`（多副本队列） |
+| `PET_AGENT_TASK_QUEUE_SIZE` | `1000` | 内存队列上限，满了退回同步执行 |
+| `PET_AGENT_TASK_MAX_ATTEMPTS` | `3` | 消费失败重试次数，超过进死信 |
 
 ## 接口
 
@@ -164,7 +168,7 @@ event: error   data: {code, message, retryable}
 ## 测试与评测
 
 - `ruff check .` → 静态检查（配置在 `pyproject.toml`，CI 第一道门）。
-- `pytest` → 122 项（设 `PET_AGENT_TEST_MYSQL_DSN` 时含真机 MySQL 契约）：路由、网关六道防线、存储契约（内存/MySQL 同一套断言）、图（L1/L2/hop 上限/坏参数）、API（SSE 事件序列、续传三种方式等价、越权、失败收敛、429 与配额头、记忆注入与用量聚合）、配额（分钟/日窗口、用户隔离、Redis fail-open、`Retry-After`）、事件存储（两实现同契约：序号、游标、裁剪、坏数据跳过）、记忆（抽取规则、ADD/UPDATE/NOOP、隔离、低置信度过滤）、可观测（request_id/日志字段/readyz 降级）、管理端（403/401、列表筛选、详情含 steps、审计不含正文、伪造 header 无效）、幂等（同 key 只执行一次、并发唯一键、非法 key 422）、熔断（三态迁移、half_open 单探测、401 不误熔断、readyz 联动）。
+- `pytest` → 134 项（设 `PET_AGENT_TEST_MYSQL_DSN` 时含真机 MySQL 契约）：路由、网关六道防线、存储契约（内存/MySQL 同一套断言）、图（L1/L2/hop 上限/坏参数）、API（SSE 事件序列、续传三种方式等价、越权、失败收敛、429 与配额头、记忆注入与用量聚合）、配额（分钟/日窗口、用户隔离、Redis fail-open、`Retry-After`）、事件存储（两实现同契约：序号、游标、裁剪、坏数据跳过）、记忆（抽取规则、ADD/UPDATE/NOOP、隔离、低置信度过滤）、可观测（request_id/日志字段/readyz 降级）、管理端（403/401、列表筛选、详情含 steps、审计不含正文、伪造 header 无效）、幂等（同 key 只执行一次、并发唯一键、非法 key 422）、熔断（三态迁移、half_open 单探测、401 不误熔断、readyz 联动）。
 - `python -m evals.run` → 三套件、阈值硬卡：`routing ≥ 95%`、`safety = 100%`、`memory = 100%`。
   用例在 `evals/cases.jsonl`，加一行就是加一条回归；报告落 `evals/reports/latest.json`。
 - 三者都不需要真模型：`ScriptedModel` 把模型的输出变成脚本，测的是**我们的编排**，不是模型的智商。

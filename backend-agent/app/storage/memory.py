@@ -31,6 +31,7 @@ class InMemoryRepository:
         self._runs: dict[str, dict[str, Any]] = {}
         self._steps: dict[str, list[Step]] = {}
         self._tool_calls: list[dict[str, Any]] = []
+        self._audit_ids: set[str] = set()
         self._facts: dict[tuple[str, str, str], MemoryFact] = {}
         # 幂等键索引：(session_id, key) -> run_id，模拟库上的唯一键
         self._idem: dict[tuple[str, str], str] = {}
@@ -210,10 +211,17 @@ class InMemoryRepository:
         code: str | None,
         latency_ms: int,
         args_digest: str,
+        *,
+        event_id: str | None = None,
     ) -> None:
+        # 队列是 at-least-once：同一条审计消息重复投递时按 event_id 去重
+        if event_id is not None:
+            if event_id in self._audit_ids:
+                return
+            self._audit_ids.add(event_id)
         self._tool_calls.append(
             {
-                "id": new_id(),
+                "id": event_id or new_id(),
                 "run_id": run_id,
                 "name": name,
                 "ok": ok,

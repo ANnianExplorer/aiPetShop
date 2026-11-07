@@ -28,6 +28,7 @@ from ..graph import SYSTEM_PROMPT
 from ..llm.base import ChatModel
 from ..memory import MemoryService
 from ..storage.base import AgentRepository
+from ..tasks.base import TaskQueue, TaskQueueFull
 from ..tools import ToolGateway
 from .eventlog import EventStore
 
@@ -65,6 +66,7 @@ class AgentRunner:
         graph: Any,
         eventlog: EventStore,
         memory: MemoryService | None = None,
+        tasks: TaskQueue | None = None,
     ) -> None:
         self._settings = settings
         self._repo = repo
@@ -73,6 +75,7 @@ class AgentRunner:
         self._graph = graph
         self._eventlog = eventlog
         self._memory = memory
+        self._tasks = tasks
 
     async def stream(self, cmd: ChatCommand, caller: Caller) -> AsyncIterator[Event]:
         if self._model is None or self._graph is None:
@@ -275,7 +278,7 @@ class AgentRunner:
                 latency_ms=latency_ms,
             )
 
-            await self._observe(caller.user_id, cmd.pet_id, cmd.message)
+            await self._observe(caller.user_id, cmd.pet_id, cmd.message, run_id=run_id)
 
             yield await self._record(
                 run_id,
@@ -383,9 +386,22 @@ class AgentRunner:
             log_event(memory_log, logging.WARNING, "memory recall failed", error=type(exc).__name__)
             return []
 
-    async def _observe(self, user_id: str, pet_id: str | None, text: str) -> None:
+    async def _observe(
+        self, user_id: str, pet_id: str | None, text: str, *, run_id: str | None = None
+    ) -> None:
+        """记忆写入走旁路队列：不占响应时间；队列不可用时退回同步，绝不丢。"""
         if self._memory is None:
             return
+        if self._tasks is not None:
+            try:
+                await self._tasks.publish(
+                    "agent.memory.observe",
+                    key=f"{user_id}:{run_id or ''}",
+                    payload={"user_id": user_id, "pet_id": pet_id, "text": text},
+                )
+                return
+            except TaskQueueFull:
+                log_event(memory_log, logging.WARNING, "task queue full, memory inline")
         with contextlib.suppress(Exception):
             await self._memory.observe(user_id, pet_id, text)
 

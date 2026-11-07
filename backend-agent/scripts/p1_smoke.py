@@ -6,23 +6,32 @@
     .venv\\Scripts\\python -m scripts.p1_smoke
 
 设计说明：
-- 用独立账号（token-7007）验收，不污染 e2e_smoke 的 token-1001；
-- 限流放最后：一旦触发 429，该账号在窗口内就不能再对话；
-- 记忆验收走 `GET /agent/memory/me`，而不是猜模型输出——断言的是存储里真有什么。
+- **每次跑用全新账号**（`token-<uid>`，uid 由时间戳生成）：真机 MySQL 里的记忆与用量是累积的，
+  固定 `token-7007` 会让第二次跑就失败——测试必须自己造干净状态，而不是假设库是空的；
+- 限流用另一个新账号，避免前面几轮对话吃掉分钟窗口；
+- 记忆验收走 `GET /agent/memory/me`，而不是猜模型输出——断言的是存储里真有什么；
+- 旁路任务队列（`TASK_BACKEND=memory|redis`）下记忆是**最终一致**的，所以断言前轮询等待。
 """
 
 from __future__ import annotations
 
 import json
 import sys
+import time
 from dataclasses import dataclass
 from typing import Any
 
 import httpx
 
 BASE = "http://127.0.0.1:8099"
-TOKEN = "token-7007"
+# 每次运行一个独立账号，避免真机库里上次的残留把断言打成假失败
+_RUN_UID = f"7{int(time.time() * 1000) % 10_000_000:07d}"
+TOKEN = f"token-{_RUN_UID}"
 HEADERS = {"satoken": TOKEN}
+# 限流单独账号：打满 20 次/分钟后不影响上面的账号
+_RATE_UID = f"8{int(time.time() * 1000) % 10_000_000:07d}"
+RATE_HEADERS = {"satoken": f"token-{_RATE_UID}"}
+WAIT_SECONDS = 5.0
 
 
 @dataclass
@@ -58,6 +67,18 @@ def done_of(response: httpx.Response) -> dict[str, Any]:
     return next((row["data"] for row in rows if row["event"] == "done"), {})
 
 
+def wait_for_facts(client: httpx.Client, headers: dict[str, str], expected: int) -> dict[str, Any]:
+    """旁路队列下记忆写入是最终一致：轮询到条数稳定或超时，再断言内容。"""
+    deadline = time.monotonic() + WAIT_SECONDS
+    payload: dict[str, Any] = {}
+    while time.monotonic() < deadline:
+        payload = client.get("/agent/memory/me", headers=headers).json()
+        if len(payload.get("facts") or []) >= expected:
+            return payload
+        time.sleep(0.2)
+    return payload
+
+
 def main() -> int:
     results: list[Result] = []
     with httpx.Client(base_url=BASE, timeout=30) as client:
@@ -69,7 +90,7 @@ def main() -> int:
         learned = chat(client, "我家猫叫Lumina，对牛奶过敏")
         results.append(Result("写入轮成功", learned.status_code == 200, str(learned.status_code)))
 
-        after = client.get("/agent/memory/me", headers=HEADERS).json()
+        after = wait_for_facts(client, HEADERS, 2)
         facts = {f["key"]: f for f in after["facts"]}
         results.append(
             Result(
@@ -95,6 +116,8 @@ def main() -> int:
 
         # ---- 4. 重复同一句话不该产生第二条事实
         chat(client, "我家猫叫Lumina，对牛奶过敏")
+        again = wait_for_facts(client, HEADERS, 2)
+        time.sleep(0.5)  # 给重复消息一个被消费的机会，再确认没有被写成第三条
         again = client.get("/agent/memory/me", headers=HEADERS).json()
         results.append(
             Result("重复不产生重复事实", len(again["facts"]) == 2, f'{len(again["facts"])} 条')
@@ -110,11 +133,13 @@ def main() -> int:
             )
         )
 
-        # ---- 6. 限流：默认 20 次/分钟，打满后必须 429 + Retry-After
+        # ---- 6. 限流：默认 20 次/分钟，打满后必须 429 + Retry-After（独立账号）
         codes: list[int] = []
         limited: httpx.Response | None = None
-        for _ in range(25):
-            response = chat(client, "hi")
+        for _ in range(30):
+            response = client.post(
+                "/agent/chat", json={"message": "hi", "channel": "app"}, headers=RATE_HEADERS, timeout=30
+            )
             codes.append(response.status_code)
             if response.status_code == 429:
                 limited = response

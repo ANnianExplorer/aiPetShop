@@ -25,9 +25,17 @@ if _MYSQL_DSN:
 
 
 @pytest.fixture(params=_FACTORIES, ids=[name for name, _ in _FACTORIES])
-def repo(request: pytest.FixtureRequest) -> AgentRepository:
-    factory = request.param[1]
-    return factory()
+async def repo(request: pytest.FixtureRequest):
+    """每条用例一个仓储实例，用完必须 `aclose()`。
+
+    MySQL 版不关会在 GC 时抛 `PytestUnraisableExceptionWarning`（连接池挂在
+    已关闭的事件循环上），看起来像"偶发噪声"，其实是测试在漏连接。
+    """
+    instance = request.param[1]()
+    try:
+        yield instance
+    finally:
+        await instance.aclose()
 
 
 async def _session(repo: AgentRepository, user_id: str = "1001") -> str:

@@ -75,6 +75,8 @@ class AgentRepository(Protocol):
         code: str | None,
         latency_ms: int,
         args_digest: str,
+        *,
+        event_id: str | None = None,
     ) -> None: ...
 
     async def history(self, session_id: str, limit: int) -> list[dict[str, Any]]: ...

@@ -28,6 +28,10 @@ from ..memory import MemoryService
 from ..runtime import AgentRunner
 from ..runtime.eventlog import EventStore, create_event_store
 from ..storage import AgentRepository, create_repository
+from ..tasks import TOPICS, TaskQueue, create_task_queue
+from ..tasks.base import TaskQueueFull
+from ..tasks.consumers import build_handlers
+from ..tasks.worker import TaskWorker
 from ..tools import BackendClient, ToolAudit, ToolGateway, ToolPolicy, build_registry
 from .deps import IdentityResolver
 from .observability import RequestContextMiddleware
@@ -44,6 +48,7 @@ def create_app(
     event_store: EventStore | None = None,
     llm_breaker: CircuitBreaker | None = None,
     backend_breaker: CircuitBreaker | None = None,
+    task_queue: TaskQueue | None = None,
 ) -> FastAPI:
     settings = settings or Settings()
     configure_logging(settings.log_level)
@@ -62,8 +67,28 @@ def create_app(
 
     repository = repo or create_repository(settings)
     registry = build_registry()
+    tasks = task_queue if task_queue is not None else create_task_queue(settings)
 
     async def audit(audit_record: ToolAudit) -> None:
+        # 有队列就走旁路：审计落库不该占着对话的响应时间；
+        # 投递失败（队列满/中间件挂了）立刻退回同步写，宁可慢也不丢审计。
+        if tasks is not None:
+            try:
+                await tasks.publish(
+                    "agent.audit.tool",
+                    key=f"{audit_record.run_id}:{audit_record.name}",
+                    payload={
+                        "run_id": audit_record.run_id,
+                        "name": audit_record.name,
+                        "ok": audit_record.ok,
+                        "code": audit_record.code,
+                        "latency_ms": audit_record.latency_ms,
+                        "args_digest": audit_record.args_digest,
+                    },
+                )
+                return
+            except TaskQueueFull:
+                pass
         await repository.audit_tool_call(
             audit_record.run_id,
             audit_record.name,
@@ -99,6 +124,7 @@ def create_app(
     )
     store = event_store or create_event_store(settings)
     memory = MemoryService(repository)
+    worker = TaskWorker(tasks, build_handlers(memory, repository), topics=list(TOPICS)) if tasks else None
     runner = AgentRunner(
         settings=settings,
         repo=repository,
@@ -107,14 +133,21 @@ def create_app(
         graph=graph,
         eventlog=store,
         memory=memory,
+        tasks=tasks,
     )
     rate_limiter = limiter or create_rate_limiter(settings)
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+        if worker is not None:
+            await worker.start()
         try:
             yield
         finally:
+            if worker is not None:
+                await worker.stop()
+            if tasks is not None:
+                await tasks.aclose()
             await repository.aclose()
             await store.aclose()
             await rate_limiter.aclose()
@@ -148,6 +181,8 @@ def create_app(
     app.state.identity = IdentityResolver(settings, http)
     app.state.llm_breaker = llm_breaker
     app.state.backend_breaker = backend_breaker
+    app.state.tasks = tasks
+    app.state.task_worker = worker
 
     @app.exception_handler(AgentError)
     async def _agent_error(_: Request, exc: AgentError) -> JSONResponse:

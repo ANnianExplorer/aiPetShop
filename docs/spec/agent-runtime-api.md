@@ -1,7 +1,7 @@
-# 规格：Agent Runtime HTTP/SSE 契约 v1.4
+# 规格：Agent Runtime HTTP/SSE 契约 v1.5
 
 - 状态：Frozen（实现已按此验收；破坏性变更需升 v2）
-- 日期：2026-11-08（v1.4 增幂等键与熔断；v1.3 增管理端）
+- 日期：2026-11-08（v1.5 注明旁路队列下的记忆最终一致；v1.4 增幂等键与熔断；v1.3 增管理端）
 - 实现：`backend-agent/app/api/`
 - 关联：[SDD](../sdd/pet-agent-sdd.md) · [ADR-0003](../adr/0003-sse-event-contract.md)
 
@@ -199,6 +199,8 @@ data: {"text":"9月1日打过疫苗，"}
 ] }
 ```
 
+> **一致性**：`PET_AGENT_TASK_BACKEND=memory|redis` 时，记忆写入走旁路任务队列，本接口是**最终一致**（通常亚秒级，崩溃重试时更久）。`off` 时写入在响应前完成。客户端不要"写完立刻断言可见"，验收脚本要轮询（见 `scripts/p1_smoke.py` 的 `wait_for_facts`）。
+
 ## 6.2 `GET /agent/usage/me`
 
 | 参数 | 默认 | 约束 |
@@ -267,3 +269,4 @@ $env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:yzh521@127.0.0.1:3306/petlumina"
 | v1.2 | 2026-11-08 | 增 `/agent/memory/me`、`/agent/usage/me`、429 与配额头、I11–I13（S1.6 P1） |
 | v1.3 | 2026-11-08 | 增 6.3 管理端只读接口、`admin.access` 审计、I14–I15（S1.7） |
 | v1.4 | 2026-11-08 | 增 `client_message_id` 幂等语义、`503 circuit_open`、`/readyz` 熔断检查、I16–I18（S1.8 P2） |
+| v1.5 | 2026-11-08 | `/agent/memory/me` 补一致性说明：`TASK_BACKEND=memory\|redis` 时写入最终一致（S1.9-a）；验收命令 122 passed、补 `idempotency_smoke` |

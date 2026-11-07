@@ -451,8 +451,9 @@ DSH 本身就是一个 harness（本仓库的会话就跑在它上面：skills /
 | P1 | 每用户配额（429 + `Retry-After`）、单 run token 预算、事件总线 Redis Stream 选项、长期记忆（`memory_fact`/`memory_episode` + 抽取算子 + 召回注入）、用量聚合接口 | `docs/reports/2026-11-08-s1.6-p1.md`：92 passed、P1 冒烟 9/9、浏览器端到端 |
 | S1.7 | 管理端「会话工作台」：`role` 来自 Java `/auth/current`、4 个 `/agent/admin/*` 只读接口、`admin.access` 审计、两个页面（列表 + 详情：对话流/运行轨迹/长期记忆） | `docs/reports/2026-11-08-s1.7-admin.md`：101 passed、管理端冒烟 6/6、Edge 端到端 |
 | S1.8 P2 | 真机联调（MySQL 8.0.29 + Redis 5.0.14）、Redis 客户端固定 RESP2、用户维度幂等键（重试回放不重跑）、LLM/后端双熔断 + `/readyz` 联动 | `docs/reports/2026-11-08-s1.8-p2.md`：122 passed、四个冒烟 10/9/6/8、真机 `/readyz` 四项 check |
+| S1.9-a | 旁路任务队列 `TaskQueue`（内存/Redis 两实现、`BRPOPLPUSH` 在途恢复、死信与重试）：记忆抽取与工具审计移出请求路径，队列满退回同步 | `docs/reports/2026-11-08-s1.9-task-queue.md`：134 passed、四个冒烟 10/9/6/8、真机 Redis 队列 `LLEN=0` + `task memory observed` 日志 |
 
-**S1 未做**（下一步）：Langfuse 追踪、`agent_run` 与 trace 对齐的自动化校验、多副本熔断共享状态（Redis）、并发压测。
+**S1 未做**（下一步）：Langfuse 追踪、`agent_run` 与 trace 对齐的自动化校验、多副本熔断共享状态（Redis）、并发压测、RocketMQ 实现（S1.9-b，需 broker）。
 
 ---
 

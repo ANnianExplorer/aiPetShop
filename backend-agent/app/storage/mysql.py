@@ -343,13 +343,25 @@ class MySqlRepository:
         code: str | None,
         latency_ms: int,
         args_digest: str,
+        *,
+        event_id: str | None = None,
     ) -> None:
         pool = await self._ensure_pool()
+        # 队列是 at-least-once，`event_id` 作主键 + INSERT IGNORE 让重复投递变成空操作
         async with pool.acquire() as conn, conn.cursor() as cur:
             await cur.execute(
-                "INSERT INTO tool_call_log (id,run_id,tool_name,args_digest,ok,error_code,latency_ms)"
+                "INSERT IGNORE INTO tool_call_log"
+                " (id,run_id,tool_name,args_digest,ok,error_code,latency_ms)"
                 " VALUES (%s,%s,%s,%s,%s,%s,%s)",
-                (int(new_id()), int(run_id), name[:64], args_digest, int(ok), code, latency_ms),
+                (
+                    int(event_id or new_id()),
+                    int(run_id),
+                    name[:64],
+                    args_digest,
+                    int(ok),
+                    code,
+                    latency_ms,
+                ),
             )
 
     async def ping(self) -> None:
@@ -378,13 +390,14 @@ class MySqlRepository:
         pool = await self._ensure_pool()
         fact_id = int(fact.id) if fact.id else int(new_id())
         async with pool.acquire() as conn, conn.cursor() as cur:
-            # 唯一键 (user_id, pet_id, fact_key)：同一事实只更新不新增
+            # 唯一键 (user_id, pet_id, fact_key)：同一事实只更新不新增。
+            # 用行别名而不是 `VALUES(col)`：MySQL 8.0.20 起后者已弃用，未来版本会移除。
             await cur.execute(
                 "INSERT INTO memory_fact (id,user_id,pet_id,fact_key,fact_value,"
-                "confidence,source) VALUES (%s,%s,%s,%s,%s,%s,%s)"
-                " ON DUPLICATE KEY UPDATE fact_value=VALUES(fact_value),"
-                " confidence=GREATEST(confidence,VALUES(confidence)),"
-                " source=VALUES(source),update_time=NOW()",
+                "confidence,source) VALUES (%s,%s,%s,%s,%s,%s,%s) AS new"
+                " ON DUPLICATE KEY UPDATE fact_value=new.fact_value,"
+                " confidence=GREATEST(memory_fact.confidence,new.confidence),"
+                " source=new.source,update_time=NOW()",
                 (
                     fact_id,
                     int(fact.user_id),

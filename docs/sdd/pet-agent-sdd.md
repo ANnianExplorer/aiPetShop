@@ -232,6 +232,20 @@ cd ..\pet-lumina-app; npm run dev
 | 暴露方式 | `503 circuit_open` + `Retry-After`；`/readyz` 的 `checks.circuit:*` | 快速失败不再打下游；liveness 不受影响 |
 | Redis 兼容 | `app/core/redis_client.py` | 统一 `protocol=2`：Redis 5 不支持 RESP3 的 `HELLO`，用默认 RESP3 会直接连不上（真机抓到的 D1） |
 
+### 8.6 旁路任务队列（S1.9）
+
+| 关注点 | 落点 | 约定 |
+| --- | --- | --- |
+| 为什么 | 记忆抽取、审计落库不该占响应时间 | 首 token 延迟只受「召回 + 首轮模型」影响 |
+| 协议 | `app/tasks/base.py::TaskQueue` | `publish` / `receive` / `ack` / `nack` / `depth` / `dead_letters`；**at-least-once** |
+| 实现 | `InProcessTaskQueue`（内存）、`RedisTaskQueue`（LPUSH + BRPOPLPUSH + processing 列表）、`RocketMQTaskQueue`（待做，见 ADR-0009） | 只依赖 Redis 5.0 已有命令，不用 Stream consumer group |
+| 投递失败 | 队列满/中间件挂 → `TaskQueueFull` | 调用方**立刻退回同步执行**，宁可慢也不丢 |
+| 消费失败 | `TaskWorker` 重试，超过 `TASK_MAX_ATTEMPTS` 进死信 | 死信可查（`dead_letters`），对应日志 `task dead letter` |
+| 崩溃恢复 | `RedisTaskQueue.recover_inflight` | 进程崩了 processing 里的消息搬回主列表，代价是可能重复一次 |
+| 幂等 | 记忆按 `(user, pet, key)` upsert；审计消息 id 作 `tool_call_log.id` + `INSERT IGNORE` | 重复投递不会写两条 |
+| 一致性 | 开启队列后记忆写入是**最终一致**（秒级） | `GET /agent/memory/me` 可能短暂读到旧值；`TASK_BACKEND=off` 时即时 |
+| 默认值 | `TASK_BACKEND=off` | 行为与 S1.8 一致；生产按需显式打开，避免"悄悄变成异步" |
+
 ## 9. 质量属性
 
 | 属性 | 设计手段 | 验收 |
