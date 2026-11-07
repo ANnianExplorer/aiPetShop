@@ -24,6 +24,7 @@ from ..domain.models import (
     UsageOverview,
     UsageSummary,
 )
+from ..rag.models import Chunk, Document, DocumentStatus
 
 
 class AgentRepository(Protocol):
@@ -123,6 +124,44 @@ class AgentRepository(Protocol):
 
     async def usage_overview(self, since: str | None = None) -> UsageOverview:
         """全局用量：总量 + 按天趋势，只统计 succeeded 的 run。"""
+        ...
+
+    # ---- 文档问答（RAG）----
+    # 契约：所有读写都带 user_id；`get_document` / `delete_document` 传别人 id 返回 None，
+    # 不抛异常（接口层统一 404，避免泄露"存在但不属于你"）。
+    async def create_document(self, document: Document) -> Document:
+        """落一条文档记录；同一用户同 sha 已存在时返回既有记录（去重）。"""
+        ...
+
+    async def get_document(self, user_id: str, document_id: str) -> Document | None: ...
+
+    async def get_document_by_sha(self, user_id: str, sha256: str) -> Document | None: ...
+
+    async def list_documents(
+        self, user_id: str, *, pet_id: str | None = None, limit: int = 50
+    ) -> list[Document]: ...
+
+    async def update_document(
+        self,
+        document_id: str,
+        *,
+        status: DocumentStatus | None = None,
+        error: str | None = None,
+        chunk_count: int | None = None,
+    ) -> Document:
+        """只改状态机字段；文档不存在抛 NotFound（由上层兜）。"""
+        ...
+
+    async def delete_document(self, user_id: str, document_id: str) -> bool:
+        """软删文档 + 硬删其切片，返回是否删到。"""
+        ...
+
+    async def add_chunks(self, chunks: list[Chunk]) -> None: ...
+
+    async def list_chunks(
+        self, user_id: str, *, pet_id: str | None = None, limit: int = 2000
+    ) -> list[Chunk]:
+        """检索用：只返回该用户的块，按创建时间倒序截断。"""
         ...
 
     async def aclose(self) -> None: ...

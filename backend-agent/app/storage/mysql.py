@@ -37,6 +37,7 @@ from ..domain.models import (
     UsageOverview,
     UsageSummary,
 )
+from ..rag.models import Chunk, Document, DocumentStatus
 
 _INSERT_SESSION = (
     "INSERT INTO agent_session (id,user_id,pet_id,title,channel,status,message_count,"
@@ -587,11 +588,223 @@ class MySqlRepository:
             ],
         )
 
+    # ------------------------------------------------------------ 文档问答
+    async def create_document(self, document: Document) -> Document:
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn, conn.cursor() as cur:
+            try:
+                await cur.execute(
+                    "INSERT INTO doc_file"
+                    " (id,user_id,pet_id,name,mime,size_bytes,sha256,storage_key,status,error,chunk_count)"
+                    " VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                    (
+                        int(document.id),
+                        int(document.user_id),
+                        _pet_slot(document.pet_id),
+                        document.name,
+                        document.mime,
+                        document.size_bytes,
+                        document.sha256,
+                        document.storage_key,
+                        int(document.status),
+                        document.error,
+                        document.chunk_count,
+                    ),
+                )
+                await conn.commit()
+            except pymysql.err.IntegrityError:
+                await conn.rollback()
+                existing = await self.get_document_by_sha(document.user_id, document.sha256)
+                if existing is not None:
+                    return existing
+                # 唯一键包含软删除的行：同一个文件删掉再传会撞 1062，
+                # 这里做"复活"而不是报错——否则用户重传同一份文件永远失败。
+                revived = await self._revive_document(conn, document)
+                if revived is None:
+                    raise
+                return revived
+        return await self._fetch_document(pool, document.id, document.user_id) or document
+
+    async def get_document(self, user_id: str, document_id: str) -> Document | None:
+        pool = await self._ensure_pool()
+        return await self._fetch_document(pool, document_id, user_id)
+
+    async def _revive_document(self, conn: Any, document: Document) -> Document | None:
+        """把同一 (user_id, sha256) 的软删除行恢复成排队中，并清掉旧切片。"""
+        async with conn.cursor() as cur:
+            await cur.execute(
+                "SELECT id FROM doc_file WHERE user_id=%s AND sha256=%s",
+                (int(document.user_id), document.sha256),
+            )
+            row = await cur.fetchone()
+            if row is None:
+                return None
+            doc_id = int(row[0])
+            await cur.execute(
+                "UPDATE doc_file SET name=%s, mime=%s, size_bytes=%s, storage_key=%s,"
+                " status=%s, error=NULL, chunk_count=0, pet_id=%s, is_delete=0"
+                " WHERE id=%s",
+                (
+                    document.name,
+                    document.mime,
+                    document.size_bytes,
+                    document.storage_key,
+                    int(document.status),
+                    _pet_slot(document.pet_id),
+                    doc_id,
+                ),
+            )
+            await cur.execute("DELETE FROM doc_chunk WHERE file_id=%s", (doc_id,))
+            await conn.commit()
+        pool = await self._ensure_pool()
+        return await self._fetch_document(pool, str(doc_id), document.user_id)
+
+    async def get_document_by_sha(self, user_id: str, sha256: str) -> Document | None:
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn, conn.cursor() as cur:
+            await cur.execute(
+                "SELECT id FROM doc_file WHERE user_id=%s AND sha256=%s AND is_delete=0",
+                (int(user_id), sha256),
+            )
+            row = await cur.fetchone()
+        return await self._fetch_document(pool, str(row[0]), user_id) if row else None
+
+    async def list_documents(
+        self, user_id: str, *, pet_id: str | None = None, limit: int = 50
+    ) -> list[Document]:
+        pool = await self._ensure_pool()
+        sql = (
+            "SELECT id,user_id,pet_id,name,mime,size_bytes,sha256,storage_key,status,error,"
+            "chunk_count,create_time FROM doc_file WHERE user_id=%s AND is_delete=0"
+        )
+        params: list[Any] = [int(user_id)]
+        if pet_id:
+            sql += " AND pet_id=%s"
+            params.append(int(pet_id))
+        sql += " ORDER BY create_time DESC, id DESC LIMIT %s"
+        params.append(int(limit))
+        async with pool.acquire() as conn, conn.cursor() as cur:
+            await cur.execute(sql, tuple(params))
+            rows = await cur.fetchall()
+        return [_row_to_document(r) for r in rows]
+
+    async def update_document(
+        self,
+        document_id: str,
+        *,
+        status: DocumentStatus | None = None,
+        error: str | None = None,
+        chunk_count: int | None = None,
+    ) -> Document:
+        pool = await self._ensure_pool()
+        sets: list[str] = []
+        params: list[Any] = []
+        if status is not None:
+            sets.append("status=%s")
+            params.append(int(status))
+        if error is not None:
+            sets.append("error=%s")
+            params.append(error[:500])
+        if chunk_count is not None:
+            sets.append("chunk_count=%s")
+            params.append(int(chunk_count))
+        if not sets:
+            raise ValueError("没有要更新的字段")
+        params.append(int(document_id))
+        async with pool.acquire() as conn, conn.cursor() as cur:
+            await cur.execute(f"UPDATE doc_file SET {', '.join(sets)} WHERE id=%s", tuple(params))
+            await conn.commit()
+            if cur.rowcount == 0:
+                raise NotFound(f"文档不存在：{document_id}")
+        doc = await self._fetch_document(pool, document_id, None)
+        if doc is None:
+            raise NotFound(f"文档不存在：{document_id}")
+        return doc
+
+    async def delete_document(self, user_id: str, document_id: str) -> bool:
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn, conn.cursor() as cur:
+            await cur.execute(
+                "UPDATE doc_file SET is_delete=1 WHERE id=%s AND user_id=%s AND is_delete=0",
+                (int(document_id), int(user_id)),
+            )
+            removed = cur.rowcount > 0
+            if removed:
+                await cur.execute("DELETE FROM doc_chunk WHERE file_id=%s", (int(document_id),))
+            await conn.commit()
+        return removed
+
+    async def add_chunks(self, chunks: list[Chunk]) -> None:
+        if not chunks:
+            return
+        pool = await self._ensure_pool()
+        rows = [
+            (
+                int(c.id),
+                int(c.file_id),
+                int(c.user_id),
+                _pet_slot(c.pet_id),
+                c.chunk_index,
+                c.locator,
+                c.content,
+                c.token_hint,
+                json.dumps(c.embedding),
+                c.dim,
+            )
+            for c in chunks
+        ]
+        async with pool.acquire() as conn, conn.cursor() as cur:
+            await cur.executemany(
+                "INSERT INTO doc_chunk"
+                " (id,file_id,user_id,pet_id,chunk_index,locator,content,token_hint,embedding,dim)"
+                " VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                rows,
+            )
+            await conn.commit()
+
+    async def list_chunks(
+        self, user_id: str, *, pet_id: str | None = None, limit: int = 2000
+    ) -> list[Chunk]:
+        pool = await self._ensure_pool()
+        sql = (
+            "SELECT c.id,c.file_id,c.user_id,c.pet_id,c.chunk_index,c.locator,c.content,"
+            "c.token_hint,c.embedding FROM doc_chunk c"
+            " JOIN doc_file f ON f.id=c.file_id AND f.is_delete=0"
+            " WHERE c.user_id=%s"
+        )
+        params: list[Any] = [int(user_id)]
+        if pet_id:
+            sql += " AND c.pet_id=%s"
+            params.append(int(pet_id))
+        sql += " ORDER BY c.file_id DESC, c.chunk_index ASC LIMIT %s"
+        params.append(int(limit))
+        async with pool.acquire() as conn, conn.cursor() as cur:
+            await cur.execute(sql, tuple(params))
+            rows = await cur.fetchall()
+        return [_row_to_chunk(r) for r in rows]
+
     async def aclose(self) -> None:
         if self._pool is not None:
             self._pool.close()
             await self._pool.wait_closed()
             self._pool = None
+
+    async def _fetch_document(
+        self, pool: Any, document_id: str, user_id: str | None
+    ) -> Document | None:
+        sql = (
+            "SELECT id,user_id,pet_id,name,mime,size_bytes,sha256,storage_key,status,error,"
+            "chunk_count,create_time FROM doc_file WHERE id=%s AND is_delete=0"
+        )
+        params: list[Any] = [int(document_id)]
+        if user_id is not None:
+            sql += " AND user_id=%s"
+            params.append(int(user_id))
+        async with pool.acquire() as conn, conn.cursor() as cur:
+            await cur.execute(sql, tuple(params))
+            row = await cur.fetchone()
+        return _row_to_document(row) if row else None
+
     # ------------------------------------------------------------ 内部
     async def _fetch_session(self, pool: Any, session_id: str) -> Session | None:
         async with pool.acquire() as conn, conn.cursor() as cur:
@@ -654,6 +867,43 @@ def _load_citations(raw: Any) -> list[Any]:
     except (TypeError, ValueError):
         return []
     return [Citation.from_dict(x) for x in items if isinstance(x, dict)]
+
+
+def _row_to_document(row: Any) -> Document:
+    (rid, uid, pid, name, mime, size_bytes, sha, storage_key, status, error, chunk_count, created) = row
+    return Document(
+        id=str(rid),
+        user_id=str(uid),
+        pet_id=str(pid) if pid else None,
+        name=name,
+        mime=mime or "",
+        size_bytes=int(size_bytes or 0),
+        sha256=sha,
+        storage_key=storage_key,
+        status=DocumentStatus(int(status)),
+        error=error,
+        chunk_count=int(chunk_count or 0),
+        create_time=created if isinstance(created, datetime) else None,
+    )
+
+
+def _row_to_chunk(row: Any) -> Chunk:
+    (cid, file_id, uid, pid, index, locator, content, token_hint, embedding) = row
+    try:
+        vector = json.loads(embedding) if embedding else []
+    except (TypeError, ValueError):
+        vector = []
+    return Chunk(
+        id=str(cid),
+        file_id=str(file_id),
+        user_id=str(uid),
+        pet_id=str(pid) if pid else None,
+        chunk_index=int(index),
+        locator=locator or "",
+        content=content,
+        token_hint=int(token_hint or 0),
+        embedding=[float(x) for x in vector],
+    )
 
 
 def _now() -> str:

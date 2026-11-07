@@ -26,6 +26,21 @@ CHAT_REPLY = "我在呢。想先看看哪只宠物的记录？"
 ANSWER = "9月1日打过疫苗，记录里写的是猫三联。"
 
 
+def _tool_names(body: dict[str, Any]) -> set[str]:
+    return {
+        str((tool.get("function") or {}).get("name") or "")
+        for tool in body.get("tools") or []
+        if isinstance(tool, dict)
+    }
+
+
+def _wants_docs(body: dict[str, Any], text: str) -> bool:
+    """文档类问题优先查 RAG；桩里用关键词模拟真实模型的选择。"""
+    return "search_docs" in _tool_names(body) and any(
+        word in text for word in ("我传", "文件", "资料", "疫苗本", "体检报告", "照片")
+    )
+
+
 def _wants_tool(body: dict[str, Any]) -> bool:
     messages = body.get("messages") or []
     if any(m.get("role") == "tool" for m in messages):
@@ -36,7 +51,34 @@ def _wants_tool(body: dict[str, Any]) -> bool:
     return any(word in text for word in ("记录", "疫苗", "洗澡", "驱虫"))
 
 
+def _last_user_text(body: dict[str, Any]) -> str:
+    for message in reversed(body.get("messages") or []):
+        if message.get("role") == "user":
+            return str(message.get("content") or "")
+    return ""
+
+
 def _reply(body: dict[str, Any]) -> dict[str, Any]:
+    messages = body.get("messages") or []
+    text = " ".join(str(m.get("content") or "") for m in messages)
+    already_used = any(m.get("role") == "tool" for m in messages)
+
+    if not already_used and _wants_docs(body, text):
+        # 用用户原话当检索词：桩也要走"真实检索"，否则永远检索不到刚上传的文件
+        query = _last_user_text(body).strip() or "疫苗"
+        return {
+            "content": None,
+            "tool_calls": [
+                {
+                    "id": "call-doc-1",
+                    "type": "function",
+                    "function": {
+                        "name": "search_docs",
+                        "arguments": json.dumps({"query": query[:80], "top_k": 3}, ensure_ascii=False),
+                    },
+                }
+            ],
+        }
     if _wants_tool(body):
         return {
             "content": None,
@@ -51,7 +93,7 @@ def _reply(body: dict[str, Any]) -> dict[str, Any]:
                 }
             ],
         }
-    has_tool_result = any(m.get("role") == "tool" for m in body.get("messages") or [])
+    has_tool_result = already_used
     return {"content": ANSWER if has_tool_result else CHAT_REPLY, "tool_calls": None}
 
 

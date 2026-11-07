@@ -327,6 +327,10 @@
     "historyEmpty": "还没有历史会话，先聊一句吧",
     "historyLoadFailed": "会话列表加载失败",
     "messageCount": "{count} 条消息",
+    "upload": "上传资料",
+    "uploadReady": "已加入知识库：{name}，可以直接问它",
+    "uploadQueued": "已上传：{name}，正在解析",
+    "uploadFailed": "上传失败：{reason}",
     "retry": "重试",
     "historyFailed": "历史记录加载失败",
     "sendFailed": "消息没有发出去，请重试",
@@ -344,7 +348,8 @@
     "tool": {
       "get_pet_profile": "查看档案",
       "get_health_summary": "查询健康数据",
-      "search_logs": "翻找记录"
+      "search_logs": "翻找记录",
+      "search_docs": "查资料"
     },
     "entry": "问 Lumina",
     "entryHint": "疫苗、体重、驱虫，一句话就能查"

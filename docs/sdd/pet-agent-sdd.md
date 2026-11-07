@@ -260,6 +260,19 @@ cd ..\pet-lumina-app; npm run dev
 | 前端 | `ChatView.vue` 的「历史会话」底部面板；`fetchSessions()` | 每次打开都重拉；选中后清空气泡再回读消息，避免串会话 |
 | 失败降级 | 401 → 清 token 跳登录；其他 → 面板内红字提示 | 不阻塞对话主流程 |
 
+### 8.8 文档问答 RAG（S1.15 / BACKLOG A3）
+
+| 关注点 | 落点 | 约定 |
+| --- | --- | --- |
+| 存储 | `doc_file`（元数据 + `uk_user_sha`）+ `doc_chunk`（切片 + 向量 `MEDIUMTEXT`） | 向量以 JSON 存 TEXT：本机没有 pgvector，先保证"能跑 + 可换" |
+| 上传 | `POST /agent/documents`（multipart） | 20MB 上限、按 `sha256` 去重；同一文件删掉再传会"复活"原记录 |
+| 解析 | `app/rag/parsers.py` | 文本按 utf-8→utf-8-sig→gb18030 递归解码；PDF 按页 `page=N`；图片/视频依赖 OCR/ffmpeg，缺失时 `status=4` 并给原因 |
+| 切分 | `chunk_text(size=800, overlap=120)` | 段落→句子聚合，超长硬切，短尾块丢弃 |
+| 嵌入 | `build_embedder(settings)`：`hash`（默认，零依赖确定性）/ `openai`（兼容 `/embeddings`） | 默认 hash 是"能离线跑通"的权宜，切换后端只需改 `PET_AGENT_EMBED_BACKEND` |
+| 检索 | `DocumentService.search()`：查询向量 × 本人切片余弦，`min_score=0.05`，`top_k≤20` | 只取本人 + 未删除文档；结果转 `citation{kind:"doc"}` |
+| 工具 | `search_docs(query, top_k)` | 与其它工具共用网关（白名单/参数校验/审计）；服务未装配时返回 `docs_unavailable` |
+| 异步 | 复用 `TaskQueue` 的 `agent.doc.ingest` | 队列 `off` 时同步解析，语义一致 |
+
 ## 9. 质量属性
 
 | 属性 | 设计手段 | 验收 |

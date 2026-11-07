@@ -19,6 +19,7 @@ def build_graph(
     settings: Settings,
     backend_factory: BackendFactory,
     checkpointer: Any = None,
+    docs: Any = None,
 ) -> Any:
     nodes = make_nodes(
         model,
@@ -26,6 +27,7 @@ def build_graph(
         backend_factory,
         max_hops=settings.max_tool_hops,
         max_tokens=settings.run_token_budget,
+        docs=docs,
     )
 
     graph = StateGraph(AgentState)

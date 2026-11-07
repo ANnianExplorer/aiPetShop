@@ -18,6 +18,7 @@ from __future__ import annotations
 import json
 import sys
 import time
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from typing import Any
 
@@ -134,16 +135,27 @@ def main() -> int:
         )
 
         # ---- 6. 限流：默认 20 次/分钟，打满后必须 429 + Retry-After（独立账号）
+        # 必须并发打：单串行 30 次会被 RAG/工具拖到跨分钟，分钟窗口重置后永远打不满，
+        # 结果就是"限流没生效"的假失败（本机实测踩过一次）。
+        def _burst() -> int:
+            with httpx.Client(base_url=BASE, timeout=30) as local:
+                return local.post(
+                    "/agent/chat",
+                    json={"message": "hi", "channel": "app"},
+                    headers=RATE_HEADERS,
+                ).status_code
+
         codes: list[int] = []
         limited: httpx.Response | None = None
-        for _ in range(30):
+        with ThreadPoolExecutor(max_workers=30) as pool:
+            codes = list(pool.map(lambda _: _burst(), range(30)))
+        if 429 in codes:
             response = client.post(
-                "/agent/chat", json={"message": "hi", "channel": "app"}, headers=RATE_HEADERS, timeout=30
+                "/agent/chat",
+                json={"message": "hi", "channel": "app"},
+                headers=RATE_HEADERS,
             )
-            codes.append(response.status_code)
-            if response.status_code == 429:
-                limited = response
-                break
+            limited = response if response.status_code == 429 else None
 
         results.append(
             Result("超配额返回 429", limited is not None, f"codes={codes[-3:]}"),

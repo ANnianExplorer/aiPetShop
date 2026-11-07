@@ -9,6 +9,7 @@
 
 import { SseDecoder, type SseMessage } from './sse'
 import type {
+  AgentDocument,
   AgentMessage,
   AgentSessionPage,
   DoneEvent,
@@ -179,6 +180,21 @@ export async function fetchSessions(page = 1, pageSize = 20): Promise<AgentSessi
   await assertOk(response)
   const payload = (await response.json()) as AgentSessionPage
   return { total: payload.total ?? 0, items: payload.items ?? [] }
+}
+
+// ---- 文档上传（A3 文档问答） ----
+
+export async function uploadDocument(file: File, petId: string | null = null): Promise<AgentDocument> {
+  const form = new FormData()
+  form.append('file', file)
+  if (petId) form.append('pet_id', petId)
+  const response = await fetch(`${agentBaseUrl()}/agent/documents`, {
+    method: 'POST',
+    headers: authHeaders(), // 不手写 Content-Type：交给浏览器带 boundary
+    body: form,
+  })
+  await assertOk(response)
+  return (await response.json()) as AgentDocument
 }
 
 // ---- 事件载荷收窄：保持 UI 层不写宽泛断言 ----

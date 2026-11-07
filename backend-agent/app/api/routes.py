@@ -6,7 +6,7 @@ import logging
 from collections.abc import AsyncIterator
 from datetime import datetime, timedelta
 
-from fastapi import APIRouter, Query, Request
+from fastapi import APIRouter, File, Form, Query, Request, UploadFile
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from ..config import Settings
@@ -14,10 +14,12 @@ from ..core.errors import Forbidden, InvalidRequest, NotFound, RateLimited, Unau
 from ..core.logging import log_event
 from ..core.ratelimit import RateLimiter
 from ..memory import label_of
+from ..rag.models import DocumentStatus
 from ..runtime import AgentRunner, Caller, ChatCommand
 from ..runtime.eventlog import EventStore
 from ..storage.base import AgentRepository
-from ..tasks import TOPICS
+from ..tasks import TOPIC_DOC_INGEST, TOPICS
+from ..tasks.base import TaskQueueFull
 from .schemas import (
     AdminDayUsage,
     AdminRunOut,
@@ -28,7 +30,10 @@ from .schemas import (
     AdminTasksOut,
     AdminTaskTopicOut,
     AdminUsageOut,
+    CapabilitiesOut,
     ChatRequest,
+    DocumentListOut,
+    DocumentOut,
     HealthOut,
     MemoryFactOut,
     MemoryOut,
@@ -538,3 +543,101 @@ async def admin_replay_dead_letter(
     )
     replayed = await queue.replay_dead_letter(payload.topic, limit=payload.limit)
     return ReplayDeadLetterOut(topic=payload.topic, replayed=replayed)
+
+
+# ---------------------------------------------------------------- 文档问答（RAG）
+
+
+def _docs(request: Request):
+    service = request.app.state.docs
+    if service is None:
+        raise NotFound("文档服务未启用")
+    return service
+
+
+def _document_out(document) -> DocumentOut:
+    return DocumentOut(
+        id=document.id,
+        name=document.name,
+        mime=document.mime,
+        size_bytes=document.size_bytes,
+        pet_id=document.pet_id,
+        status=int(document.status),
+        status_label=document.status.label,
+        error=document.error,
+        chunk_count=document.chunk_count,
+        create_time=str(document.create_time) if document.create_time else None,
+    )
+
+
+@router.get("/agent/documents/capabilities", response_model=CapabilitiesOut)
+async def document_capabilities(request: Request) -> CapabilitiesOut:
+    """能力矩阵：前端据此决定"能不能传图片/视频"，并显示不可用原因。"""
+    await _identity(request)
+    return CapabilitiesOut(**_docs(request).capabilities())
+
+
+@router.post("/agent/documents", response_model=DocumentOut, status_code=202)
+async def upload_document(
+    request: Request,
+    file: UploadFile = File(...),
+    pet_id: str | None = Form(default=None),
+) -> DocumentOut:
+    identity = await _identity(request)
+    service = _docs(request)
+    data = await file.read()
+    try:
+        document = await service.ingest(
+            user_id=identity.user_id,
+            pet_id=pet_id or None,
+            name=file.filename or "未命名文件",
+            mime=file.content_type or "",
+            data=data,
+        )
+    except ValueError as exc:  # 空文件 / 超限，给 400 而不是 500
+        raise InvalidRequest(str(exc)) from exc
+
+    if document.status is DocumentStatus.QUEUED:
+        queue = request.app.state.tasks
+        if queue is not None:
+            try:
+                await queue.publish(
+                    TOPIC_DOC_INGEST,
+                    key=f"{identity.user_id}:{document.id}",
+                    payload={"user_id": identity.user_id, "document_id": document.id},
+                )
+            except TaskQueueFull:
+                document = await service.process(document)
+        else:
+            # 没启用队列：同步解析，保证"上传完就能问"
+            document = await service.process(document)
+    return _document_out(document)
+
+
+@router.get("/agent/documents", response_model=DocumentListOut)
+async def list_documents(
+    request: Request,
+    pet_id: str | None = Query(default=None, max_length=32),
+    limit: int = Query(default=50, ge=1, le=100),
+) -> DocumentListOut:
+    identity = await _identity(request)
+    items = await _docs(request).list(identity.user_id, pet_id=pet_id, limit=limit)
+    return DocumentListOut(total=len(items), items=[_document_out(d) for d in items])
+
+
+@router.get("/agent/documents/{document_id}", response_model=DocumentOut)
+async def get_document(request: Request, document_id: str) -> DocumentOut:
+    identity = await _identity(request)
+    document = await _docs(request).get(identity.user_id, document_id)
+    if document is None:
+        raise NotFound("文档不存在")
+    return _document_out(document)
+
+
+@router.delete("/agent/documents/{document_id}")
+async def delete_document(request: Request, document_id: str) -> dict[str, bool]:
+    identity = await _identity(request)
+    removed = await _docs(request).delete(identity.user_id, document_id)
+    if not removed:
+        raise NotFound("文档不存在")
+    return {"deleted": True}

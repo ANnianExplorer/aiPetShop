@@ -9,6 +9,7 @@ import {
   fetchSessionMessages,
   fetchSessions,
   streamChat,
+  uploadDocument,
 } from '@/api/agent'
 import { applyAgentEvent, historyToBubbles } from '@/utils/chatStream'
 import { useUserStore } from '@/stores/user'
@@ -32,6 +33,8 @@ const historyOpen = ref(false)
 const historyLoading = ref(false)
 const historyError = ref('')
 const sessions = ref<AgentSessionItem[]>([])
+const fileInput = ref<HTMLInputElement | null>(null)
+const uploading = ref(false)
 
 let controller: AbortController | null = null
 let seqCounter = 0
@@ -72,6 +75,41 @@ async function loadHistory() {
       return
     }
     showToast(t('chat.historyFailed'))
+  }
+}
+
+function pickDocument() {
+  if (uploading.value) return
+  fileInput.value?.click()
+}
+
+async function onFilePicked(event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  input.value = ''
+  if (!file) return
+
+  uploading.value = true
+  try {
+    const doc = await uploadDocument(file, userStore.currentPet ? String(userStore.currentPet.id) : null)
+    bubbles.value.push({
+      id: nextId('user'),
+      role: 'user',
+      content: `📄 ${file.name}`,
+      citations: [],
+      tools: [],
+    })
+    await scrollToBottom()
+    showToast(
+      doc.status === 2
+        ? t('chat.uploadReady', { name: file.name })
+        : t('chat.uploadQueued', { name: file.name }),
+    )
+  } catch (error) {
+    const message = error instanceof AgentRequestError ? error.message : String(error)
+    showToast(t('chat.uploadFailed', { reason: message }))
+  } finally {
+    uploading.value = false
   }
 }
 
@@ -338,6 +376,21 @@ onBeforeUnmount(() => {
     <!-- 输入区 -->
     <div class="fixed bottom-0 left-0 right-0 z-30 border-t border-outline-variant/40 bg-background/90 px-4 pb-safe pt-3 backdrop-blur-xl">
       <div class="flex items-end gap-2">
+        <button
+          class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-surface-container-low text-on-surface-variant transition-transform active:scale-90 disabled:opacity-50"
+          :disabled="uploading || streaming"
+          :aria-label="t('chat.upload')"
+          @click="pickDocument"
+        >
+          <span class="material-symbols-outlined">{{ uploading ? 'progress_activity' : 'attach_file' }}</span>
+        </button>
+        <input
+          ref="fileInput"
+          type="file"
+          class="hidden"
+          accept=".txt,.md,.markdown,.csv,.json,.log,.yaml,.yml,.pdf,text/plain,application/pdf"
+          @change="onFilePicked"
+        />
         <textarea
           ref="input"
           v-model="draft"

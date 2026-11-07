@@ -12,3 +12,5 @@ langchain-core==1.7.6
 redis==8.1.0
 aiomysql==0.3.2
 PyMySQL==1.2.3
+pypdf==7.0.0
+python-multipart==0.0.33

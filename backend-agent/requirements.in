@@ -9,3 +9,6 @@ pydantic>=2.7
 pydantic-settings>=2.3
 redis>=5
 aiomysql>=0.2
+# 文档问答（RAG）：PDF 解析 + multipart 上传
+pypdf>=7.0
+python-multipart>=0.0.9

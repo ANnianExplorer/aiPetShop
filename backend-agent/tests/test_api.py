@@ -43,7 +43,12 @@ async def test_healthz(client: httpx.AsyncClient) -> None:
     assert body["status"] == "ok"
     assert body["auth_mode"] == "header"
     assert body["graph_ready"] is True
-    assert set(body["tools"]) == {"get_pet_profile", "get_health_summary", "search_logs"}
+    assert set(body["tools"]) == {
+        "get_pet_profile",
+        "get_health_summary",
+        "search_logs",
+        "search_docs",
+    }
 
 
 async def test_chat_requires_token(client: httpx.AsyncClient) -> None:

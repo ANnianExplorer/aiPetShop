@@ -11,7 +11,7 @@
 3. 优先级按"卡不卡产品可用"分：P0 阻断、P1 该做、P2 值得做、P3 以后。
 4. 估算是"一个人、熟悉代码"的量级，不是承诺。
 
-统计：**P0 3 条（A1、A2 已交付）· P1 8 条 · P2 9 条 · P3 9 条 · 原项目卫生债 0 条**，原计划 42 条，其中 A1、A2 与卫生债 E1–E13 **全部完成**（E1/E3/E4/E5 见 `docs/reports/2026-11-08-s1.11-hygiene-debts.md`；E2/E6/E7 见 `docs/reports/2026-11-08-s1.12-e2-e6-e7.md`；E8/E13 见 `docs/reports/2026-11-08-s1.13-e8-e13.md`；E9/E10/E11/E12 见 `docs/reports/2026-11-08-s1.14-e9-e12.md`），剩余 27 条（A3 + P1/P2/P3）。
+统计：**P0 3 条（A1、A2、A3 已交付）· P1 8 条 · P2 9 条 · P3 9 条 · 原项目卫生债 0 条**，原计划 42 条，其中 A1、A2、A3 与卫生债 E1–E13 **全部完成**（E1/E3/E4/E5 见 `docs/reports/2026-11-08-s1.11-hygiene-debts.md`；E2/E6/E7 见 `docs/reports/2026-11-08-s1.12-e2-e6-e7.md`；E8/E13 见 `docs/reports/2026-11-08-s1.13-e8-e13.md`；E9/E10/E11/E12 见 `docs/reports/2026-11-08-s1.14-e9-e12.md`；A3 见 `docs/reports/2026-11-08-s1.15-doc-rag.md`），剩余 26 条（P1/P2/P3）。
 
 ---
 
@@ -21,7 +21,7 @@
 |---|---|---|---|---|---|
 | A1 | ~~**真实模型没跑过**~~ ✅ 已交付（2026-11-08） | 原状：全部验证基于 `tests/stub_llm.py`。现已有 `scripts/real_model_smoke.py` 用真 key 跑通 L1×3 + L2，见 `docs/reports/2026-11-08-a1-real-model-smoke.md` | — | 已验收：L1 P50 首 token 929 ms / P95 1064 ms、L2 调 `search_logs` 且引用 7001、`done.usage` 与 `agent_run` 一致（182/15、2286/108） | ✅ |
 | A2 | ~~**App 没有会话列表**~~ ✅ 已交付（2026-11-08） | 原状：`ChatView.vue` 只用 `localStorage['petlumina-agent-session']` 记住最后一个会话；后端没有 `GET /agent/sessions`。现已有接口（分页 + 按最后消息时间倒序 + 本人隔离）与「历史会话」面板，见 `docs/reports/2026-11-08-a2-session-list.md` | — | 已验收：建 3 个会话、面板切换、刷新后仍在 | ✅ |
-| A3 | **文件 / 图片 / 视频分析（RAG）** | `doc_file` / `doc_chunk` 表未建、无解析管道、无向量库；`Citation.locator` 的 `fileId#page`、`fileId#t=93s` 只是约定 | 需要存储（COS 已有）、解析（PDF/OCR/ffmpeg）、向量库（pgvector 优先） | 上传一张疫苗本照片 → 提问"下次疫苗什么时候" → 答案带可点回原图的引用；`doc_chunk` 有对应行 | 5–8 天 |
+| A3 | ~~**文件 / 图片 / 视频分析（RAG）**~~ ✅ 已交付（2026-11-08） | `doc_file`/`doc_chunk` + 解析管道 + hash 嵌入检索 + `search_docs` 工具 + App 附件入口；图片/视频因本机缺 `tesseract`/`ffmpeg` 降级为"不支持并给原因" | 见 `docs/reports/2026-11-08-s1.15-doc-rag.md`；`rag_smoke` 10/10 | 已完成 |
 
 ---
 
@@ -106,3 +106,4 @@ E1–E13 全部完成，本表不再列条目。证据分布：
 4. ~~**E2 / E6 / E7 三个小修**~~ ✅ 已完成（2026-11-08）：广播已读改用 `notification_read` 表、`sortField` 白名单生效、错误码映射真实 HTTP 状态；下一批建议 E8 / E13（仪表盘 N+1、明文密码）。
 5. ~~**E8 / E13**~~ ✅ 已完成（2026-11-08）：仪表盘趋势改一次 `GROUP BY`、宠物分布改聚合、热门帖作者改批量查；数据库口令移出仓库（环境变量 / `application-local.yml`，且在全仓库清掉了明文）。见 `docs/reports/2026-11-08-s1.13-e8-e13.md`。
 6. ~~**E9 / E10 / E11 / E12**~~ ✅ 已完成（2026-11-08）：违规管理接真实接口、管理端新增/编辑用户真落库、话题归属改 `post.topic_id`、App `as any` 清零 + 假数据下架。见 `docs/reports/2026-11-08-s1.14-e9-e12.md`。**卫生债至此清零**，下一批建议 A3（文件/图片/视频 RAG）或 B1（RocketMQ）。
+7. ~~**A3 文档问答 RAG**~~ ✅ 已完成（2026-11-08）：`doc_file`/`doc_chunk` + 解析/切分/嵌入/检索 + `search_docs` 工具 + App 附件入口，`rag_smoke` 10/10。见 `docs/reports/2026-11-08-s1.15-doc-rag.md`。下一批建议 B1（RocketMQ）或 C2（用户画像 `profile_snapshot`）。

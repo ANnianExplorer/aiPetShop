@@ -39,6 +39,7 @@ def make_nodes(
     *,
     max_hops: int,
     max_tokens: int = 0,
+    docs: Any = None,
 ) -> dict[str, Callable[[AgentState], Any]]:
     async def route_node(state: AgentState) -> dict[str, Any]:
         decision = classify(state["question"])
@@ -128,6 +129,7 @@ def make_nodes(
             run_id=state["run_id"],
             backend=backend_factory(state["token"]),
             pet_id=state.get("pet_id"),
+            docs=docs,
         )
         tool_messages: list[dict[str, Any]] = []
         steps: list[Step] = []

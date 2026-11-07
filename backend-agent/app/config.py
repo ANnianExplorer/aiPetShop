@@ -75,6 +75,14 @@ class Settings(BaseSettings):
     task_queue_size: int = Field(default=1000, ge=1)
     task_max_attempts: int = Field(default=3, ge=1, le=10)
 
+    # ---- 文档问答（RAG）----
+    # hash：本地哈希嵌入（确定性、零网络）；openai：走兼容 /embeddings 的接口
+    embed_backend: Literal["hash", "openai"] = "hash"
+    embed_model: str = "text-embedding-3-small"
+    embed_dim: int = Field(default=256, ge=32, le=4096)
+    doc_storage_dir: str = "data/docs"
+    doc_max_bytes: int = Field(default=20 * 1024 * 1024, ge=1024)
+
     # ---- 通道策略 ----
     allowed_channels: tuple[str, ...] = ("app", "web", "internal")
     cors_origins: tuple[str, ...] = ("*",)

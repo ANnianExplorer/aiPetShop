@@ -22,6 +22,7 @@ from ..domain.models import (
     UsageOverview,
     UsageSummary,
 )
+from ..rag.models import Chunk, Document, DocumentStatus
 
 
 class InMemoryRepository:
@@ -35,6 +36,10 @@ class InMemoryRepository:
         self._facts: dict[tuple[str, str, str], MemoryFact] = {}
         # 幂等键索引：(session_id, key) -> run_id，模拟库上的唯一键
         self._idem: dict[tuple[str, str], str] = {}
+        # 文档问答：文档表 + 按 (user, sha) 去重索引 + 切片表
+        self._documents: dict[str, Document] = {}
+        self._doc_sha: dict[tuple[str, str], str] = {}
+        self._chunks: dict[str, list[Chunk]] = {}
 
     # ------------------------------------------------------------ 会话
     async def get_or_create_session(
@@ -339,6 +344,84 @@ class InMemoryRepository:
             avg_latency_ms=avg,
             by_day=[DayUsage(day=d, runs=v[0], tokens=v[1]) for d, v in sorted(days.items())],
         )
+
+    # ------------------------------------------------------------ 文档问答
+    async def create_document(self, document: Document) -> Document:
+        key = (document.user_id, document.sha256)
+        existing_id = self._doc_sha.get(key)
+        if existing_id:
+            return self._documents[existing_id]
+        if document.id in self._documents:
+            raise ValueError(f"文档 id 重复：{document.id}")
+        document.create_time = document.create_time or datetime.now()
+        self._documents[document.id] = document
+        self._doc_sha[key] = document.id
+        return document
+
+    async def get_document(self, user_id: str, document_id: str) -> Document | None:
+        doc = self._documents.get(document_id)
+        if doc is None or doc.user_id != user_id:
+            return None
+        return doc
+
+    async def get_document_by_sha(self, user_id: str, sha256: str) -> Document | None:
+        document_id = self._doc_sha.get((user_id, sha256))
+        return self._documents.get(document_id) if document_id else None
+
+    async def list_documents(
+        self, user_id: str, *, pet_id: str | None = None, limit: int = 50
+    ) -> list[Document]:
+        items = [d for d in self._documents.values() if d.user_id == user_id]
+        if pet_id:
+            items = [d for d in items if d.pet_id == pet_id]
+        items.sort(key=lambda d: (d.create_time or datetime.min, d.id), reverse=True)
+        return items[:limit]
+
+    async def update_document(
+        self,
+        document_id: str,
+        *,
+        status: DocumentStatus | None = None,
+        error: str | None = None,
+        chunk_count: int | None = None,
+    ) -> Document:
+        doc = self._documents.get(document_id)
+        if doc is None:
+            raise NotFound(f"文档不存在：{document_id}")
+        if status is not None:
+            doc.status = status
+        if error is not None:
+            doc.error = error
+        if chunk_count is not None:
+            doc.chunk_count = chunk_count
+        return doc
+
+    async def delete_document(self, user_id: str, document_id: str) -> bool:
+        doc = self._documents.get(document_id)
+        if doc is None or doc.user_id != user_id:
+            return False
+        del self._documents[document_id]
+        self._doc_sha.pop((user_id, doc.sha256), None)
+        self._chunks.pop(document_id, None)
+        return True
+
+    async def add_chunks(self, chunks: list[Chunk]) -> None:
+        for chunk in chunks:
+            self._chunks.setdefault(chunk.file_id, []).append(chunk)
+
+    async def list_chunks(
+        self, user_id: str, *, pet_id: str | None = None, limit: int = 2000
+    ) -> list[Chunk]:
+        rows: list[Chunk] = []
+        for chunks in self._chunks.values():
+            for chunk in chunks:
+                if chunk.user_id != user_id:
+                    continue
+                if pet_id and chunk.pet_id != pet_id:
+                    continue
+                rows.append(chunk)
+        rows.sort(key=lambda c: (c.file_id, c.chunk_index))
+        return rows[:limit]
 
     async def aclose(self) -> None:
         return None

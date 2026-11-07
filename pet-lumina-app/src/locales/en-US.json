@@ -327,6 +327,10 @@
     "historyEmpty": "No conversations yet — say something to start",
     "historyLoadFailed": "Could not load conversations",
     "messageCount": "{count} messages",
+    "upload": "Upload file",
+    "uploadReady": "Added to knowledge base: {name}",
+    "uploadQueued": "Uploaded: {name}, parsing",
+    "uploadFailed": "Upload failed: {reason}",
     "retry": "Retry",
     "historyFailed": "Could not load history",
     "sendFailed": "Message not sent, please retry",
@@ -344,7 +348,8 @@
     "tool": {
       "get_pet_profile": "Reading profile",
       "get_health_summary": "Checking health data",
-      "search_logs": "Searching logs"
+      "search_logs": "Searching logs",
+      "search_docs": "Searching files"
     },
     "entry": "Ask Lumina",
     "entryHint": "Vaccines, weight, deworming — one question away"

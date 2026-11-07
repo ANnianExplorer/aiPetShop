@@ -113,8 +113,12 @@ async def search_logs(args: SearchLogsArgs, ctx: ToolContext) -> dict[str, Any]:
     }
 
 
-def build_registry() -> ToolRegistry:
+def build_registry(*, docs: Any = None) -> ToolRegistry:
     registry = ToolRegistry()
+    if docs is not None:
+        from .docs import search_docs_spec
+
+        registry.register(search_docs_spec())
     registry.register(
         ToolSpec(
             name="get_pet_profile",

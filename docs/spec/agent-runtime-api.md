@@ -1,7 +1,7 @@
-# 规格：Agent Runtime HTTP/SSE 契约 v1.7
+# 规格：Agent Runtime HTTP/SSE 契约 v1.8
 
 - 状态：Frozen（实现已按此验收；破坏性变更需升 v2）
-- 日期：2026-11-08（v1.7 增 App 会话列表与 I22；v1.6 队列运维接口；v1.5 记忆最终一致；v1.4 幂等与熔断；v1.3 管理端）
+- 日期：2026-11-08（v1.8 增文档问答接口与 I23–I26；v1.7 增 App 会话列表与 I22；v1.6 队列运维接口；v1.5 记忆最终一致；v1.4 幂等与熔断；v1.3 管理端）
 - 实现：`backend-agent/app/api/`
 - 关联：[SDD](../sdd/pet-agent-sdd.md) · [ADR-0003](../adr/0003-sse-event-contract.md)
 
@@ -252,6 +252,23 @@ App 的历史入口。只返回 **token 解析出的本人**会话，不接受 `
 - `total` 是全量条数，不是当前页条数（前端分页要用它）；
 - 没有 token → `401`；分页参数越界 → `422`。
 
+## 6.6 文档问答（S1.15 / BACKLOG A3）
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/agent/documents/capabilities` | 能力矩阵：`text/pdf/image/video` 各自 `supported` + `suffixes` + `reason`，另有 `embedder` 与 `max_bytes` |
+| POST | `/agent/documents` | `multipart/form-data`：`file`（必填）、`pet_id`（可选）；`202` 返回文档记录（`status=0` 排队） |
+| GET | `/agent/documents` | 本人文档列表（`limit` 1–100，默认 50），按创建时间倒序 |
+| GET | `/agent/documents/{id}` | 单条详情；他人的 id 返回 `404 not_found` |
+| DELETE | `/agent/documents/{id}` | 软删除文档并物理删除其切片；返回 `{"deleted": true}` |
+
+约定：
+
+1. **状态语义**：`0` 排队 / `1` 解析中 / `2` 就绪 / `3` 失败 / `4` 不支持；`3`、`4` 必带人类可读的 `error`（例如"本机未安装 OCR（tesseract）"）。
+2. **异步解析**：`TASK_BACKEND != off` 时上传只入队（`agent.doc.ingest`），由 worker 解析；`off` 时同步解析后返回——两种模式的对外语义一致，客户端都以 `status == 2` 为可检索标志。
+3. **检索入口只有工具**：`search_docs(query, top_k)` 由模型在对话中调用，命中结果以 `citation.kind == "doc"` 回传（`locator` 为 `offset=N` / `page=N` / `t=12s`）；不提供公开的"检索"HTTP 接口，避免绕过工具网关。
+4. **能力探测失败要给原因**：缺 `tesseract`/`ffmpeg` 时图片/视频标记不支持，前端据此禁用入口并显示原因，而不是上传后才报错。
+
 ## 7. 不变量（必须永远成立）
 
 | 编号 | 断言 | 验证 |
@@ -278,6 +295,10 @@ App 的历史入口。只返回 **token 解析出的本人**会话，不接受 `
 | I20 | 死信重放后 `attempt` 归零，否则一次失败又立刻进死信 | `test_task_queue.py::test_replay_dead_letter_resets_attempt` |
 | I21 | 队列现场与死信重放只有 `role == "admin"` 可访问 | `test_admin.py::test_admin_replays_dead_letters` |
 | I22 | `GET /agent/sessions` 只返回本人会话；他人会话不出现在列表里，`user_id` 不出现在载荷里 | `test_sessions_api.py::test_sessions_are_isolated_by_user` |
+| I23 | 文档上传/查询/删除都只作用于本人文档；他人 `document_id` 一律 404（不泄露存在性） | `test_rag.py::test_document_is_isolated_by_user` |
+| I24 | 检索只召回本人切片（`user_id` 隔离），且只召回 `is_delete=0` 的文档 | `test_rag.py::test_search_isolated_by_user`、`test_deleted_document_is_not_searchable` |
+| I25 | 上传状态语义固定：0 排队 / 1 解析中 / 2 就绪 / 3 失败（带原因）/ 4 不支持（带原因） | `test_rag.py::test_unsupported_video_reports_reason` |
+| I26 | 超过 `doc_max_bytes` 的上传直接拒绝；同一文件重复上传复用同一条记录（删除后重传亦复活） | `test_rag.py::test_oversized_upload_rejected`、`scripts.rag_smoke`（第二次运行命中同一 id） |
 
 ## 8. 验收用例（可执行）
 
@@ -285,13 +306,14 @@ App 的历史入口。只返回 **token 解析出的本人**会话，不接受 `
 cd backend-agent
 # 含真机仓储契约测试（需要 DSN，否则跳过 mysql 变体）
 $env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:<本机口令>@127.0.0.1:3306/petlumina"
-.\.venv\Scripts\python -m pytest              # 146 passed
+.\.venv\Scripts\python -m pytest              # 169 passed（含真机 MySQL 契约；不带 DSN 为 159）
 .\.venv\Scripts\python -m evals.run           # routing 15/15, safety 6/6, memory 2/2
 .\.venv\Scripts\python -m scripts.e2e_smoke       # 10/10
 .\.venv\Scripts\python -m scripts.p1_smoke        # 9/9（配额/用量/记忆）
 .\.venv\Scripts\python -m scripts.admin_smoke     # 6/6（管理端权限与列表/详情/用量）
 .\.venv\Scripts\python -m scripts.idempotency_smoke  # 8/8（幂等键）
 .\.venv\Scripts\python -m scripts.tasks_smoke        # 8/8（队列现场/死信重放）
+.\.venv\Scripts\python -m scripts.rag_smoke          # 10/10（上传→解析→检索→引用→删除）
 .\.venv\Scripts\ruff.exe check .              # All checks passed
 ```
 
@@ -307,3 +329,4 @@ $env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:<本机口令>@127.0.0.1:3306/petl
 | v1.5 | 2026-11-08 | `/agent/memory/me` 补一致性说明：`TASK_BACKEND=memory\|redis` 时写入最终一致（S1.9-a）；验收命令 122 passed、补 `idempotency_smoke` |
 | v1.6 | 2026-11-08 | 增 6.4 队列运维接口（查看现场 + 死信重放）、I19–I21（启动补偿/重放归零/仅管理员）；验收命令 142 passed、补 `tasks_smoke`（S1.9-b） |
 | v1.7 | 2026-11-08 | 增 6.5 我的会话列表 `GET /agent/sessions`（本人隔离/排序/分页语义）与 I22；验收命令 146 passed（BACKLOG A2） |
+| v1.8 | 2026-11-08 | 增 6.6 文档问答接口（能力矩阵/上传/列表/详情/删除）、状态语义与 I23–I26；验收命令 169 passed、补 `rag_smoke`（BACKLOG A3 / S1.15） |

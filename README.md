@@ -139,6 +139,7 @@ PetLumina 是一个面向宠物主人的智能生活管理与社区互动平台�
 | **韧性** | 用户级配额（429 + `Retry-After`）、用户维度幂等键、LLM/后端双熔断 | 重试不重复执行、不重复计费 |
 | **可观测** | 单行 JSON 日志 + `x-request-id` + `/readyz` 四检（repo/model/两个熔断） | 一条请求从 `run started` 到 `run finished` 能串起来 |
 | **契约** | SSE 五事件（route/tool/delta/done/error）+ `id:` 游标续传 | 断网重连不重放已计费内容 |
+| **文档问答（RAG）** | `doc_file`/`doc_chunk` + 解析（文本/PDF/OCR/视频抽帧）+ 切分/嵌入 + `search_docs` 工具 | 上传疫苗本/体检报告后，回答带 `citation.kind=doc` 可回跳；缺 OCR/ffmpeg 时明确降级并给原因 |
 
 ## 技术架构
 
@@ -208,7 +209,7 @@ PetLumina 是一个面向宠物主人的智能生活管理与社区互动平台�
 | aiomysql | 0.3 | 会话 / 消息 / 运行 / 记忆落库 |
 | redis-py | 8.1（RESP2） | 事件存储、限流、旁路任务队列 |
 | ruff | 0.17 | lint 门禁 |
-| pytest + pytest-asyncio | 9.2 / 1.4 | 146 项契约测试 |
+| pytest + pytest-asyncio | 9.2 / 1.4 | 169 项契约测试（含真机 MySQL 契约；不带 DSN 为 159） |
 
 ## 快速开始
 
@@ -238,6 +239,7 @@ mysql -u root -p petlumina < sql/v2.12-agent-idempotency.sql
 mysql -u root -p petlumina < sql/v2.13-notification-read.sql
 mysql -u root -p petlumina < sql/v2.14-post-topic.sql
 mysql -u root -p petlumina < sql/v2.15-violation.sql
+mysql -u root -p petlumina < sql/v2.16-doc-rag.sql
 
 # 3. 配置环境变量 (COS 密钥等)
 export COS_SECRET_ID=your_id
@@ -400,7 +402,7 @@ ai-PetShop/
 │   │   ├── llm/                     # ChatModel 协议 / OpenAI 兼容实现 / 脚本化桩
 │   │   ├── core/                    # 错误模型 / ID 生成 / 日志 / 熔断 / 限流 / Redis 客户端
 │   │   └── domain/                  # 领域模型 / 事件 / 意图路由
-│   ├── tests/                       # 146 项契约级测试 + 本地桩（Java / LLM）
+│   ├── tests/                       # 169 项契约级测试 + 本地桩（Java / LLM）
 │   ├── evals/                       # 23 条评测用例 + 三套阈值门禁
 │   ├── scripts/                     # 5 个真进程冒烟脚本
 │   ├── Dockerfile                   # 多阶段构建 + 非 root
@@ -429,7 +431,7 @@ Agent 侧的验收是"可复现命令"，不是口头结论：
 ```powershell
 cd backend-agent
 $env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:yourpwd@127.0.0.1:3306/petlumina"
-.venv\Scripts\python -m pytest            # 146 passed（含真机 MySQL 契约）
+.venv\Scripts\python -m pytest            # 169 passed（含真机 MySQL 契约）
 .venv\Scripts\python -m evals.run         # routing 15/15、safety 6/6、memory 2/2
 .venv\Scripts\python -m scripts.e2e_smoke          # 10/10（SSE / 续传 / 越权）
 .venv\Scripts\python -m scripts.p1_smoke           # 9/9（配额 / 记忆 / 用量）
@@ -469,7 +471,7 @@ cd backend && mvn test                            # 后端单测 27 例（仪表
 - App：首页「问 Lumina」入口 + 全屏对话页（流式、工具提示、引用回跳、历史会话恢复）+ **历史会话面板**（`GET /agent/sessions`，列表切换与刷新恢复）
 - 管理端：会话工作台（会话列表 / 详情：对话流 + 运行轨迹 + 长期记忆 / 全局用量）
 - 文档体系：9 条 ADR、2 份 SPEC、1 份 SDD、5 份 PLAN、9 份 REPORT（见 `docs/README.md`）
-- 验收：146 单测、23 条评测、5 个真进程冒烟（10/9/6/8/8）+ 真实模型冒烟 13/13（L1 P50 929 ms / P95 1064 ms）、`ruff` 全绿
+- 验收：169 单测、23 条评测、6 个真进程冒烟（10/9/6/8/8/10）+ 真实模型冒烟 13/13（L1 P50 929 ms / P95 1064 ms）、`ruff` 全绿
 
 ### v2.7 (2026-06-03)
 

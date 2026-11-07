@@ -16,7 +16,12 @@ from conftest import AUTH_HEADERS, make_http, make_settings
 from app.api import create_app
 from app.llm import ScriptedModel
 from app.storage import InMemoryRepository
-from app.tasks import TOPIC_AUDIT_TOOL, TOPIC_MEMORY_OBSERVE, InProcessTaskQueue
+from app.tasks import (
+    TOPIC_AUDIT_TOOL,
+    TOPIC_DOC_INGEST,
+    TOPIC_MEMORY_OBSERVE,
+    InProcessTaskQueue,
+)
 
 ADMIN_HEADERS = {"satoken": "token-admin", "x-user-id": "9001", "x-user-role": "admin"}
 
@@ -169,7 +174,11 @@ async def test_admin_tasks_reports_disabled_when_backend_off(
     body = resp.json()
     assert body["enabled"] is False
     assert body["backend"] == "off"
-    assert {t["topic"] for t in body["topics"]} == {TOPIC_MEMORY_OBSERVE, TOPIC_AUDIT_TOOL}
+    assert {t["topic"] for t in body["topics"]} == {
+        TOPIC_MEMORY_OBSERVE,
+        TOPIC_AUDIT_TOOL,
+        TOPIC_DOC_INGEST,
+    }
 
 
 @pytest.mark.asyncio

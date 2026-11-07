@@ -327,6 +327,10 @@
     "historyEmpty": "まだ会話がありません。話しかけてみてください",
     "historyLoadFailed": "会話一覧を読み込めませんでした",
     "messageCount": "{count} 件のメッセージ",
+    "upload": "資料をアップロード",
+    "uploadReady": "ナレッジに追加しました：{name}",
+    "uploadQueued": "アップロード済み：{name}、解析中",
+    "uploadFailed": "アップロード失敗：{reason}",
     "retry": "再試行",
     "historyFailed": "履歴を読み込めませんでした",
     "sendFailed": "送信できませんでした。もう一度お試しください",
@@ -344,7 +348,8 @@
     "tool": {
       "get_pet_profile": "プロフィール確認",
       "get_health_summary": "健康データ照会",
-      "search_logs": "記録を検索"
+      "search_logs": "記録を検索",
+      "search_docs": "資料を検索"
     },
     "entry": "Lumina に聞く",
     "entryHint": "ワクチン・体重・駆虫を一言で確認"

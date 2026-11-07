@@ -19,11 +19,13 @@ task_log = logging.getLogger("agent.task")
 
 TOPIC_MEMORY_OBSERVE = "agent.memory.observe"
 TOPIC_AUDIT_TOOL = "agent.audit.tool"
-TOPICS = (TOPIC_MEMORY_OBSERVE, TOPIC_AUDIT_TOOL)
+TOPIC_DOC_INGEST = "agent.doc.ingest"
+TOPICS = (TOPIC_MEMORY_OBSERVE, TOPIC_AUDIT_TOOL, TOPIC_DOC_INGEST)
 
 __all__ = [
     "TOPICS",
     "TOPIC_AUDIT_TOOL",
+    "TOPIC_DOC_INGEST",
     "TOPIC_MEMORY_OBSERVE",
     "InProcessTaskQueue",
     "RedisTaskQueue",

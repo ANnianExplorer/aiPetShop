@@ -1,8 +1,9 @@
 """旁路任务的消费者实现。
 
-两个 topic、两条幂等规则：
+三个 topic、三条幂等规则：
 - `agent.memory.observe`：记忆写入本身按 `(user, pet, key)` upsert，重复消费无害；
-- `agent.audit.tool`：消息 id 直接当 `tool_call_log.id`，重复消费撞主键被忽略。
+- `agent.audit.tool`：消息 id 直接当 `tool_call_log.id`，重复消费撞主键被忽略；
+- `agent.doc.ingest`：文档状态机幂等（ready 的文档重复消费直接跳过）。
 """
 
 from __future__ import annotations
@@ -12,6 +13,8 @@ from collections.abc import Mapping
 
 from ..core.logging import log_event
 from ..memory.service import MemoryService
+from ..rag.models import DocumentStatus
+from ..rag.service import DocumentService
 from ..storage.base import AgentRepository
 from .base import TaskHandler, TaskMessage
 
@@ -28,6 +31,7 @@ def _payload(message: TaskMessage) -> Mapping[str, object]:
 def build_handlers(
     memory: MemoryService,
     repository: AgentRepository,
+    docs: DocumentService | None = None,
 ) -> dict[str, TaskHandler]:
     async def observe_memory(message: TaskMessage) -> None:
         payload = _payload(message)
@@ -52,7 +56,35 @@ def build_handlers(
             event_id=message.id,
         )
 
-    return {
+    async def ingest_document(message: TaskMessage) -> None:
+        if docs is None:
+            raise ValueError("文档服务未装配，无法消费 agent.doc.ingest")
+        payload = _payload(message)
+        user_id = str(payload.get("user_id") or "")
+        document_id = str(payload.get("document_id") or "")
+        if not user_id or not document_id:
+            raise ValueError("doc.ingest 缺少 user_id/document_id")
+        document = await repository.get_document(user_id, document_id)
+        if document is None:
+            log_event(task_log, logging.WARNING, "task doc missing", document=document_id)
+            return
+        if document.status is DocumentStatus.READY:
+            log_event(task_log, logging.INFO, "task doc skipped", document=document_id)
+            return
+        result = await docs.process(document)
+        log_event(
+            task_log,
+            logging.INFO,
+            "task doc ingested",
+            document=document_id,
+            status=int(result.status),
+            chunks=result.chunk_count,
+        )
+
+    handlers: dict[str, TaskHandler] = {
         "agent.memory.observe": observe_memory,
         "agent.audit.tool": persist_audit,
     }
+    if docs is not None:
+        handlers["agent.doc.ingest"] = ingest_document
+    return handlers

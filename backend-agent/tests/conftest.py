@@ -9,6 +9,8 @@
 from __future__ import annotations
 
 import json
+import shutil
+import tempfile
 from collections.abc import AsyncIterator
 from typing import Any
 
@@ -19,6 +21,17 @@ from app.api import create_app
 from app.config import Settings
 from app.llm import ScriptedModel
 from app.storage import InMemoryRepository
+
+# 所有用例的文档落盘目录都放在这个根目录下，会话结束一次性删除，
+# 否则每跑一次测试就在 cwd 里留下几百个空目录
+_DOCS_ROOT = tempfile.mkdtemp(prefix="pet-docs-")
+
+
+@pytest.fixture(scope="session", autouse=True)
+def _cleanup_docs_root() -> Any:
+    yield
+    shutil.rmtree(_DOCS_ROOT, ignore_errors=True)
+
 
 JAVA_PET = {"id": "5001", "name": "Lumina", "breed": "布偶", "age": 2}
 JAVA_LOG_PAGE = {
@@ -51,6 +64,9 @@ def make_settings(**overrides: Any) -> Settings:
         "llm_model": "scripted",
         "auth_mode": "header",
         "repo_backend": "memory",
+        # 每个 Settings 一份独立临时目录，测试之间不串文件；
+        # 统一挂到会话级根目录下，跑完由 _cleanup_docs_root 一次性删除
+        "doc_storage_dir": tempfile.mkdtemp(prefix="case-", dir=_DOCS_ROOT),
     }
     base.update(overrides)
     return Settings(**base)

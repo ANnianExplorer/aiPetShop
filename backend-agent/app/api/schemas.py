@@ -53,7 +53,6 @@ class SessionListOut(BaseModel):
     page_size: int
     items: list[SessionItemOut]
 
-
 class HealthOut(BaseModel):
     status: str
     repo: str
@@ -185,3 +184,39 @@ class ReplayDeadLetterRequest(BaseModel):
 class ReplayDeadLetterOut(BaseModel):
     topic: str
     replayed: int
+
+
+# ---------------------------------------------------------------- 文档问答（RAG）
+
+
+class DocumentOut(BaseModel):
+    id: str
+    name: str
+    mime: str
+    size_bytes: int
+    pet_id: str | None = None
+    status: int
+    status_label: str
+    error: str | None = None
+    chunk_count: int
+    create_time: str | None = None
+
+
+class DocumentListOut(BaseModel):
+    total: int
+    items: list[DocumentOut]
+
+
+class CapabilityGroup(BaseModel):
+    supported: bool
+    suffixes: list[str] = Field(default_factory=list)
+    reason: str | None = None
+
+
+class CapabilitiesOut(BaseModel):
+    text: CapabilityGroup
+    pdf: CapabilityGroup
+    image: CapabilityGroup
+    video: CapabilityGroup
+    embedder: dict[str, Any]
+    max_bytes: int

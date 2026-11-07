@@ -28,6 +28,8 @@ class ToolContext:
     backend: BackendClient
     pet_id: str | None = None
     auto_commit: bool = False
+    # 文档问答服务（可选）：注入后 search_docs 工具才可用
+    docs: Any = None
 
 
 ToolHandler = Callable[[Any, ToolContext], Awaitable[dict[str, Any]]]

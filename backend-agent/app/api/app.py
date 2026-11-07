@@ -13,6 +13,7 @@ import contextlib
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from typing import Any
 
 import httpx
 from fastapi import FastAPI, Request
@@ -27,6 +28,8 @@ from ..core.ratelimit import RateLimiter, create_rate_limiter
 from ..graph import build_graph
 from ..llm import ChatModel, build_model
 from ..memory import MemoryService
+from ..rag import DocumentService
+from ..rag.embedder import build_embedder
 from ..runtime import AgentRunner
 from ..runtime.eventlog import EventStore, create_event_store
 from ..storage import AgentRepository, create_repository
@@ -53,6 +56,7 @@ def create_app(
     llm_breaker: CircuitBreaker | None = None,
     backend_breaker: CircuitBreaker | None = None,
     task_queue: TaskQueue | None = None,
+    docs_service: Any = None,
 ) -> FastAPI:
     settings = settings or Settings()
     configure_logging(settings.log_level)
@@ -70,7 +74,14 @@ def create_app(
     )
 
     repository = repo or create_repository(settings)
-    registry = build_registry()
+    # 文档问答：服务与工具共享同一个实例，检索永远带 user_id
+    document_service = docs_service or DocumentService(
+        repository,
+        build_embedder(settings),
+        storage_dir=settings.doc_storage_dir,
+        max_bytes=settings.doc_max_bytes,
+    )
+    registry = build_registry(docs=document_service)
     tasks = task_queue if task_queue is not None else create_task_queue(settings)
 
     async def audit(audit_record: ToolAudit) -> None:
@@ -124,11 +135,21 @@ def create_app(
         model_owned = True
 
     graph = (
-        build_graph(model, gateway, settings, backend_factory) if model is not None else None
+        build_graph(model, gateway, settings, backend_factory, docs=document_service)
+        if model is not None
+        else None
     )
     store = event_store or create_event_store(settings)
     memory = MemoryService(repository)
-    worker = TaskWorker(tasks, build_handlers(memory, repository), topics=list(TOPICS)) if tasks else None
+    worker = (
+        TaskWorker(
+            tasks,
+            build_handlers(memory, repository, docs=document_service),
+            topics=list(TOPICS),
+        )
+        if tasks
+        else None
+    )
     runner = AgentRunner(
         settings=settings,
         repo=repository,
@@ -195,6 +216,7 @@ def create_app(
     app.state.backend_breaker = backend_breaker
     app.state.tasks = tasks
     app.state.task_worker = worker
+    app.state.docs = document_service
 
     @app.exception_handler(AgentError)
     async def _agent_error(_: Request, exc: AgentError) -> JSONResponse:

@@ -90,6 +90,18 @@ export interface AgentSessionPage {
   items: AgentSessionItem[]
 }
 
+/** 上传到知识库的文档（status: 0 排队 / 1 解析中 / 2 就绪 / 3 失败 / 4 不支持） */
+export interface AgentDocument {
+  id: string
+  name: string
+  mime: string
+  size_bytes: number
+  status: number
+  status_label: string
+  chunk_count: number
+  error?: string | null
+}
+
 /** 聊天面板里的一条气泡（比后端 Message 多了流式状态） */
 export interface ChatBubble {
   id: string
