@@ -99,6 +99,14 @@ class AgentRepository(Protocol):
         self, user_id: str, pet_id: str | None, limit: int = 10
     ) -> list[MemoryFact]: ...
 
+    async def delete_memory_fact(self, user_id: str, pet_id: str | None, key: str) -> bool:
+        """删除一条事实，返回是否真的删到了（False → 接口层 404）。
+
+        物理删除：这是用户行使删除权，不是管理端审计场景；
+        `pet_id=None` 与 `pet_id=0` 视为同一槽位（与 `uk_user_pet_key` 一致）。
+        """
+        ...
+
     # ---- 用量 ----
     async def usage_summary(self, user_id: str, since: str | None = None) -> UsageSummary: ...
 

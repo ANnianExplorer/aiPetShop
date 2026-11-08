@@ -418,6 +418,16 @@ class MySqlRepository:
             row = await cur.fetchone()
         return _row_to_fact(row) if row else fact
 
+    async def delete_memory_fact(self, user_id: str, pet_id: str | None, key: str) -> bool:
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn, conn.cursor() as cur:
+            # 物理删除：用户行使删除权，不需要保留影子行
+            await cur.execute(
+                "DELETE FROM memory_fact WHERE user_id=%s AND pet_id=%s AND fact_key=%s",
+                (int(user_id), _pet_slot(pet_id), key),
+            )
+            return cur.rowcount > 0
+
     async def list_memory_facts(
         self, user_id: str, pet_id: str | None, limit: int = 10
     ) -> list[MemoryFact]:

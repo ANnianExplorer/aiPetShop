@@ -25,15 +25,37 @@ class TaskWorker:
         *,
         topics: list[str] | None = None,
         idle_timeout_s: float = 1.0,
+        sweep_interval_s: float = 0.0,
+        visible_timeout_s: float = 120.0,
     ) -> None:
         self._queue = queue
         self._handlers = dict(handlers)
         self._topics = topics or sorted(self._handlers)
         self._idle = idle_timeout_s
+        self._sweep_interval = sweep_interval_s
+        self._visible_timeout = visible_timeout_s
         self._tasks: list[asyncio.Task[None]] = []
         self._stop = asyncio.Event()
         self.processed = 0
         self.failed = 0
+        self.swept = 0
+
+    async def _sweep_loop(self) -> None:
+        """定期回收卡在在途里的消息；间隔/阈值都由配置控制。"""
+        if self._sweep_interval <= 0:
+            return
+        while not self._stop.is_set():
+            try:
+                await asyncio.sleep(self._sweep_interval)
+                if self._stop.is_set():
+                    return
+                moved = await self._queue.sweep(self._topics, older_than_s=self._visible_timeout)
+                self.swept += moved
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:  # 巡检本身不该把 worker 拖死
+                log_event(task_log, logging.ERROR, "task sweep failed", error=f"{type(exc).__name__}: {exc}")
+                await asyncio.sleep(1.0)
 
     async def _loop(self, topic: str) -> None:
         handler = self._handlers[topic]
@@ -76,6 +98,8 @@ class TaskWorker:
         self._stop.clear()
         for topic in self._topics:
             self._tasks.append(asyncio.create_task(self._loop(topic), name=f"task-{topic}"))
+        if self._sweep_interval > 0:
+            self._tasks.append(asyncio.create_task(self._sweep_loop(), name="task-sweeper"))
 
     async def stop(self) -> None:
         self._stop.set()

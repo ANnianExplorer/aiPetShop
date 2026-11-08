@@ -273,6 +273,16 @@ cd ..\pet-lumina-app; npm run dev
 | 工具 | `search_docs(query, top_k)` | 与其它工具共用网关（白名单/参数校验/审计）；服务未装配时返回 `docs_unavailable` |
 | 异步 | 复用 `TaskQueue` 的 `agent.doc.ingest` | 队列 `off` 时同步解析，语义一致 |
 
+### 8.9 运维与数据自主（S1.16 / BACKLOG B3·B5·B7）
+
+| 关注点 | 做法 | 位置 |
+| --- | --- | --- |
+| 在途消息回收 | 取用时 `ZADD {prefix}:{topic}:claimed`（score=取用时刻），ack/nack 同步 `ZREM`；巡检按 `TASK_VISIBLE_TIMEOUT_S` 搬回并 `attempt+1` | `app/tasks/redis_queue.py` 的 `receive/ack/nack/sweep`、`app/tasks/worker.py` 的 `_sweep_loop` |
+| 巡检开关 | `TASK_SWEEP_INTERVAL_S<=0` 关闭（只保留进程启动时的 `recover`）；默认 60s 扫一次、120s 判超时 | `app/config.py`、`app/api/app.py` |
+| 指标 | 进程内累加，`/metrics` 抓取时现渲染；HTTP 用**路由模板**做标签，队列深度抓取时读 | `app/core/metrics.py`、`app/api/observability.py`、`app/runtime/runner.py`、`app/tools/gateway.py` |
+| 记忆自主 | 删除（物理）+ 导出（`version/exported_at/facts`）；`user_id` 只来自 token | `app/storage/{base,memory,mysql}.py`、`app/api/routes.py` |
+| 语义边界 | 巡检回收是 at-least-once：慢任务可能被执行两次，消费端按 `key`/`event_id` 幂等 | ADR-0009 第 4 条、`tests/test_task_queue.py` |
+
 ## 9. 质量属性
 
 | 属性 | 设计手段 | 验收 |

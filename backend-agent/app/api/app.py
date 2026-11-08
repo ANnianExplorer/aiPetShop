@@ -146,6 +146,8 @@ def create_app(
             tasks,
             build_handlers(memory, repository, docs=document_service),
             topics=list(TOPICS),
+            sweep_interval_s=settings.task_sweep_interval_s,
+            visible_timeout_s=settings.task_visible_timeout_s,
         )
         if tasks
         else None

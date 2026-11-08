@@ -2,16 +2,18 @@
 
 from __future__ import annotations
 
+import contextlib
 import logging
 from collections.abc import AsyncIterator
 from datetime import datetime, timedelta
 
 from fastapi import APIRouter, File, Form, Query, Request, UploadFile
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import JSONResponse, PlainTextResponse, StreamingResponse
 
 from ..config import Settings
 from ..core.errors import Forbidden, InvalidRequest, NotFound, RateLimited, Unauthorized
 from ..core.logging import log_event
+from ..core.metrics import QUEUE_DEPTH, metrics
 from ..core.ratelimit import RateLimiter
 from ..memory import label_of
 from ..rag.models import DocumentStatus
@@ -35,6 +37,7 @@ from .schemas import (
     DocumentListOut,
     DocumentOut,
     HealthOut,
+    MemoryExportOut,
     MemoryFactOut,
     MemoryOut,
     MessageOut,
@@ -48,6 +51,7 @@ from .schemas import (
 
 router = APIRouter()
 ready_log = logging.getLogger("agent.readiness")
+memory_log = logging.getLogger("agent.memory")
 
 SSE_HEADERS = {
     "Cache-Control": "no-cache",
@@ -248,6 +252,47 @@ async def memory_me(
     identity = await _identity(request)
     facts = await _repo(request).list_memory_facts(identity.user_id, pet_id, limit)
     return MemoryOut(
+        pet_id=pet_id,
+        facts=[
+            MemoryFactOut(
+                id=f.id,
+                key=f.key,
+                label=label_of(f.key),
+                value=f.value,
+                confidence=f.confidence,
+                update_time=f.update_time,
+            )
+            for f in facts
+        ],
+    )
+
+
+@router.delete("/agent/memory/me")
+async def delete_memory(
+    request: Request,
+    key: str = Query(min_length=1, max_length=64),
+    pet_id: str | None = Query(default=None, max_length=32),
+) -> dict[str, bool | str]:
+    """删除我的一条长期事实（用户行使删除权）；不存在返回 404。"""
+    identity = await _identity(request)
+    removed = await _repo(request).delete_memory_fact(identity.user_id, pet_id, key)
+    if not removed:
+        raise NotFound(f"没有这条记忆：{key}")
+    log_event(memory_log, logging.INFO, "memory deleted", user_id=identity.user_id, key=key)
+    return {"deleted": True, "key": key}
+
+
+@router.get("/agent/memory/me/export", response_model=MemoryExportOut)
+async def export_memory(
+    request: Request,
+    pet_id: str | None = Query(default=None, max_length=32),
+) -> MemoryExportOut:
+    """导出我的全部长期事实：给用户留底，也便于迁移。"""
+    identity = await _identity(request)
+    facts = await _repo(request).list_memory_facts(identity.user_id, pet_id, 200)
+    return MemoryExportOut(
+        version=1,
+        exported_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         pet_id=pet_id,
         facts=[
             MemoryFactOut(
@@ -641,3 +686,21 @@ async def delete_document(request: Request, document_id: str) -> dict[str, bool]
     if not removed:
         raise NotFound("文档不存在")
     return {"deleted": True}
+
+
+@router.get("/metrics", include_in_schema=False)
+async def prometheus_metrics(request: Request) -> PlainTextResponse:
+    """Prometheus 抓取端点。
+
+    刻意不加鉴权：抓取方通常是同网段的 Prometheus，里面没有任何用户内容
+    （只有计数、耗时与队列深度）；生产上建议在网关层限制来源。
+    """
+    extra: list[str] = []
+    queue = getattr(request.app.state, "tasks", None)
+    if queue is not None:
+        extra.append(f"# TYPE {QUEUE_DEPTH} gauge")
+        for topic in TOPICS:
+            with contextlib.suppress(Exception):
+                depth = await queue.depth(topic)
+                extra.append(f'{QUEUE_DEPTH}{{topic="{topic}"}} {depth}')
+    return PlainTextResponse(metrics.render(extra), media_type="text/plain; version=0.0.4; charset=utf-8")

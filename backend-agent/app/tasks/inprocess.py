@@ -80,6 +80,10 @@ class InProcessTaskQueue:
         """内存队列没有「在途」状态：消息要么在队列里，要么已经被处理。"""
         return 0
 
+    async def sweep(self, topics: Sequence[str], *, older_than_s: float) -> int:
+        """内存队列的消费在同一进程内，没有跨进程「在途」状态可扫。"""
+        return 0
+
     async def replay_dead_letter(self, topic: str, *, limit: int = 10) -> int:
         pending = self._dlq.get(topic, [])
         if limit <= 0 or not pending:

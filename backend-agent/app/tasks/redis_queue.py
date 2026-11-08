@@ -14,6 +14,7 @@ from __future__ import annotations
 import contextlib
 import json
 import logging
+import time
 from collections.abc import Awaitable, Mapping, Sequence
 from typing import Any, Protocol
 
@@ -24,6 +25,7 @@ task_log = logging.getLogger("agent.task")
 
 _DLQ_SUFFIX = ":dlq"
 _PROCESSING_SUFFIX = ":processing"
+_CLAIMED_SUFFIX = ":claimed"
 
 
 class RedisLike(Protocol):
@@ -35,6 +37,9 @@ class RedisLike(Protocol):
     async def lrem(self, key: str, count: int, value: str) -> int: ...
     async def llen(self, key: str) -> int: ...
     async def lrange(self, key: str, start: int, end: int) -> list[str]: ...
+    async def zadd(self, key: str, mapping: Mapping[str, float]) -> int: ...
+    async def zrem(self, key: str, *values: str) -> int: ...
+    async def zrangebyscore(self, key: str, min: float, max: float) -> list[str]: ...
     async def aclose(self) -> None: ...
 
 
@@ -62,6 +67,9 @@ class RedisTaskQueue:
     def _dlq_key(self, topic: str) -> str:
         return f"{self._topic_key(topic)}{_DLQ_SUFFIX}"
 
+    def _claimed_key(self, topic: str) -> str:
+        return f"{self._topic_key(topic)}{_CLAIMED_SUFFIX}"
+
     # -------------------------------------------------------------- publish
     async def publish(self, topic: str, key: str, payload: Mapping[str, Any]) -> str:
         message = make_message(topic, key, payload)
@@ -79,20 +87,25 @@ class RedisTaskQueue:
         if raw is None:
             return None
         try:
-            return TaskMessage.from_json(json.loads(raw))
+            message = TaskMessage.from_json(json.loads(raw))
         except (ValueError, KeyError, TypeError) as exc:
             # 坏消息不能卡住队列：直接进死信并返回 None
             await self._redis.lpush(self._dlq_key(topic), raw)
             log_event(task_log, logging.ERROR, "task payload invalid", topic=topic, error=str(exc))
             return None
+        # 登记取用时刻：巡检据此判断「这条是不是被取走后死在半路」
+        await self._redis.zadd(self._claimed_key(topic), {raw: time.time()})
+        return message
 
     async def ack(self, message: TaskMessage) -> None:
         raw = json.dumps(message.to_json(), ensure_ascii=False)
         await self._redis.lrem(self._processing_key(message.topic), 1, raw)
+        await self._redis.zrem(self._claimed_key(message.topic), raw)
 
     async def nack(self, message: TaskMessage, *, error: str) -> None:
         raw = json.dumps(message.to_json(), ensure_ascii=False)
         await self._redis.lrem(self._processing_key(message.topic), 1, raw)
+        await self._redis.zrem(self._claimed_key(message.topic), raw)
         if message.attempt >= self._max_attempts:
             await self._redis.lpush(self._dlq_key(message.topic), raw)
             log_event(task_log, logging.ERROR, "task dead letter", topic=message.topic,
@@ -175,6 +188,48 @@ class RedisTaskQueue:
             log_event(task_log, logging.WARNING, "task dead letter replayed",
                       topic=topic, replayed=replayed)
         return replayed
+
+    async def sweep(self, topics: Sequence[str], *, older_than_s: float) -> int:
+        """回收「取走太久还没 ack」的在途消息（进程被杀/卡死时的唯一出路）。
+
+        判定依据是取用时刻（`{prefix}:{topic}:claimed` 的 score），不是消息创建时间——
+        否则积压久的消息一被取走就会被误判成超时。
+        搬回时 `attempt + 1`：真有消费者「一取就崩」时，最终会进死信而不是无限重投。
+        """
+        if older_than_s <= 0:
+            return 0
+        deadline = time.time() - older_than_s
+        swept_total = 0
+        for topic in topics:
+            raw_items = await self._redis.zrangebyscore(self._claimed_key(topic), 0, deadline)
+            swept = 0
+            for raw in raw_items:
+                # 先清登记：LREM 成功才说明它确实还卡在在途里
+                removed = await self._redis.lrem(self._processing_key(topic), 1, raw)
+                await self._redis.zrem(self._claimed_key(topic), raw)
+                if not removed:
+                    continue  # 已经被 ack/nack 掉了，只是登记没清干净
+                try:
+                    message = TaskMessage.from_json(json.loads(raw))
+                except (ValueError, KeyError, TypeError):
+                    await self._redis.lpush(self._dlq_key(topic), raw)
+                    continue
+                retried = TaskMessage(
+                    id=message.id,
+                    topic=message.topic,
+                    key=message.key,
+                    payload=message.payload,
+                    attempt=min(message.attempt + 1, self._max_attempts),
+                )
+                await self._redis.lpush(
+                    self._topic_key(topic), json.dumps(retried.to_json(), ensure_ascii=False)
+                )
+                swept += 1
+            if swept:
+                log_event(task_log, logging.WARNING, "task inflight swept",
+                          topic=topic, swept=swept, timeout_s=older_than_s)
+            swept_total += swept
+        return swept_total
 
     async def aclose(self) -> None:
         closer: Awaitable[None] | None = getattr(self._redis, "aclose", None)

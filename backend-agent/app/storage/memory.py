@@ -272,6 +272,10 @@ class InMemoryRepository:
         self._facts[slot] = fact
         return fact
 
+    async def delete_memory_fact(self, user_id: str, pet_id: str | None, key: str) -> bool:
+        slot = (user_id, pet_id or "", key)
+        return self._facts.pop(slot, None) is not None
+
     async def list_memory_facts(
         self, user_id: str, pet_id: str | None, limit: int = 10
     ) -> list[MemoryFact]:

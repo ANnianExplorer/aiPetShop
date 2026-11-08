@@ -74,6 +74,10 @@ class Settings(BaseSettings):
     task_backend: Literal["off", "memory", "redis"] = "off"
     task_queue_size: int = Field(default=1000, ge=1)
     task_max_attempts: int = Field(default=3, ge=1, le=10)
+    # 在途消息可见性超时：取走超过这么久还没 ack，就认为消费者已死、搬回队列重试
+    task_visible_timeout_s: float = Field(default=120.0, gt=0)
+    # 巡检间隔；<= 0 表示关闭巡检（只保留进程启动时的 recover）
+    task_sweep_interval_s: float = Field(default=60.0, ge=0)
 
     # ---- 文档问答（RAG）----
     # hash：本地哈希嵌入（确定性、零网络）；openai：走兼容 /embeddings 的接口

@@ -86,6 +86,15 @@ class MemoryOut(BaseModel):
     facts: list[MemoryFactOut]
 
 
+class MemoryExportOut(BaseModel):
+    """用户数据导出：版本号是为了将来字段变更时，导入方能识别格式。"""
+
+    version: int = 1
+    exported_at: str
+    pet_id: str | None = None
+    facts: list[MemoryFactOut]
+
+
 class ErrorOut(BaseModel):
     code: str
     message: str

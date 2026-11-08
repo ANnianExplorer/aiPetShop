@@ -269,6 +269,21 @@ App 的历史入口。只返回 **token 解析出的本人**会话，不接受 `
 3. **检索入口只有工具**：`search_docs(query, top_k)` 由模型在对话中调用，命中结果以 `citation.kind == "doc"` 回传（`locator` 为 `offset=N` / `page=N` / `t=12s`）；不提供公开的"检索"HTTP 接口，避免绕过工具网关。
 4. **能力探测失败要给原因**：缺 `tesseract`/`ffmpeg` 时图片/视频标记不支持，前端据此禁用入口并显示原因，而不是上传后才报错。
 
+## 6.7 记忆自主与运行指标（S1.16 / BACKLOG B3·B5·B7）
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| DELETE | `/agent/memory/me?key=&pet_id=` | 删除本人一条事实（物理删除）；不存在返回 `404 not_found` |
+| GET | `/agent/memory/me/export?pet_id=` | 导出本人全部事实：`{version:1, exported_at, pet_id, facts:[...]}` |
+| GET | `/metrics` | Prometheus 文本（`text/plain; version=0.0.4`），**不加鉴权**，不含任何用户内容 |
+
+约定：
+
+1. **只作用于本人**：`user_id` 只从 token 解析，不接受参数；他人数据既不出现也删不动。
+2. **删除是物理删除**：用户行使删除权，不留影子行；需要留底请先调导出接口。
+3. **指标标签只放低基数字段**：`method` / 路由模板 `path` / `status` / `route` / `tool` / `direction`；绝不放 `session_id`、`user_id`、消息正文。
+4. **在途消息可见性超时**：消费者取走消息后登记 `claimed`（score = 取用时刻），超过 `TASK_VISIBLE_TIMEOUT_S` 未 ack 的消息由巡检搬回主队列且 `attempt + 1`；这是 at-least-once 语义，消费端必须幂等。
+
 ## 7. 不变量（必须永远成立）
 
 | 编号 | 断言 | 验证 |
@@ -299,6 +314,9 @@ App 的历史入口。只返回 **token 解析出的本人**会话，不接受 `
 | I24 | 检索只召回本人切片（`user_id` 隔离），且只召回 `is_delete=0` 的文档 | `test_rag.py::test_search_isolated_by_user`、`test_deleted_document_is_not_searchable` |
 | I25 | 上传状态语义固定：0 排队 / 1 解析中 / 2 就绪 / 3 失败（带原因）/ 4 不支持（带原因） | `test_rag.py::test_unsupported_video_reports_reason` |
 | I26 | 超过 `doc_max_bytes` 的上传直接拒绝；同一文件重复上传复用同一条记录（删除后重传亦复活） | `test_rag.py::test_oversized_upload_rejected`、`scripts.rag_smoke`（第二次运行命中同一 id） |
+| I27 | 记忆删除/导出只作用于本人；他人既查不到也删不动（返回 404，不泄露存在性） | `test_memory_api.py::test_memory_is_isolated_between_users` |
+| I28 | `/metrics` 的路由标签用模板而非原始 URL，且输出中不含用户内容 | `test_metrics.py::test_http_metrics_use_route_template`、`test_metrics_endpoint_renders_prometheus_text` |
+| I29 | 取走超过可见性超时仍未 ack 的消息必须被巡检搬回（`attempt + 1`），ack 过的不得被误搬 | `test_task_queue.py::test_sweep_reclaims_stale_inflight`、`test_sweep_ignores_acked_messages` |
 
 ## 8. 验收用例（可执行）
 
@@ -306,7 +324,7 @@ App 的历史入口。只返回 **token 解析出的本人**会话，不接受 `
 cd backend-agent
 # 含真机仓储契约测试（需要 DSN，否则跳过 mysql 变体）
 $env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:<本机口令>@127.0.0.1:3306/petlumina"
-.\.venv\Scripts\python -m pytest              # 169 passed（含真机 MySQL 契约；不带 DSN 为 159）
+.\.venv\Scripts\python -m pytest              # 181 passed（含真机 MySQL 契约；不带 DSN 为 171）
 .\.venv\Scripts\python -m evals.run           # routing 15/15, safety 6/6, memory 2/2
 .\.venv\Scripts\python -m scripts.e2e_smoke       # 10/10
 .\.venv\Scripts\python -m scripts.p1_smoke        # 9/9（配额/用量/记忆）
@@ -314,6 +332,7 @@ $env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:<本机口令>@127.0.0.1:3306/petl
 .\.venv\Scripts\python -m scripts.idempotency_smoke  # 8/8（幂等键）
 .\.venv\Scripts\python -m scripts.tasks_smoke        # 8/8（队列现场/死信重放）
 .\.venv\Scripts\python -m scripts.rag_smoke          # 10/10（上传→解析→检索→引用→删除）
+.\.venv\Scripts\python -m scripts.ops_smoke          # 11/11（指标/记忆导出删除/在途巡检）
 .\.venv\Scripts\ruff.exe check .              # All checks passed
 ```
 
@@ -330,3 +349,4 @@ $env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:<本机口令>@127.0.0.1:3306/petl
 | v1.6 | 2026-11-08 | 增 6.4 队列运维接口（查看现场 + 死信重放）、I19–I21（启动补偿/重放归零/仅管理员）；验收命令 142 passed、补 `tasks_smoke`（S1.9-b） |
 | v1.7 | 2026-11-08 | 增 6.5 我的会话列表 `GET /agent/sessions`（本人隔离/排序/分页语义）与 I22；验收命令 146 passed（BACKLOG A2） |
 | v1.8 | 2026-11-08 | 增 6.6 文档问答接口（能力矩阵/上传/列表/详情/删除）、状态语义与 I23–I26；验收命令 169 passed、补 `rag_smoke`（BACKLOG A3 / S1.15） |
+| v1.9 | 2026-11-08 | 增 6.7 记忆删除/导出与 `/metrics`、在途消息可见性超时语义、I27–I29；验收命令 181 passed、补 `ops_smoke`（BACKLOG B3·B5·B7 / S1.16） |

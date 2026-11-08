@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import time
 
 import pytest
 
@@ -25,10 +26,11 @@ from app.tasks.consumers import build_handlers
 
 
 class FakeRedis:
-    """只实现队列用到的命令：LPUSH / RPOPLPUSH / LREM / LLEN / LRANGE。"""
+    """只实现队列用到的命令：LPUSH / RPOPLPUSH / LREM / LLEN / LRANGE + ZSET 三件套。"""
 
     def __init__(self) -> None:
         self.lists: dict[str, list[str]] = {}
+        self.zsets: dict[str, dict[str, float]] = {}
         self.closed = False
 
     async def lpush(self, key: str, *values: str) -> int:
@@ -64,6 +66,29 @@ class FakeRedis:
     async def lrange(self, key: str, start: int, end: int) -> list[str]:
         bucket = self.lists.get(key) or []
         return bucket[start:] if end == -1 else bucket[start : end + 1]
+
+    # ---- ZSET（在途登记）----
+    async def zadd(self, key: str, mapping: dict[str, float]) -> int:
+        bucket = self.zsets.setdefault(key, {})
+        added = 0
+        for member, score in mapping.items():
+            if member not in bucket:
+                added += 1
+            bucket[member] = float(score)
+        return added
+
+    async def zrem(self, key: str, *values: str) -> int:
+        bucket = self.zsets.get(key) or {}
+        removed = 0
+        for value in values:
+            if bucket.pop(value, None) is not None:
+                removed += 1
+        return removed
+
+    async def zrangebyscore(self, key: str, minimum: float, maximum: float) -> list[str]:
+        bucket = self.zsets.get(key) or {}
+        picked = [(score, member) for member, score in bucket.items() if minimum <= score <= maximum]
+        return [member for _score, member in sorted(picked)]
 
     async def aclose(self) -> None:
         self.closed = True
@@ -295,3 +320,44 @@ async def test_replay_dead_letter_respects_limit(queue) -> None:
     assert await queue.replay_dead_letter("t", limit=2) == 2
     assert len(await queue.dead_letters("t")) == 1
     assert await queue.depth("t") == 2
+
+
+async def test_sweep_reclaims_stale_inflight(queue) -> None:
+    """B3：取走后卡死没 ack 的消息，必须能被巡检搬回（attempt+1）。"""
+    await queue.publish("t", key="k1", payload={"n": 1})
+    message = await queue.receive("t", timeout_s=0.05)
+    assert message is not None
+
+    if not isinstance(queue, RedisTaskQueue):
+        # 内存实现不假装能扫跨进程在途
+        assert await queue.sweep(["t"], older_than_s=0.01) == 0
+        return
+
+    # 把取用时刻改到 100s 之前，模拟消费者卡死
+    raw = json.dumps(message.to_json(), ensure_ascii=False)
+    queue._redis.zsets["pet:task:t:claimed"][raw] = time.time() - 100
+
+    assert await queue.sweep(["t"], older_than_s=1) == 1
+    assert await queue.depth("t") == 1
+    assert queue._redis.zsets["pet:task:t:claimed"] == {}
+
+    again = await queue.receive("t", timeout_s=0.05)
+    assert again is not None and again.id == message.id and again.attempt == 2
+    await queue.ack(again)
+    assert await queue.sweep(["t"], older_than_s=1) == 0
+
+
+async def test_sweep_ignores_acked_messages(queue) -> None:
+    """已 ack 的消息不能被巡检误搬回队列（登记残留要能自愈）。"""
+    await queue.publish("t", key="k2", payload={})
+    message = await queue.receive("t", timeout_s=0.05)
+    assert message is not None
+    await queue.ack(message)
+
+    if isinstance(queue, RedisTaskQueue):
+        # 人为留一条过期登记，验证 sweep 不会把不存在的在途搬回去
+        raw = json.dumps(message.to_json(), ensure_ascii=False)
+        queue._redis.zsets.setdefault("pet:task:t:claimed", {})[raw] = time.time() - 100
+
+    assert await queue.sweep(["t"], older_than_s=1) == 0
+    assert await queue.depth("t") == 0

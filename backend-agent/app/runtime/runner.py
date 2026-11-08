@@ -21,6 +21,7 @@ from typing import Any
 from ..config import Settings
 from ..core.errors import AgentError, ModelNotConfigured, RunTimeout
 from ..core.logging import log_event, run_id_var, user_id_var
+from ..core.metrics import RUNS, TOKENS, metrics
 from ..domain.events import Event, EventType
 from ..domain.models import Message, Role, Run, RunStatus, StepKind, Usage, dedupe_citations
 from ..domain.router import classify
@@ -264,6 +265,9 @@ class AgentRunner:
             latency_ms = int((time.perf_counter() - started) * 1000)
             await self._repo.finish_run(run_id, RunStatus.SUCCEEDED, usage, latency_ms)
             terminal = True
+            metrics.inc(RUNS, {"route": decision.route.value, "status": RunStatus.SUCCEEDED.value})
+            metrics.inc(TOKENS, {"direction": "prompt"}, usage.prompt_tokens)
+            metrics.inc(TOKENS, {"direction": "completion"}, usage.completion_tokens)
             log_event(
                 run_log,
                 logging.INFO,
@@ -418,6 +422,7 @@ class AgentRunner:
                 latency_ms,
                 err.message[:500],
             )
+        metrics.inc(RUNS, {"route": "unknown", "status": RunStatus.FAILED.value})
         log_event(
             run_log,
             logging.WARNING,

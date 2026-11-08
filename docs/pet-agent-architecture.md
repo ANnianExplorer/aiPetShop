@@ -455,7 +455,10 @@ DSH 本身就是一个 harness（本仓库的会话就跑在它上面：skills /
 | S1.9-b | 队列运维闭环：启动时先把在途消息搬回队列（崩溃不丢任务）、死信重放（`attempt` 归零）、`GET /agent/admin/tasks` 现场接口，两项均 admin-only + 审计 | `docs/reports/2026-11-08-s1.9b-deadletter.md`：142 passed、五个冒烟 10/9/6/8/8、真机"在途 1 → 重启回收 → `tool_call_log` 落库" |
 | S1.10–S1.14 | 补 App 历史会话（`GET /agent/sessions` + 抽屉面板）、真实模型冒烟，并把原项目 13 笔卫生债清零：验证码随机化、管理端类型门禁、社区分类/今日提醒、广播已读独立表、排序白名单、真实 HTTP 状态码、仪表盘聚合、数据库口令出仓库、违规管理真实化、管理端用户增改、App 类型收紧、话题归属 `post.topic_id` | `docs/reports/2026-11-08-a2-session-list.md`、`…-a1-real-model-smoke.md`、`…-s1.11…`–`…-s1.14-e9-e12.md`：后端 27 单测、App 37 单测、三端构建、Edge 三页实点 |
 
-**S1 未做**（下一步）：Langfuse 追踪、`agent_run` 与 trace 对齐的自动化校验、多副本熔断共享状态（Redis）、并发压测、RocketMQ 实现（S1.9-c，需 broker）、长运行进程的在途泄漏定期扫描。
+| S1.15 / A3 | 文档问答 RAG：`doc_file`/`doc_chunk`、文本/PDF/OCR/视频抽帧解析、切分 + 确定性嵌入、`search_docs` 工具（引用 `kind=doc`）、App 附件上传 | `docs/reports/2026-11-08-s1.15-doc-rag.md`：169 passed、`rag_smoke` 10/10、Edge 上传→提问→引用；D1–D7 |
+| S1.16 / B3·B5·B7 | 在途消息可见性超时巡检（`claimed` ZSET + `attempt+1`）、`/metrics` 六组指标、记忆删除/导出（物理删除 + 版本化导出） | `docs/reports/2026-11-08-s1.16-ops.md`：181 passed、`ops_smoke` 11/11（含"造一条死掉的在途消息 → 巡检搬回 → 落库"） |
+
+**S1 未做**（下一步）：Langfuse 追踪、`agent_run` 与 trace 对齐的自动化校验、多副本熔断共享状态（Redis）、并发压测、RocketMQ 实现（S1.9-c，需 broker）、僵死 `agent_run` 超时收敛（B3 剩余部分）、死信自动重试（B4）、管理端队列/记忆页（B6）。
 
 ---
 

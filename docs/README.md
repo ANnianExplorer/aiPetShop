@@ -39,7 +39,7 @@
 
 | 文档 | 版本 | 内容 |
 | --- | --- | --- |
-| [spec/agent-runtime-api.md](spec/agent-runtime-api.md) | v1.8 | `/healthz`、`/readyz`、`POST /agent/chat`、事件续传、消息回读、会话列表、文档问答（上传/能力矩阵/删除）、记忆/用量、管理端只读与队列运维接口的请求/响应/事件/错误码/不变量 |
+| [spec/agent-runtime-api.md](spec/agent-runtime-api.md) | v1.9 | `/healthz`、`/readyz`、`/metrics`、`POST /agent/chat`、事件续传、消息回读、会话列表、文档问答（上传/能力矩阵/删除）、记忆（含删除/导出）与用量、管理端只读与队列运维接口的请求/响应/事件/错误码/不变量 |
 | [spec/web-chat-ui.md](spec/web-chat-ui.md) | v1.0 | 对话页状态机、交互、持久化键、错误映射、布局约束、i18n 键、非目标 |
 
 ### ADR
@@ -65,6 +65,7 @@
 | [plans/s1.8-p2-resilience.md](plans/s1.8-p2-resilience.md) | S1.8 P2 韧性与真机联调：真机落库、Redis 兼容、幂等键、熔断 | 已完成 |
 | [plans/s1.9-task-queue.md](plans/s1.9-task-queue.md) | S1.9 任务队列：把记忆抽取/审计挪出请求路径，RocketMQ 作为生产实现 | S1.9-a、S1.9-b 已完成；RocketMQ 待启动 |
 | [plans/s1.15-doc-rag.md](plans/s1.15-doc-rag.md) | S1.15 文档问答 RAG：上传/解析/切分/嵌入/检索/引用（BACKLOG A3） | 已完成 |
+| [plans/s1.16-ops-metrics-memory.md](plans/s1.16-ops-metrics-memory.md) | S1.16 运维与数据自主：在途消息巡检 / `/metrics` / 记忆删除导出（B3·B5·B7） | 已完成 |
 
 ### REPORT
 
@@ -85,6 +86,7 @@
 | [reports/2026-11-08-s1.13-e8-e13.md](reports/2026-11-08-s1.13-e8-e13.md) | S1.13 卫生债 E8/E13 | 仪表盘趋势/类型分布改聚合、热门帖作者改批量查（SQL 日志 1 次 GROUP BY、0 次逐日查询，数字与库内对账一致）；数据库口令移出仓库（环境变量 / `application-local.yml`，缺口令时首次查库报 `Access denied`，全仓库 grep 明文为 0） |
 | [reports/2026-11-08-s1.14-e9-e12.md](reports/2026-11-08-s1.14-e9-e12.md) | S1.14 卫生债 E9/E10/E11/E12（清零） | 违规管理接真实接口（命中即 400 + 落记录）、管理端用户增改真落库、话题归属改 `post.topic_id`、App `as any` 清零与假数据下架；Java 27 单测、App 37 单测、三端构建通过、Edge 三页实点；抓到 `sensitive_word` 缺表导致发帖 500 |
 | [reports/2026-11-08-s1.15-doc-rag.md](reports/2026-11-08-s1.15-doc-rag.md) | S1.15 文档问答 RAG（BACKLOG A3） | `doc_file`/`doc_chunk` + 解析/切分/嵌入/检索 + `search_docs` 工具 + App 附件入口；159 单测、`rag_smoke` 10/10、Edge 上传后提问带回引用；D1–D6 六个真缺陷（软删复活、处理器漏装配、迁移注释吞 DDL 等） |
+| [reports/2026-11-08-s1.16-ops.md](reports/2026-11-08-s1.16-ops.md) | S1.16 运维与数据自主（B3·B5·B7） | 在途消息巡检回收（`claimed` ZSET + `attempt+1`）、6 个 Prometheus 指标、记忆删除/导出；181 单测、`ops_smoke` 11/11（含"造一条死掉的在途消息 → 巡检搬回 → 落库"真机闭环） |
 
 ## 3. 新增文档怎么起头
 

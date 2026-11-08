@@ -91,6 +91,15 @@ class TaskQueue(Protocol):
         死信不是垃圾桶：修好下游（或补完数据）之后要能把它们放回来。
         """
 
+    async def sweep(self, topics: Sequence[str], *, older_than_s: float) -> int:
+        """把「取走太久还没 ack」的在途消息搬回待消费队列，返回条数。
+
+        语义对齐 SQS visibility timeout：超过 `older_than_s` 仍停在在途里的消息
+        视为消费者已死，搬回主队列并把 `attempt + 1`（防止「一取就崩」死循环）。
+        代价是慢任务可能被执行两次——消费端必须幂等（ADR-0009 第 4 条）。
+        内存实现没有跨进程在途态，返回 0，不假装能扫。
+        """
+
     async def aclose(self) -> None: ...
 
 

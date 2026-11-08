@@ -43,7 +43,7 @@ App / 管理端 ──SSE──>  api/          传输层：鉴权、请求校�
 | `app/memory/` | `extract`/`ops`/`service` | 事实抽取（规则）、ADD/UPDATE/NOOP 算子、写入与召回 |
 | `app/tasks/` | `base`/`inprocess`/`redis`/`consumers`/`worker` | 旁路任务队列：记忆抽取与审计出请求路径；队列满退回同步 |
 | `app/rag/` | `models`/`chunker`/`embedder`/`ocr`/`media`/`parsers`/`service` | 文档问答：解析→切分→嵌入→检索；缺 `tesseract`/`ffmpeg` 时明确降级并给原因 |
-| `tests/` | 契约级单测 | 169 项（含真机契约），不依赖网络/密钥 |
+| `tests/` | 契约级单测 | 181 项（含真机契约），不依赖网络/密钥 |
 | `evals/` | 评测用例 + 阈值 runner | 23 条用例，不过阈值就退出码非 0 |
 
 ## 快速开始
@@ -61,7 +61,7 @@ copy .env.example .env          # 填 PET_AGENT_LLM_API_KEY
 ```bash
 curl http://localhost:8099/healthz    # 进程活着
 curl http://localhost:8099/readyz     # 能接流量（存储+模型都 ok 才是 200）
-.venv\Scripts\python -m pytest        # 169 passed（设 PET_AGENT_TEST_MYSQL_DSN 时含真机契约）
+.venv\Scripts\python -m pytest        # 181 passed（设 PET_AGENT_TEST_MYSQL_DSN 时含真机契约）
 .venv\Scripts\python -m evals.run     # routing/safety/memory 三套件，硬阈值
 .venv\Scripts\ruff.exe check .        # 静态检查
 ```
@@ -116,6 +116,8 @@ mysql -u root -p < backend/sql/v2.12-agent-idempotency.sql  # 幂等键（S1.8 P
 | `PET_AGENT_TASK_BACKEND` | `off` | `off`（同步）/ `memory`（单进程队列）/ `redis`（多副本队列） |
 | `PET_AGENT_TASK_QUEUE_SIZE` | `1000` | 内存队列上限，满了退回同步执行 |
 | `PET_AGENT_TASK_MAX_ATTEMPTS` | `3` | 消费失败重试次数，超过进死信 |
+| `PET_AGENT_TASK_VISIBLE_TIMEOUT_S` | `120` | 取走后超过这么久还没 ack，就认为消费者死了、搬回队列（`attempt+1`） |
+| `PET_AGENT_TASK_SWEEP_INTERVAL_S` | `60` | 巡检间隔；`<=0` 关闭（只保留启动时的 `recover`） |
 
 ## 接口
 
@@ -128,6 +130,9 @@ mysql -u root -p < backend/sql/v2.12-agent-idempotency.sql  # 幂等键（S1.8 P
 | GET | `/agent/sessions` | 我的会话列表（分页、按最后活跃倒序、只含本人）：`{total,page,page_size,items}` |
 | GET | `/agent/sessions/{id}/messages` | 历史消息（App 进聊天页） |
 | GET | `/agent/memory/me` | 我这个账号（可带 `pet_id`）记住的事实：`{id,key,label,value,confidence,update_time}` |
+| DELETE | `/agent/memory/me?key=&pet_id=` | 删除我的一条事实（物理删除）；不存在 404 |
+| GET | `/agent/memory/me/export?pet_id=` | 导出我的全部事实：`{version,exported_at,pet_id,facts}` |
+| GET | `/metrics` | Prometheus 文本：HTTP 请求数/耗时、run、工具调用、token、队列深度（无鉴权、无用户内容） |
 | GET | `/agent/usage/me?days=7` | 用量聚合：`runs / prompt_tokens / completion_tokens / total_tokens / avg_latency_ms` |
 | GET | `/agent/admin/sessions?page=&page_size=&user_id=&q=` | **管理员**：全部会话（按最后活跃时间倒序，带 `message_count`） |
 | GET | `/agent/admin/sessions/{id}` | **管理员**：会话详情 = 消息 + 每轮 run + 每步 step |
@@ -176,7 +181,7 @@ event: error   data: {code, message, retryable}
 ## 测试与评测
 
 - `ruff check .` → 静态检查（配置在 `pyproject.toml`，CI 第一道门）。
-- `pytest` → 169 项（设 `PET_AGENT_TEST_MYSQL_DSN` 时含真机 MySQL 契约）：路由、网关六道防线、存储契约（内存/MySQL 同一套断言）、图（L1/L2/hop 上限/坏参数）、API（SSE 事件序列、续传三种方式等价、越权、失败收敛、429 与配额头、记忆注入与用量聚合）、配额（分钟/日窗口、用户隔离、Redis fail-open、`Retry-After`）、事件存储（两实现同契约：序号、游标、裁剪、坏数据跳过）、记忆（抽取规则、ADD/UPDATE/NOOP、隔离、低置信度过滤）、会话列表（本人隔离、最后活跃排序、分页 total）、文档 RAG（切分/嵌入确定性/多编码解析/PDF 分页/OCR 缺失降级/去重与软删复活/检索隔离/删除后不可检索）、可观测（request_id/日志字段/readyz 降级）、管理端（403/401、列表筛选、详情含 steps、审计不含正文、伪造 header 无效）、幂等（同 key 只执行一次、并发唯一键、非法 key 422）、熔断（三态迁移、half_open 单探测、401 不误熔断、readyz 联动）。
+- `pytest` → 181 项（设 `PET_AGENT_TEST_MYSQL_DSN` 时含真机 MySQL 契约）：路由、网关六道防线、存储契约（内存/MySQL 同一套断言）、图（L1/L2/hop 上限/坏参数）、API（SSE 事件序列、续传三种方式等价、越权、失败收敛、429 与配额头、记忆注入与用量聚合）、配额（分钟/日窗口、用户隔离、Redis fail-open、`Retry-After`）、事件存储（两实现同契约：序号、游标、裁剪、坏数据跳过）、记忆（抽取规则、ADD/UPDATE/NOOP、隔离、低置信度过滤）、会话列表（本人隔离、最后活跃排序、分页 total）、文档 RAG（切分/嵌入确定性/多编码解析/PDF 分页/OCR 缺失降级/去重与软删复活/检索隔离/删除后不可检索）、可观测（request_id/日志字段/readyz 降级）、管理端（403/401、列表筛选、详情含 steps、审计不含正文、伪造 header 无效）、幂等（同 key 只执行一次、并发唯一键、非法 key 422）、熔断（三态迁移、half_open 单探测、401 不误熔断、readyz 联动）。
 - `python -m evals.run` → 三套件、阈值硬卡：`routing ≥ 95%`、`safety = 100%`、`memory = 100%`。
   用例在 `evals/cases.jsonl`，加一行就是加一条回归；报告落 `evals/reports/latest.json`。
 - 三者都不需要真模型：`ScriptedModel` 把模型的输出变成脚本，测的是**我们的编排**，不是模型的智商。
@@ -230,9 +235,16 @@ P1 专项（配额/用量/记忆，用独立账号 `token-7007`，限流放最�
 .venv\Scripts\python -m scripts.rag_smoke        # 10/10
 ```
 
+运维与数据自主专项（指标 / 记忆导出删除 / 在途消息巡检）：
+
+```bash
+.venv\Scripts\python -m scripts.ops_smoke        # 11/11（建议 TASK_SWEEP_INTERVAL_S=2、TASK_VISIBLE_TIMEOUT_S=1）
+```
+
 > 真机形态跑法：`REPO_BACKEND=mysql`、`EVENT_BACKEND=redis`、`RATE_LIMIT_BACKEND=redis`、
-> `TASK_BACKEND=redis`，六个冒烟全部可跑（10/9/6/8/8/10）。Redis 5 不支持 RESP3，客户端已固定 `protocol=2`。
-> 崩溃恢复：进程启动时先把 `:processing` 里的在途消息搬回队列再开消费，日志 `task inflight recovered on startup`。
+> `TASK_BACKEND=redis`，七个冒烟全部可跑（10/9/6/8/8/10/11）。Redis 5 不支持 RESP3，客户端已固定 `protocol=2`。
+> 崩溃恢复：进程启动时先把 `:processing` 里的在途消息搬回队列再开消费，日志 `task inflight recovered on startup`；
+> 运行期卡死的消息由巡检按 `TASK_VISIBLE_TIMEOUT_S` 回收，日志 `task inflight swept`。
 
 真实模型专项（必须有 key，验证"不是本地桩"）：
 

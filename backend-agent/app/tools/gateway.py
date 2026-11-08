@@ -24,6 +24,7 @@ from pydantic import ValidationError
 
 from ..core.errors import AgentError
 from ..core.logging import log_event
+from ..core.metrics import TOOL_CALLS, metrics
 from ..domain.models import ToolResult
 from .registry import ToolRegistry
 from .spec import ToolContext
@@ -180,6 +181,7 @@ class ToolGateway:
     ) -> ToolResult:
         if result.latency_ms == 0:
             result.latency_ms = int((time.perf_counter() - started) * 1000)
+        metrics.inc(TOOL_CALLS, {"tool": name, "ok": "true" if result.ok else "false"})
         log_event(
             tool_log,
             logging.INFO if result.ok else logging.WARNING,
