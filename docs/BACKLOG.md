@@ -2,7 +2,7 @@
 
 - 状态：活文档（每次交付后更新；做完的条目移到对应 REPORT，并从本表删除）
 - 更新：2026-11-08
-- 基线：`main` @ `d46e36d`，已完成到 **S1.17**（见 `docs/pet-agent-architecture.md` §12）
+- 基线：`main` @ `3ad4dec`，已完成到 **S1.18**（见 `docs/pet-agent-architecture.md` §12）
 
 ## 0. 怎么读这份文档
 
@@ -11,7 +11,7 @@
 3. 优先级按"卡不卡产品可用"分：P0 阻断、P1 该做、P2 值得做、P3 以后。
 4. 估算是"一个人、熟悉代码"的量级，不是承诺。
 
-统计：**P0 3 条（A1、A2、A3 已交付）· P1 8 条（B3/B5/B6/B7 已交付，剩 4 条）· P2 9 条 · P3 9 条 · 原项目卫生债 0 条**，原计划 42 条，剩余 22 条（P1 剩 4 + P2 9 + P3 9）。各批证据：E1/E3/E4/E5 见 `docs/reports/2026-11-08-s1.11-hygiene-debts.md`；E2/E6/E7 见 `docs/reports/2026-11-08-s1.12-e2-e6-e7.md`；E8/E13 见 `docs/reports/2026-11-08-s1.13-e8-e13.md`；E9/E10/E11/E12 见 `docs/reports/2026-11-08-s1.14-e9-e12.md`；A3 见 `docs/reports/2026-11-08-s1.15-doc-rag.md`；B3/B5/B7 见 `docs/reports/2026-11-08-s1.16-ops.md`；B6 见 `docs/reports/2026-11-08-s1.17-admin-console.md`。
+统计：**P0 3 条（A1、A2、A3 已交付）· P1 8 条（B3/B5/B6/B7 已交付，剩 4 条）· P2 9 条（C2 已交付，剩 8 条）· P3 9 条 · 原项目卫生债 0 条**，原计划 42 条，剩余 21 条（P1 剩 4 + P2 剩 8 + P3 9）。各批证据：E1/E3/E4/E5 见 `docs/reports/2026-11-08-s1.11-hygiene-debts.md`；E2/E6/E7 见 `docs/reports/2026-11-08-s1.12-e2-e6-e7.md`；E8/E13 见 `docs/reports/2026-11-08-s1.13-e8-e13.md`；E9/E10/E11/E12 见 `docs/reports/2026-11-08-s1.14-e9-e12.md`；A3 见 `docs/reports/2026-11-08-s1.15-doc-rag.md`；B3/B5/B7 见 `docs/reports/2026-11-08-s1.16-ops.md`；B6 见 `docs/reports/2026-11-08-s1.17-admin-console.md`；C2 见 `docs/reports/2026-11-08-s1.18-profile.md`。
 
 ---
 
@@ -45,7 +45,7 @@
 | # | 缺口 | 现状 | 依赖 / 卡点 | 验收标准 | 估算 |
 |---|---|---|---|---|---|
 | C1 | **情景记忆 `memory_episode`** | 表建了，从未写入；无向量 | 依赖向量库选型（pgvector） | 一次"上周洗澡"的对话能被召回为情景片段，并带原消息 id | 3 天 |
-| C2 | **用户画像 `profile_snapshot`** | 未建表、未实现 | 需要"从长期事实聚合画像"的规则 | 管理端能看"这只宠物的画像摘要"，且只由已确认事实生成 | 3 天 |
+| C2 | ✅ **用户画像 `profile_snapshot`**（2026-11-08，S1.18） | 已交付：版本化快照 + 确定性 builder + 记忆消费后重算 + 四接口 + 管理端画像页 | `routine`/行为趋势、人工修正、版本 diff、画像导出仍未做 | 已达成：`test_profile.py` 20 例、真机 `v2 facts=3`、Edge 实点画像页；**待办**：从日志聚合作息 | 已完成 |
 | C3 | **记忆抽取质量评测偏薄** | `evals` 里 `memory` 只有 2 条用例 | 需标注更多真实句式 | `memory` 套件 ≥40 条（含否定句"它不过敏"、多宠物、方言），阈值 ≥0.9 | 2 天 |
 | C4 | **引用回跳只覆盖 log** | `kind==='log'` 才可点；post / health 没有 locator | 需要后端 VO 补定位字段 | 健康记录引用能跳到对应日期；帖子引用能跳到帖子详情 | 2 天 |
 | C5 | **语音链路** | 无 | 参考 Open-LLM-VTuber（本地 ASR/TTS + 打断） | 浏览器录音 → 转写 → 走同一 `POST /agent/chat`；TTS 可关 | 5 天 |
@@ -108,4 +108,5 @@ E1–E13 全部完成，本表不再列条目。证据分布：
 6. ~~**E9 / E10 / E11 / E12**~~ ✅ 已完成（2026-11-08）：违规管理接真实接口、管理端新增/编辑用户真落库、话题归属改 `post.topic_id`、App `as any` 清零 + 假数据下架。见 `docs/reports/2026-11-08-s1.14-e9-e12.md`。**卫生债至此清零**，下一批建议 A3（文件/图片/视频 RAG）或 B1（RocketMQ）。
 7. ~~**A3 文档问答 RAG**~~ ✅ 已完成（2026-11-08）：`doc_file`/`doc_chunk` + 解析/切分/嵌入/检索 + `search_docs` 工具 + App 附件入口，`rag_smoke` 10/10。见 `docs/reports/2026-11-08-s1.15-doc-rag.md`。
 8. ~~**B3 / B5 / B7 运维三件套**~~ ✅ 已完成（2026-11-08）：在途消息巡检回收（`claimed` ZSET + `attempt+1`）、`/metrics` 六个指标、记忆删除/导出；`ops_smoke` 11/11。见 `docs/reports/2026-11-08-s1.16-ops.md`。
-9. ~~**B6 管理端三页**~~ ✅ 已完成（2026-11-08）：队列运维（现场 + 死信重放）、长期记忆（查/删）、知识图谱（宠物—事实—事件）；Edge 实点三页，`pytest` 183 passed。见 `docs/reports/2026-11-08-s1.17-admin-console.md`。下一批建议 **C2（用户画像 `profile_snapshot`）**、**B4（死信自动重试）** 或 **B2（多副本验证）**。
+9. ~~**B6 管理端三页**~~ ✅ 已完成（2026-11-08）：队列运维（现场 + 死信重放）、长期记忆（查/删）、知识图谱（宠物—事实—事件）；Edge 实点三页，`pytest` 183 passed。见 `docs/reports/2026-11-08-s1.17-admin-console.md`。
+10. ~~**C2 用户画像**~~ ✅ 已完成（2026-11-08）：`profile_snapshot` 版本化快照 + 确定性 builder + 记忆消费后重算 + 四接口 + 管理端画像页；`pytest` 203 passed、真机 `v2 facts=3`、Edge 实点。见 `docs/reports/2026-11-08-s1.18-profile.md`。下一批建议 **B4（死信自动重试）**、**B2（多副本验证）** 或 **C1（`memory_episode` 情景记忆）**。

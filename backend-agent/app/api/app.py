@@ -28,6 +28,7 @@ from ..core.ratelimit import RateLimiter, create_rate_limiter
 from ..graph import build_graph
 from ..llm import ChatModel, build_model
 from ..memory import MemoryService
+from ..profile import ProfileService
 from ..rag import DocumentService
 from ..rag.embedder import build_embedder
 from ..runtime import AgentRunner
@@ -57,6 +58,7 @@ def create_app(
     backend_breaker: CircuitBreaker | None = None,
     task_queue: TaskQueue | None = None,
     docs_service: Any = None,
+    profiles_service: Any = None,
 ) -> FastAPI:
     settings = settings or Settings()
     configure_logging(settings.log_level)
@@ -83,6 +85,13 @@ def create_app(
     )
     registry = build_registry(docs=document_service)
     tasks = task_queue if task_queue is not None else create_task_queue(settings)
+    # 画像服务：读接口、旁路重算、对话上下文注入共用同一实例（去抖状态也在这里）
+    profile_service = profiles_service or ProfileService(
+        repository,
+        keep_versions=settings.profile_keep_versions,
+        refresh_ttl_s=settings.profile_refresh_ttl_s,
+        vaccine_stale_days=settings.profile_vaccine_stale_days,
+    )
 
     async def audit(audit_record: ToolAudit) -> None:
         # 有队列就走旁路：审计落库不该占着对话的响应时间；
@@ -144,7 +153,7 @@ def create_app(
     worker = (
         TaskWorker(
             tasks,
-            build_handlers(memory, repository, docs=document_service),
+            build_handlers(memory, repository, docs=document_service, profiles=profile_service),
             topics=list(TOPICS),
             sweep_interval_s=settings.task_sweep_interval_s,
             visible_timeout_s=settings.task_visible_timeout_s,
@@ -161,6 +170,7 @@ def create_app(
         eventlog=store,
         memory=memory,
         tasks=tasks,
+        profiles=profile_service,
     )
     rate_limiter = limiter or create_rate_limiter(settings)
 
@@ -219,6 +229,7 @@ def create_app(
     app.state.tasks = tasks
     app.state.task_worker = worker
     app.state.docs = document_service
+    app.state.profiles = profile_service
 
     @app.exception_handler(AgentError)
     async def _agent_error(_: Request, exc: AgentError) -> JSONResponse:

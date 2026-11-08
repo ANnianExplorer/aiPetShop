@@ -46,6 +46,8 @@ from .schemas import (
     MemoryOut,
     MessageOut,
     MessagesOut,
+    ProfileListOut,
+    ProfileOut,
     ReplayDeadLetterOut,
     ReplayDeadLetterRequest,
     SessionItemOut,
@@ -56,6 +58,7 @@ from .schemas import (
 router = APIRouter()
 ready_log = logging.getLogger("agent.readiness")
 memory_log = logging.getLogger("agent.memory")
+profile_log = logging.getLogger("agent.profile")
 
 SSE_HEADERS = {
     "Cache-Control": "no-cache",
@@ -309,6 +312,89 @@ async def export_memory(
             )
             for f in facts
         ],
+    )
+
+
+def _profile_out(snapshot, *, stale: bool = False, with_user: bool = False) -> ProfileOut:
+    return ProfileOut(
+        id=snapshot.id,
+        user_id=snapshot.user_id if with_user else None,
+        pet_id=snapshot.pet_id,
+        version=snapshot.version,
+        fact_count=snapshot.fact_count,
+        confidence=snapshot.confidence,
+        create_time=snapshot.create_time,
+        stale=stale,
+        data=snapshot.data,
+    )
+
+
+def _profiles(request: Request):
+    service = getattr(request.app.state, "profiles", None)
+    if service is None:
+        raise NotFound("画像服务未启用")
+    return service
+
+
+@router.get("/agent/profile/me", response_model=ProfileOut)
+async def my_profile(
+    request: Request,
+    pet_id: str | None = Query(default=None, max_length=32),
+) -> ProfileOut:
+    """我的宠物画像（最新一版）。没有画像返回 404，由客户端引导先对话或手动重算。"""
+    identity = await _identity(request)
+    view = await _profiles(request).get(identity.user_id, pet_id)
+    if view is None:
+        raise NotFound("还没有画像：先聊两句，或调用 refresh 手动生成")
+    return _profile_out(view.snapshot, stale=view.stale)
+
+
+@router.post("/agent/profile/me/refresh", response_model=ProfileOut)
+async def refresh_my_profile(
+    request: Request,
+    pet_id: str | None = Query(default=None, max_length=32),
+) -> ProfileOut:
+    """按当前事实重算一版画像（同步返回新版本）。"""
+    identity = await _identity(request)
+    snapshot = await _profiles(request).rebuild(identity.user_id, pet_id)
+    log_event(profile_log, logging.INFO, "profile rebuilt", user_id=identity.user_id,
+              version=snapshot.version, facts=snapshot.fact_count)
+    return _profile_out(snapshot)
+
+
+@router.get("/agent/admin/profile", response_model=ProfileOut)
+async def admin_profile(
+    request: Request,
+    user_id: str = Query(min_length=1, max_length=32),
+    pet_id: str | None = Query(default=None, max_length=32),
+) -> ProfileOut:
+    """管理端：查看某个账号（某只宠物）的画像摘要。"""
+    admin = await _admin_identity(request)
+    view = await _profiles(request).get(user_id, pet_id)
+    if view is None:
+        raise NotFound("该账号还没有画像")
+    log_event(admin_log, logging.INFO, "admin.access", admin_id=admin.user_id,
+              target_user=user_id, scope="profile")
+    return _profile_out(view.snapshot, stale=view.stale, with_user=True)
+
+
+@router.get("/agent/admin/profile/versions", response_model=ProfileListOut)
+async def admin_profile_versions(
+    request: Request,
+    user_id: str = Query(min_length=1, max_length=32),
+    pet_id: str | None = Query(default=None, max_length=32),
+    limit: int = Query(default=10, ge=1, le=50),
+) -> ProfileListOut:
+    """管理端：画像版本历史（新→旧），用于 diff 与追责。"""
+    admin = await _admin_identity(request)
+    items = await _profiles(request).versions(user_id, pet_id, limit=limit)
+    log_event(admin_log, logging.INFO, "admin.access", admin_id=admin.user_id,
+              target_user=user_id, scope="profile.versions")
+    if not items:
+        raise NotFound("该账号还没有画像版本")
+    return ProfileListOut(
+        total=len(items),
+        items=[_profile_out(item, with_user=True) for item in items],
     )
 
 

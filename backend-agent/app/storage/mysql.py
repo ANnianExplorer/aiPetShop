@@ -9,6 +9,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from datetime import datetime
 from typing import Any
 from urllib.parse import unquote, urlparse
@@ -23,6 +24,7 @@ from ..domain.models import (
     Intent,
     MemoryFact,
     Message,
+    ProfileSnapshot,
     Role,
     Route,
     Run,
@@ -444,6 +446,102 @@ class MySqlRepository:
             )
             rows = await cur.fetchall()
         return [_row_to_fact(row) for row in rows]
+
+    # ------------------------------------------------------------ 画像快照
+    async def next_profile_version(self, user_id: str, pet_id: str | None) -> int:
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn, conn.cursor() as cur:
+            await cur.execute(
+                "SELECT COALESCE(MAX(version),0) FROM profile_snapshot"
+                " WHERE user_id=%s AND pet_id=%s",
+                (int(user_id), _pet_slot(pet_id)),
+            )
+            row = await cur.fetchone()
+        return int(row[0]) + 1 if row else 1
+
+    async def save_profile_snapshot(self, snapshot: ProfileSnapshot) -> ProfileSnapshot:
+        created = snapshot.create_time or _now()
+        payload = json.dumps(snapshot.data, ensure_ascii=False)
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn, conn.cursor() as cur:
+            try:
+                await cur.execute(
+                    "INSERT INTO profile_snapshot"
+                    "(id,user_id,pet_id,version,data,fact_count,confidence,create_time)"
+                    " VALUES(%s,%s,%s,%s,%s,%s,%s,%s)",
+                    (
+                        int(snapshot.id),
+                        int(snapshot.user_id),
+                        _pet_slot(snapshot.pet_id),
+                        int(snapshot.version),
+                        payload,
+                        int(snapshot.fact_count),
+                        float(snapshot.confidence),
+                        created,
+                    ),
+                )
+            except pymysql.err.IntegrityError as exc:  # 并发重算时唯一键兜底
+                raise ValueError(f"画像版本已存在：{snapshot.version}") from exc
+        return replace(snapshot, create_time=created)
+
+    async def latest_profile_snapshot(
+        self, user_id: str, pet_id: str | None
+    ) -> ProfileSnapshot | None:
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn, conn.cursor() as cur:
+            await cur.execute(
+                "SELECT id,user_id,pet_id,version,data,fact_count,confidence,create_time"
+                " FROM profile_snapshot WHERE user_id=%s AND pet_id=%s"
+                " ORDER BY version DESC LIMIT 1",
+                (int(user_id), _pet_slot(pet_id)),
+            )
+            row = await cur.fetchone()
+        return _row_to_profile(row) if row else None
+
+    async def list_profile_versions(
+        self, user_id: str, pet_id: str | None, limit: int = 10
+    ) -> list[ProfileSnapshot]:
+        if limit <= 0:
+            return []
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn, conn.cursor() as cur:
+            await cur.execute(
+                "SELECT id,user_id,pet_id,version,data,fact_count,confidence,create_time"
+                " FROM profile_snapshot WHERE user_id=%s AND pet_id=%s"
+                " ORDER BY version DESC LIMIT %s",
+                (int(user_id), _pet_slot(pet_id), int(limit)),
+            )
+            rows = await cur.fetchall()
+        return [_row_to_profile(row) for row in rows]
+
+    async def prune_profile_versions(self, user_id: str, pet_id: str | None, keep: int) -> int:
+        if keep < 1:
+            return 0
+        latest = await self.latest_profile_snapshot(user_id, pet_id)
+        if latest is None or latest.version <= keep:
+            return 0
+        threshold = latest.version - keep
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn, conn.cursor() as cur:
+            await cur.execute(
+                "DELETE FROM profile_snapshot WHERE user_id=%s AND pet_id=%s AND version<=%s",
+                (int(user_id), _pet_slot(pet_id), int(threshold)),
+            )
+            return int(cur.rowcount or 0)
+
+    async def latest_memory_update(self, user_id: str, pet_id: str | None) -> str | None:
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn, conn.cursor() as cur:
+            await cur.execute(
+                "SELECT MAX(update_time) FROM memory_fact"
+                " WHERE user_id=%s AND pet_id=%s AND is_delete=0",
+                (int(user_id), _pet_slot(pet_id)),
+            )
+            row = await cur.fetchone()
+        if not row or not row[0]:
+            return None
+        stamp = row[0]
+        return stamp.strftime("%Y-%m-%d %H:%M:%S") if hasattr(stamp, "strftime") else str(stamp)
 
     # ------------------------------------------------------------ 用量
     async def usage_summary(self, user_id: str, since: str | None = None) -> UsageSummary:
@@ -894,6 +992,27 @@ def _row_to_document(row: Any) -> Document:
         error=error,
         chunk_count=int(chunk_count or 0),
         create_time=created if isinstance(created, datetime) else None,
+    )
+
+
+def _row_to_profile(row: Any) -> ProfileSnapshot:
+    (pid_row, uid, pid, version, data, fact_count, confidence, created) = row
+    try:
+        payload = json.loads(data) if data else {}
+    except (TypeError, ValueError):
+        # 脏数据不让整页 500：画像读不出来就当作空文档，接口层会提示重算
+        payload = {}
+    return ProfileSnapshot(
+        id=str(pid_row),
+        user_id=str(uid),
+        pet_id=str(pid) if pid else None,
+        version=int(version),
+        data=payload if isinstance(payload, dict) else {},
+        fact_count=int(fact_count or 0),
+        confidence=float(confidence or 0),
+        create_time=created.strftime("%Y-%m-%d %H:%M:%S")
+        if hasattr(created, "strftime")
+        else (str(created) if created else None),
     )
 
 

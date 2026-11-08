@@ -95,6 +95,26 @@ class MemoryExportOut(BaseModel):
     facts: list[MemoryFactOut]
 
 
+class ProfileOut(BaseModel):
+    """画像快照：`data` 内部结构由 `build_profile` 决定，对外按 JSON 原样透出。"""
+
+    id: str
+    user_id: str | None = None
+    pet_id: str | None = None
+    version: int
+    fact_count: int
+    confidence: float
+    create_time: str | None = None
+    # 事实比这份画像新时为 True：前端据此提示「有更新，建议重算」
+    stale: bool = False
+    data: dict[str, Any]
+
+
+class ProfileListOut(BaseModel):
+    total: int
+    items: list[ProfileOut]
+
+
 class GraphNodeOut(BaseModel):
     id: str
     kind: str  # pet / fact / event

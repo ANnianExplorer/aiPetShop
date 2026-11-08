@@ -65,6 +65,12 @@ def make_nodes(
             system += "\n\n已知的这只宠物的事实（来自你之前的对话，可直接使用）：\n" + "\n".join(
                 f"- {line}" for line in memory_lines
             )
+        profile_lines = list(state.get("profile_lines") or [])
+        if profile_lines:
+            # 画像只放「风险 / 待办」：事实明细已经在上面，重复注入只会浪费 token
+            system += "\n\n这只宠物的画像摘要（长期风险与待办，回答相关问题时优先考虑）：\n" + "\n".join(
+                f"- {line}" for line in profile_lines
+            )
         messages: list[dict[str, Any]] = [{"role": "system", "content": system}]
         messages.extend(state.get("history") or [])
         messages.append({"role": "user", "content": state["question"]})

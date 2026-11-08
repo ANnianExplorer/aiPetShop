@@ -28,6 +28,7 @@ from ..domain.router import classify
 from ..graph import SYSTEM_PROMPT
 from ..llm.base import ChatModel
 from ..memory import MemoryService
+from ..profile import ProfileService
 from ..storage.base import AgentRepository
 from ..tasks.base import TaskQueue, TaskQueueFull
 from ..tools import ToolGateway
@@ -36,6 +37,7 @@ from .eventlog import EventStore
 FALLBACK_ANSWER = "（这次没有生成内容，换个说法再问我一次？）"
 run_log = logging.getLogger("agent.run")
 memory_log = logging.getLogger("agent.memory")
+profile_log = logging.getLogger("agent.profile")
 
 
 @dataclass(frozen=True)
@@ -68,6 +70,7 @@ class AgentRunner:
         eventlog: EventStore,
         memory: MemoryService | None = None,
         tasks: TaskQueue | None = None,
+        profiles: ProfileService | None = None,
     ) -> None:
         self._settings = settings
         self._repo = repo
@@ -77,6 +80,7 @@ class AgentRunner:
         self._eventlog = eventlog
         self._memory = memory
         self._tasks = tasks
+        self._profiles = profiles
 
     async def stream(self, cmd: ChatCommand, caller: Caller) -> AsyncIterator[Event]:
         if self._model is None or self._graph is None:
@@ -185,6 +189,7 @@ class AgentRunner:
                 "run_id": run_id,
                 "history": history,
                 "memory_lines": memory_lines,
+                "profile_lines": await self._profile_context(caller.user_id, cmd.pet_id),
                 "citations": [],
                 "hops": 0,
             }
@@ -408,6 +413,14 @@ class AgentRunner:
                 log_event(memory_log, logging.WARNING, "task queue full, memory inline")
         with contextlib.suppress(Exception):
             await self._memory.observe(user_id, pet_id, text)
+
+    async def _profile_context(self, user_id: str, pet_id: str | None) -> list[str]:
+        """画像只贡献「风险 / 待办」两行；没有画像或读失败都不影响对话。"""
+        if self._profiles is None:
+            return []
+        with contextlib.suppress(Exception):
+            return await self._profiles.context_lines(user_id, pet_id)
+        return []
 
     # ------------------------------------------------------------------ 内部
     async def _finish_failed(self, run_id: str | None, err: AgentError, started: float) -> None:

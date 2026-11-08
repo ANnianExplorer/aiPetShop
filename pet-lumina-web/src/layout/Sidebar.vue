@@ -21,6 +21,7 @@ const menuItems = [
   { path: '/agent/sessions', icon: 'forum', label: '会话工作台' },
   { path: '/agent/memory', icon: 'psychology', label: '长期记忆' },
   { path: '/agent/graph', icon: 'hub', label: '知识图谱' },
+  { path: '/agent/profile', icon: 'pets', label: '宠物画像' },
   { path: '/agent/queue', icon: 'queue', label: '队列运维' },
 ]
 

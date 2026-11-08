@@ -23,6 +23,8 @@ class AgentState(TypedDict, total=False):
     history: list[dict[str, Any]]
     # 长期记忆里召回的事实（由 runtime 查库后注入，图本身不碰存储）
     memory_lines: list[str]
+    # 画像摘要（只有「风险 / 待办」两行，同样由 runtime 注入）
+    profile_lines: list[str]
 
     # 过程
     route: Route

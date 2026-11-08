@@ -43,7 +43,7 @@ App / 管理端 ──SSE──>  api/          传输层：鉴权、请求校�
 | `app/memory/` | `extract`/`ops`/`service` | 事实抽取（规则）、ADD/UPDATE/NOOP 算子、写入与召回 |
 | `app/tasks/` | `base`/`inprocess`/`redis`/`consumers`/`worker` | 旁路任务队列：记忆抽取与审计出请求路径；队列满退回同步 |
 | `app/rag/` | `models`/`chunker`/`embedder`/`ocr`/`media`/`parsers`/`service` | 文档问答：解析→切分→嵌入→检索；缺 `tesseract`/`ffmpeg` 时明确降级并给原因 |
-| `tests/` | 契约级单测 | 183 项（含真机契约），不依赖网络/密钥 |
+| `tests/` | 契约级单测 | 203 项（含真机契约），不依赖网络/密钥 |
 | `evals/` | 评测用例 + 阈值 runner | 23 条用例，不过阈值就退出码非 0 |
 
 ## 快速开始
@@ -61,7 +61,7 @@ copy .env.example .env          # 填 PET_AGENT_LLM_API_KEY
 ```bash
 curl http://localhost:8099/healthz    # 进程活着
 curl http://localhost:8099/readyz     # 能接流量（存储+模型都 ok 才是 200）
-.venv\Scripts\python -m pytest        # 183 passed（设 PET_AGENT_TEST_MYSQL_DSN 时含真机契约）
+.venv\Scripts\python -m pytest        # 203 passed（设 PET_AGENT_TEST_MYSQL_DSN 时含真机契约）
 .venv\Scripts\python -m evals.run     # routing/safety/memory 三套件，硬阈值
 .venv\Scripts\ruff.exe check .        # 静态检查
 ```
@@ -144,6 +144,10 @@ mysql -u root -p < backend/sql/v2.12-agent-idempotency.sql  # 幂等键（S1.8 P
 | POST | `/agent/documents` | `multipart`：`file` + 可选 `pet_id`；202 返回记录（`status=0` 排队），去重按 `(user, sha256)` |
 | GET | `/agent/documents` | 本人文档列表（`limit` 1–100，倒序） |
 | GET/DELETE | `/agent/documents/{id}` | 详情 / 软删（他人 id 一律 404，不泄露存在性） |
+| GET | `/agent/profile/me?pet_id=` | 我这个账号的宠物画像：`{version,fact_count,confidence,stale,data}`；从未生成过 404 |
+| POST | `/agent/profile/me/refresh?pet_id=` | 强制重算画像（版本 +1） |
+| GET | `/agent/admin/profile?user_id=&pet_id=` | **管理员**：他人画像（读操作写 `admin.access`，`scope=profile`） |
+| GET | `/agent/admin/profile/versions?user_id=&pet_id=&limit=` | **管理员**：画像版本历史（新→旧，`limit` 1–20） |
 
 管理端权限只认 token 换来的 `role`（来自 Java `/auth/current`），请求头 `x-user-role` 在生产
 （`AUTH_MODE=backend`）**一律忽略**；非管理员 `403 forbidden`。每次读他人数据打一条
@@ -181,7 +185,7 @@ event: error   data: {code, message, retryable}
 ## 测试与评测
 
 - `ruff check .` → 静态检查（配置在 `pyproject.toml`，CI 第一道门）。
-- `pytest` → 183 项（设 `PET_AGENT_TEST_MYSQL_DSN` 时含真机 MySQL 契约）：路由、网关六道防线、存储契约（内存/MySQL 同一套断言）、图（L1/L2/hop 上限/坏参数）、API（SSE 事件序列、续传三种方式等价、越权、失败收敛、429 与配额头、记忆注入与用量聚合）、配额（分钟/日窗口、用户隔离、Redis fail-open、`Retry-After`）、事件存储（两实现同契约：序号、游标、裁剪、坏数据跳过）、记忆（抽取规则、ADD/UPDATE/NOOP、隔离、低置信度过滤、导出与删除）、会话列表（本人隔离、最后活跃排序、分页 total）、文档 RAG（切分/嵌入确定性/多编码解析/PDF 分页/OCR 缺失降级/去重与软删复活/检索隔离/删除后不可检索）、可观测（request_id/日志字段/readyz 降级/指标模板与不含用户内容）、管理端（403/401、列表筛选、详情含 steps、审计不含正文、伪造 header 无效、删记忆审计、三层图谱）、幂等（同 key 只执行一次、并发唯一键、非法 key 422）、熔断（三态迁移、half_open 单探测、401 不误熔断、readyz 联动）、队列（启动补偿、死信重放、可见性超时巡检）。
+- `pytest` → 203 项（设 `PET_AGENT_TEST_MYSQL_DSN` 时含真机 MySQL 契约；不带 DSN 为 192 通过 + 1 跳过）：路由、网关六道防线、存储契约（内存/MySQL 同一套断言）、图（L1/L2/hop 上限/坏参数）、API（SSE 事件序列、续传三种方式等价、越权、失败收敛、429 与配额头、记忆注入与用量聚合）、配额（分钟/日窗口、用户隔离、Redis fail-open、`Retry-After`）、事件存储（两实现同契约：序号、游标、裁剪、坏数据跳过）、记忆（抽取规则、ADD/UPDATE/NOOP、隔离、低置信度过滤、导出与删除）、会话列表（本人隔离、最后活跃排序、分页 total）、文档 RAG（切分/嵌入确定性/多编码解析/PDF 分页/OCR 缺失降级/去重与软删复活/检索隔离/删除后不可检索）、可观测（request_id/日志字段/readyz 降级/指标模板与不含用户内容）、管理端（403/401、列表筛选、详情含 steps、审计不含正文、伪造 header 无效、删记忆审计、三层图谱、他人画像与审计）、画像（确定性构建、斤换 kg、低置信度忽略、疫苗过期进 careGaps、版本递增与裁剪、事实更新后 stale）、幂等（同 key 只执行一次、并发唯一键、非法 key 422）、熔断（三态迁移、half_open 单探测、401 不误熔断、readyz 联动）、队列（启动补偿、死信重放、可见性超时巡检）。
 - `python -m evals.run` → 三套件、阈值硬卡：`routing ≥ 95%`、`safety = 100%`、`memory = 100%`。
   用例在 `evals/cases.jsonl`，加一行就是加一条回归；报告落 `evals/reports/latest.json`。
 - 三者都不需要真模型：`ScriptedModel` 把模型的输出变成脚本，测的是**我们的编排**，不是模型的智商。

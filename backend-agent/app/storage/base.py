@@ -14,6 +14,7 @@ from typing import Any, Protocol
 from ..domain.models import (
     MemoryFact,
     Message,
+    ProfileSnapshot,
     Run,
     RunDetail,
     RunStatus,
@@ -109,6 +110,35 @@ class AgentRepository(Protocol):
 
     # ---- 用量 ----
     async def usage_summary(self, user_id: str, since: str | None = None) -> UsageSummary: ...
+
+    # ---- 画像快照（追加式版本） ----
+    async def next_profile_version(self, user_id: str, pet_id: str | None) -> int:
+        """返回该 `(user, pet)` 的下一个版本号（1 起；并发下由唯一键兜底）。"""
+        ...
+
+    async def save_profile_snapshot(self, snapshot: ProfileSnapshot) -> ProfileSnapshot:
+        """写入一版画像；同一 `(user, pet, version)` 重复写入抛 `ValueError`。"""
+        ...
+
+    async def latest_profile_snapshot(
+        self, user_id: str, pet_id: str | None
+    ) -> ProfileSnapshot | None:
+        """取最新一版；没有返回 None（接口层转 404）。"""
+        ...
+
+    async def list_profile_versions(
+        self, user_id: str, pet_id: str | None, limit: int = 10
+    ) -> list[ProfileSnapshot]:
+        """按版本倒序返回历史快照，供管理端 diff。"""
+        ...
+
+    async def prune_profile_versions(self, user_id: str, pet_id: str | None, keep: int) -> int:
+        """只保留最近 `keep` 版，返回删除条数（画像膨胀保护）。"""
+        ...
+
+    async def latest_memory_update(self, user_id: str, pet_id: str | None) -> str | None:
+        """最新一条事实的更新时间：用于判断画像是否过期（stale）。"""
+        ...
 
     # ---- 管理端只读（调用方必须先校验 admin 角色，仓储层不做权限判断） ----
     async def list_sessions(

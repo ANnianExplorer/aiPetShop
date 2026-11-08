@@ -1,7 +1,7 @@
-# 规格：Agent Runtime HTTP/SSE 契约 v1.10
+# 规格：Agent Runtime HTTP/SSE 契约 v1.11
 
 - 状态：Frozen（实现已按此验收；破坏性变更需升 v2）
-- 日期：2026-11-08（v1.10 增管理端队列/记忆/图谱与 I30–I32；v1.9 记忆删除导出与 `/metrics`；v1.8 文档问答与 I23–I26；v1.7 App 会话列表与 I22；v1.6 队列运维接口；v1.5 记忆最终一致；v1.4 幂等与熔断；v1.3 管理端）
+- 日期：2026-11-08（v1.11 增宠物画像与 I33–I36；v1.10 管理端队列/记忆/图谱与 I30–I32；v1.9 记忆删除导出与 `/metrics`；v1.8 文档问答与 I23–I26；v1.7 App 会话列表与 I22；v1.6 队列运维接口；v1.5 记忆最终一致；v1.4 幂等与熔断；v1.3 管理端）
 - 实现：`backend-agent/app/api/`
 - 关联：[SDD](../sdd/pet-agent-sdd.md) · [ADR-0003](../adr/0003-sse-event-contract.md)
 
@@ -300,6 +300,35 @@ App 的历史入口。只返回 **token 解析出的本人**会话，不接受 `
 3. **图谱规模有上限**：事实最多 50 条，会话最多 10 个、每会话最多 10 轮；超出部分不画（避免前端力导向图卡死）。
 4. **管理端写操作必须审计**：删记忆记 `admin.access` 且 `scope="memory.delete"`，看图记 `scope="graph"`，只记关系不记正文。
 
+## 6.9 宠物画像（S1.18 / BACKLOG C2）
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/agent/profile/me?pet_id=` | 本人当前画像：`{id, pet_id, version, fact_count, confidence, create_time, stale, data}`；从未生成过 `404` |
+| POST | `/agent/profile/me/refresh?pet_id=` | 强制重算并返回新版本（版本号单调 +1） |
+| GET | `/agent/admin/profile?user_id=&pet_id=` | 管理员查看他人画像；不存在 `404`；读操作必留审计 |
+| GET | `/agent/admin/profile/versions?user_id=&pet_id=&limit=` | 版本历史（新→旧），`limit` 1–20 |
+
+画像 `data` 的固定结构（**字段要么有值、要么整组不出现**，不做占位）：
+
+```
+basics      { name?, age?, weightKg?, weightRaw? }
+traits      { appetite? }
+preferences { likes?: string[], avoids?: string[] }
+riskFlags   [{ text, severity, evidence }]
+careGaps    [{ text, reason? }]
+evidence    [{ factId, key, label, value, confidence }]
+meta        { factWatermark, builtAt }
+```
+
+约定：
+
+1. **只由已确认事实生成**：输入是 `memory_fact` 中 `confidence >= 0.7` 的事实，同一 key 取置信度最高的一条；没有事实的字段不输出，不拿模型"编"。
+2. **确定性**：同一批事实重复构建必须产出同一份 `data`（除 `meta.builtAt`）；因此 builder 是纯函数，不调模型。
+3. **可追溯**：`evidence` 每条都带 `factId`，管理端可点回事实；删掉事实后重建，结论随之消失。
+4. **过期标记而非静默旧值**：`stale=true` 表示「事实比画像新」，前端必须显式提示；判定用 `meta.factWatermark` 与 `memory_fact` 的最大 `update_time` 比较。
+5. **因果顺序**：重算挂在记忆消费之后（同一个 consumer），不允许与记忆写入并发——否则会产出 `fact_count=0` 的空画像。
+
 ## 7. 不变量（必须永远成立）
 
 | 编号 | 断言 | 验证 |
@@ -337,13 +366,18 @@ App 的历史入口。只返回 **token 解析出的本人**会话，不接受 `
 | I31 | 管理端图谱三层齐全：1 个宠物节点 + N 个事实节点 + M 个运行节点，所有边都从宠物节点出发 | `test_admin.py::test_admin_graph_has_three_layers` |
 | I32 | 图谱只读 Agent 侧数据，不因 Java 侧字段缺失而 500；规模受 `sessions`/`runs_per_session` 上限约束 | 同上（上限参数在 6.8 约定 3） |
 
+| I33 | 画像只由 `confidence >= 0.7` 的事实生成；无事实的字段不出现（不臆造） | `test_profile.py::test_builder_omits_unknown_sections`、`test_builder_ignores_low_confidence` |
+| I34 | 同一批事实重复构建结果一致（除 `meta.builtAt`） | `test_profile.py::test_builder_is_deterministic` |
+| I35 | 事实更新后画像标 `stale=true`，重建后清除 | `test_profile.py::test_profile_marks_stale_when_new_fact_arrives` |
+| I36 | 画像只有本人可读；管理端读取他人画像需 admin 且留 `admin.access`（`scope="profile"`） | `test_profile.py::test_profile_isolated_between_users`、`test_admin_reads_other_users_profile_with_audit` |
+
 ## 8. 验收用例（可执行）
 
 ```powershell
 cd backend-agent
 # 含真机仓储契约测试（需要 DSN，否则跳过 mysql 变体）
 $env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:<本机口令>@127.0.0.1:3306/petlumina"
-.\.venv\Scripts\python -m pytest              # 183 passed（含真机 MySQL 契约；不带 DSN 为 173）
+.\.venv\Scripts\python -m pytest              # 203 passed（含真机 MySQL 契约；不带 DSN 为 192 passed + 1 skipped）
 .\.venv\Scripts\python -m evals.run           # routing 15/15, safety 6/6, memory 2/2
 .\.venv\Scripts\python -m scripts.e2e_smoke       # 10/10
 .\.venv\Scripts\python -m scripts.p1_smoke        # 9/9（配额/用量/记忆）
@@ -370,3 +404,4 @@ $env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:<本机口令>@127.0.0.1:3306/petl
 | v1.8 | 2026-11-08 | 增 6.6 文档问答接口（能力矩阵/上传/列表/详情/删除）、状态语义与 I23–I26；验收命令 169 passed、补 `rag_smoke`（BACKLOG A3 / S1.15） |
 | v1.9 | 2026-11-08 | 增 6.7 记忆删除/导出与 `/metrics`、在途消息可见性超时语义、I27–I29；验收命令 181 passed、补 `ops_smoke`（BACKLOG B3·B5·B7 / S1.16） |
 | v1.10 | 2026-11-08 | 增 6.8 管理端队列现场/死信重放/管理员删记忆/三层图谱、I30–I32；验收命令 183 passed（BACKLOG B6 / S1.17） |
+| v1.11 | 2026-11-08 | 增 6.9 宠物画像（四个接口 + data 结构 + 五条约定）、I33–I36；验收命令 203 passed（BACKLOG C2 / S1.18） |

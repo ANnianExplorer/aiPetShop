@@ -108,9 +108,26 @@ class MemoryFact:
 
 
 @dataclass(frozen=True)
+class ProfileSnapshot:
+    """画像快照：同一 `(user, pet)` 追加式版本，不覆盖历史。
+
+    `data` 是结构化画像（basics/traits/preferences/riskFlags/careGaps/evidence），
+    每条结论都能通过 `evidence[].factId` 回放到 `memory_fact`。
+    """
+
+    id: str
+    user_id: str
+    pet_id: str | None
+    version: int
+    data: dict[str, Any]
+    fact_count: int = 0
+    confidence: float = 0.0
+    create_time: str | None = None
+
+
+@dataclass(frozen=True)
 class UsageSummary:
     """按用户聚合的用量：给「我这个月花了多少 token」这类问题提供数据。"""
-
     runs: int = 0
     prompt_tokens: int = 0
     completion_tokens: int = 0

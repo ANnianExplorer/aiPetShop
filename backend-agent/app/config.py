@@ -87,6 +87,11 @@ class Settings(BaseSettings):
     doc_storage_dir: str = "data/docs"
     doc_max_bytes: int = Field(default=20 * 1024 * 1024, ge=1024)
 
+    # ---- 画像 ----
+    profile_keep_versions: int = Field(default=20, ge=1, le=200)
+    profile_refresh_ttl_s: int = Field(default=300, ge=0)
+    profile_vaccine_stale_days: int = Field(default=300, ge=1)
+
     # ---- 通道策略 ----
     allowed_channels: tuple[str, ...] = ("app", "web", "internal")
     cors_origins: tuple[str, ...] = ("*",)

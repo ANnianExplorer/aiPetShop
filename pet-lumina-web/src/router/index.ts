@@ -146,6 +146,12 @@ const routes = [
         meta: { title: '知识图谱' },
       },
       {
+        path: 'agent/profile',
+        name: 'agentProfile',
+        component: () => import('@/views/agent/Profile.vue'),
+        meta: { title: '宠物画像' },
+      },
+      {
         path: 'settings',
         name: 'systemSettings',
         component: () => import('@/views/settings/SystemSettings.vue'),

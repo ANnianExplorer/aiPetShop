@@ -232,4 +232,64 @@ export function getAdminGraph(params: {
   })
 }
 
+export interface AdminProfileEvidence {
+  key: string
+  value: string
+  confidence: number
+  factId?: string
+}
+
+export interface AdminProfileDoc {
+  basics?: Record<string, unknown>
+  traits?: Record<string, unknown>
+  preferences?: Array<{ text: string }>
+  riskFlags?: Array<{ text: string }>
+  careGaps?: Array<{ text: string }>
+  evidence?: AdminProfileEvidence[]
+  meta?: { factWatermark?: string; builtAt?: string }
+}
+
+export interface AdminProfile {
+  id: string
+  user_id: string | null
+  pet_id: string | null
+  version: number
+  fact_count: number
+  confidence: number
+  create_time: string | null
+  stale: boolean
+  data: AdminProfileDoc
+}
+
+export interface AdminProfileVersionList {
+  total: number
+  items: AdminProfile[]
+}
+
+export function getAdminProfile(params: {
+  userId: string
+  petId?: string | null
+}): Promise<AdminProfile> {
+  return agent.get('/agent/admin/profile', {
+    params: {
+      user_id: params.userId,
+      ...(params.petId ? { pet_id: params.petId } : {}),
+    },
+  })
+}
+
+export function getAdminProfileVersions(params: {
+  userId: string
+  petId?: string | null
+  limit?: number
+}): Promise<AdminProfileVersionList> {
+  return agent.get('/agent/admin/profile/versions', {
+    params: {
+      user_id: params.userId,
+      ...(params.petId ? { pet_id: params.petId } : {}),
+      limit: params.limit ?? 10,
+    },
+  })
+}
+
 export default agent

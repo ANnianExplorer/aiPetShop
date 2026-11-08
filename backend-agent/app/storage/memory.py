@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from datetime import datetime
 from typing import Any
 
@@ -11,6 +12,7 @@ from ..domain.models import (
     DayUsage,
     MemoryFact,
     Message,
+    ProfileSnapshot,
     Role,
     Run,
     RunDetail,
@@ -40,6 +42,8 @@ class InMemoryRepository:
         self._documents: dict[str, Document] = {}
         self._doc_sha: dict[tuple[str, str], str] = {}
         self._chunks: dict[str, list[Chunk]] = {}
+        # 画像快照：(user, pet) -> 版本列表（升序），模拟追加式版本表
+        self._profiles: dict[tuple[str, str], list[ProfileSnapshot]] = {}
 
     # ------------------------------------------------------------ 会话
     async def get_or_create_session(
@@ -314,6 +318,60 @@ class InMemoryRepository:
             avg_latency_ms=avg,
         )
 
+    # ---- 画像快照 ----
+    @staticmethod
+    def _profile_slot(user_id: str, pet_id: str | None) -> tuple[str, str]:
+        return user_id, pet_id or ""
+
+    async def next_profile_version(self, user_id: str, pet_id: str | None) -> int:
+        versions = self._profiles.get(self._profile_slot(user_id, pet_id)) or []
+        return (versions[-1].version + 1) if versions else 1
+
+    async def save_profile_snapshot(self, snapshot: ProfileSnapshot) -> ProfileSnapshot:
+        slot = self._profile_slot(snapshot.user_id, snapshot.pet_id)
+        versions = self._profiles.setdefault(slot, [])
+        if any(item.version == snapshot.version for item in versions):
+            # 与 MySQL 唯一键同语义：并发重算时只有一个写入成功
+            raise ValueError(f"画像版本已存在：{snapshot.version}")
+        saved = replace(snapshot, create_time=snapshot.create_time or _now())
+        versions.append(saved)
+        versions.sort(key=lambda item: item.version)
+        return saved
+
+    async def latest_profile_snapshot(
+        self, user_id: str, pet_id: str | None
+    ) -> ProfileSnapshot | None:
+        versions = self._profiles.get(self._profile_slot(user_id, pet_id)) or []
+        return versions[-1] if versions else None
+
+    async def list_profile_versions(
+        self, user_id: str, pet_id: str | None, limit: int = 10
+    ) -> list[ProfileSnapshot]:
+        if limit <= 0:
+            return []
+        versions = self._profiles.get(self._profile_slot(user_id, pet_id)) or []
+        return list(reversed(versions))[:limit]
+
+    async def prune_profile_versions(self, user_id: str, pet_id: str | None, keep: int) -> int:
+        if keep < 1:
+            return 0
+        slot = self._profile_slot(user_id, pet_id)
+        versions = self._profiles.get(slot) or []
+        if len(versions) <= keep:
+            return 0
+        removed = len(versions) - keep
+        self._profiles[slot] = versions[-keep:]
+        return removed
+
+    async def latest_memory_update(self, user_id: str, pet_id: str | None) -> str | None:
+        slot = (user_id, pet_id or "")
+        stamps = [
+            fact.update_time or fact.create_time
+            for key, fact in self._facts.items()
+            if (key[0], key[1]) == slot and (fact.update_time or fact.create_time)
+        ]
+        return max(stamps) if stamps else None
+
     async def usage_overview(self, since: str | None = None) -> UsageOverview:
         runs = 0
         prompt = 0
@@ -431,4 +489,6 @@ class InMemoryRepository:
         return None
 
 def _now() -> str:
-    return datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    # 微秒精度：内存实现没有数据库的 NOW()，同一秒内多次写入必须可区分，
+    # 否则「画像是否过期」「同秒会话排序」这类比较会失真。
+    return datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")

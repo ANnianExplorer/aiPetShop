@@ -294,6 +294,18 @@ cd ..\pet-lumina-app; npm run dev
 | 权限来源 | 与 6.3/6.4 一致：`role` 来自 Java `/auth/current`（S1.17 给 `LoginUserVO` 补了 `role` 字段），后端模式下忽略请求头 | `app/api/deps.py`、`backend/.../model/vo/LoginUserVO.java` |
 | 前端渲染约束 | 节点尺寸由 `data.symbolSize` 给（series 级回调在本版 vue-echarts 下取不到 params，会退化成 0 尺寸只剩标签），`value` 必须有占位值 | `Graph.vue` 注释、S1.17 REPORT 的 D4 |
 
+### 8.11 宠物画像快照（S1.18 / BACKLOG C2）
+
+| 关注点 | 做法 | 位置 |
+| --- | --- | --- |
+| 定位 | 画像是「事实的当前快照」：`memory_fact` 存原子事实，`profile_snapshot` 存按规则聚合的文档，二者分工明确 | `docs/plans/s1.18-profile.md` §0 |
+| 生成方式 | **确定性纯函数**：只读 `confidence >= 0.7` 的事实，同 key 取最高；不调模型，同一批事实重复构建结果一致（除 `meta.builtAt`） | `app/profile/builder.py` 的 `build_profile` |
+| 版本 | 追加式：每次重建 `version + 1`，`UNIQUE(user_id, pet_id, version)`，`prune` 保留最近 `PROFILE_KEEP_VERSIONS=20` 版；版本可 diff | `app/storage/{memory,mysql}.py`、`backend/sql/v2.17-profile.sql` |
+| 触发 | 挂在记忆消费之后（同一 consumer 内 `should_refresh` → `rebuild`），不与记忆写入并发；去抖 `PROFILE_REFRESH_TTL_S=300` | `app/tasks/consumers.py`、`app/profile/service.py` |
+| 过期语义 | 快照写 `meta.factWatermark`；事实的最大 `update_time` 更大即 `stale=true`，前端必须显式提示而不是静默展示旧值 | `ProfileService.is_stale`、`Profile.vue` |
+| 对话注入 | 只注入「风险 / 待办」两行，不把整份画像塞进 system（控制 token，也避免模型复述内部结构） | `app/graph/nodes.py` 的 `prepare_node` |
+| 可追溯 | `evidence` 每条带 `factId`；删事实后重建，结论随之消失 | `Profile.vue` 证据表、S1.18 REPORT D1 |
+
 ## 9. 质量属性
 
 | 属性 | 设计手段 | 验收 |
