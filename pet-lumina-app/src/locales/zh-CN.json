@@ -76,7 +76,8 @@
     "faqHealthData": "如何录入健康数据？",
     "faqHealthDataAnswer": "在健康管理页面点击「录入数据」按钮，填写各项健康指标后提交分析。",
     "faqHealthPlan": "如何创建健康计划？",
-    "faqHealthPlanAnswer": "在健康管理页面点击「新增计划」按钮，选择计划类型并设置完成标准。"
+    "faqHealthPlanAnswer": "在健康管理页面点击「新增计划」按钮，选择计划类型并设置完成标准。",
+    "petStudio": "用图片生成桌宠"
   },
   "settings": {
     "title": "通用设置",
@@ -112,56 +113,16 @@
     "noPosts": "暂无帖子"
   },
   "pet": {
-    "myPets": "我的宠物",
-    "addPet": "添加宠物",
-    "petName": "宠物名称",
-    "petType": "宠物类型",
-    "breed": "品种",
-    "age": "年龄",
-    "notes": "备注",
-    "avatar": "头像",
-    "dog": "狗狗",
-    "cat": "猫咪",
-    "other": "其他",
-    "notSelected": "未选择",
-    "basicInfo": "基本信息",
-    "healthProfile": "健康档案",
-    "healthNotesPlaceholder": "描述过敏、近期疫苗接种、特殊护理需求...",
-    "saving": "保存中...",
-    "uploading": "上传中...",
-    "clickToUpload": "点击上传宠物照片",
-    "imageTooLarge": "图片大小不能超过5MB",
-    "uploadSuccess": "照片上传成功",
-    "uploadFailed": "照片上传失败",
-    "fillRequired": "请填写完整信息",
-    "addSuccess": "宠物添加成功",
-    "addFailed": "添加失败，请重试",
-    "petDetail": "宠物详情",
-    "todaySteps": "今日步数",
-    "todayFeeding": "今日喂食",
-    "healthScore": "健康评分",
-    "feedingRecord": "喂食记录",
-    "fedToday": "今日已喂食 {count} 次",
-    "plannedTimes": "计划 {count} 次",
-    "healthRecord": "健康记录",
-    "viewAll": "查看全部",
-    "noHealthRecords": "暂无健康记录",
-    "editPetInfo": "编辑宠物信息",
-    "invalidPetId": "无效的宠物ID",
-    "petNotFound": "未找到该宠物",
-    "fetchFailed": "获取宠物信息失败",
-    "avatarUploadSuccess": "头像上传成功",
-    "avatarUploadFailed": "头像上传失败",
-    "saveSuccess": "保存成功",
-    "saveFailed": "保存失败",
-    "excellent": "优秀",
-    "good": "良好",
-    "fair": "一般",
-    "needsAttention": "需关注",
-    "normal": "正常",
-    "nameExample": "例如：豆豆",
-    "breedExample": "例如：金毛寻回犬",
-    "ageExample": "例如：2岁"
+    "aria": "桌面宠物",
+    "hide": "收起桌宠",
+    "hint": {
+      "sleepy": "这么晚了，{name} 已经睡啦，有事明天再说",
+      "worried": "{name} 的健康分有点低，去看看它的记录吧",
+      "reminder": "你有 {count} 条未读提醒，{name} 提醒你别错过",
+      "hungry": "{name} 今天还没喂完，记得投喂",
+      "happy": "{name} 今天状态不错，陪你待一会儿",
+      "idle": "{name} 在这儿陪你，有事点我说话"
+    }
   },
   "health": {
     "title": "饮食健康",
@@ -318,18 +279,6 @@
     "urgent": "紧急",
     "gotIt": "我知道了"
   },
-  "pet": {
-    "aria": "桌面宠物",
-    "hide": "收起桌宠",
-    "hint": {
-      "sleepy": "这么晚了，{name} 已经睡啦，有事明天再说",
-      "worried": "{name} 的健康分有点低，去看看它的记录吧",
-      "reminder": "你有 {count} 条未读提醒，{name} 提醒你别错过",
-      "hungry": "{name} 今天还没喂完，记得投喂",
-      "happy": "{name} 今天状态不错，陪你待一会儿",
-      "idle": "{name} 在这儿陪你，有事点我说话"
-    }
-  },
   "chat": {
     "send": "发送",
     "placeholder": "问问 Lumina 吧，比如「上周体重怎么样」",
@@ -365,5 +314,28 @@
     },
     "entry": "问 Lumina",
     "entryHint": "疫苗、体重、驱虫，一句话就能查"
+  },
+  "petStudio": {
+    "title": "用图片生成桌宠",
+    "subtitle": "上传一张图，它会站到你的首页右下角",
+    "intro": "选一张背景干净的图（白底、纯色底最好）。全部处理都在你的浏览器里完成，图片不会上传。",
+    "choose": "选择图片",
+    "processing": "正在处理…",
+    "preview": "预览",
+    "size": "精灵图 {w} × {h} px",
+    "useThis": "就用这个形象",
+    "tuning": "调整",
+    "tolerance": "背景容差",
+    "toleranceHint": "背景没抠干净就调大；把宠物身上的颜色抠掉了就调小",
+    "levels": "色阶数量",
+    "outline": "描边强度",
+    "restore": "恢复默认形象",
+    "saved": "已保存，回首页看看",
+    "restored": "已恢复默认形象",
+    "quota": "图太大，存储放不下：换一张小一点的图",
+    "saveFailed": "保存失败，换个浏览器或清理存储再试",
+    "decodeFailed": "这张图读不出来，换一张试试",
+    "emptyResult": "整张图都被当成背景了：把容差调小一点",
+    "privacy": "图片只存在这台设备的浏览器里（localStorage），不上传服务器，也不进对话记忆。"
   }
 }

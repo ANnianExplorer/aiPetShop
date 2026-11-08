@@ -69,6 +69,7 @@
 | [plans/s1.18-profile.md](plans/s1.18-profile.md) | S1.18 宠物画像：版本化快照 + 确定性 builder + 管理端画像页（C2） | 已完成 |
 | [plans/s1.19-b4-b2-deskpet.md](plans/s1.19-b4-b2-deskpet.md) | S1.19 退避重试 / 多副本验证 / 桌宠档 A（B4·B2·C6） | 已完成 |
 | [plans/s1.20-deskpet-v2.md](plans/s1.20-deskpet-v2.md) | S1.20 桌宠 v2：分层角色 + 部件动画 + 视线跟随 + 拖拽（C6 重做） | 已完成 |
+| [plans/s1.21-image-to-pet.md](plans/s1.21-image-to-pet.md) | S1.21 图片生成桌宠：抠背景 + 卡通化 + 精灵图动效（C6 扩展） | 已完成 |
 
 ### REPORT
 
@@ -94,6 +95,7 @@
 | [reports/2026-11-08-s1.18-profile.md](reports/2026-11-08-s1.18-profile.md) | S1.18 宠物画像（C2） | 版本化 `profile_snapshot` + 确定性 builder + 记忆消费后重算 + 四接口 + 管理端画像页；203 单测、真机 `v2 facts=3`、Edge 实点；抓到画像与记忆并发导致空画像的顺序缺陷 |
 | [reports/2026-11-08-s1.19-b4-b2-pet.md](reports/2026-11-08-s1.19-b4-b2-pet.md) | S1.19 退避重试 / 多副本 / 桌宠（B4·B2·C6） | 失败进 `:retry` ZSET 指数退避（5s→600s 封顶）+ `redrives` 有界重投（默认关）；双副本 `multi_replica_smoke` 8/8；桌宠档 A（纯函数状态机 + H5 组件）；208 单测、App 50 tests |
 | [reports/2026-11-08-s1.20-deskpet-v2.md](reports/2026-11-08-s1.20-deskpet-v2.md) | S1.20 桌宠 v2（C6 重做） | 分层 SVG 角色（7 部件独立动画：呼吸/眨眼/耳抖/发丝/尾巴/手臂）+ 视线跟随 + 拖拽换位 + 单击跳跃与爱心 + 双击收起；App 59 tests（新增 petMotion 7 例、DeskPet 重写 5 例）、build 通过、真机 Edge 实点；D1–D4（trigger 坐标只读、jsdom 无 animate、首版 pointer-events、asar 提取失败） |
+| [reports/2026-11-08-s1.21-image-pet.md](reports/2026-11-08-s1.21-image-pet.md) | S1.21 图片生成桌宠（C6 扩展） | 四角取色 + 边缘洪泛抠背景 → alpha 裁边 → 色阶量化 + 描边 → 512px 精灵图；存储可注入、localStorage 单键；App 85 tests（petImage 16 / petSpriteStore 10）、build 通过、真机上传→保存→首页生效；D1–D4（as const 字面量类型、vi.spyOn 拦不住 localStorage、i18n 脚本路径、dev 冷启动白屏） |
 
 ## 3. 新增文档怎么起头
 

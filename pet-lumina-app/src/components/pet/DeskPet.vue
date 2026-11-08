@@ -20,6 +20,7 @@ import {
   smooth,
 } from '@/utils/petMotion'
 import ChibiPet from '@/components/pet/ChibiPet.vue'
+import { loadSprite, type PetSprite } from '@/utils/petSpriteStore'
 
 const HIDDEN_KEY = 'petlumina-deskpet-hidden'
 const POS_KEY = 'petlumina-deskpet-pos'
@@ -40,6 +41,8 @@ const pos = ref({ right: 84, bottom: 104 })
 const gaze = ref({ x: 0, y: 0 })
 const hearts = ref<{ id: number; x: number }[]>([])
 const rootEl = ref<HTMLElement | null>(null)
+/** 用户用自己图片生成的桌宠；为空时回退到内置角色 */
+const sprite = ref<PetSprite | null>(null)
 
 let speakTimer: ReturnType<typeof setTimeout> | null = null
 let mediaQuery: MediaQueryList | null = null
@@ -187,6 +190,7 @@ function onDoubleClick() {
 }
 
 onMounted(() => {
+  sprite.value = loadSprite()
   try {
     hidden.value = localStorage.getItem(HIDDEN_KEY) === '1'
     const saved = localStorage.getItem(POS_KEY)
@@ -251,7 +255,13 @@ onBeforeUnmount(() => {
         aria-hidden="true"
       >♥</span>
 
+      <span v-if="sprite" class="pet-sprite-wrap" :class="{ sleeping }" aria-hidden="true">
+        <img class="pet-sprite" :src="sprite.dataUrl" :alt="mood.name" draggable="false" />
+        <span class="pet-sprite-shadow" />
+      </span>
+
       <ChibiPet
+        v-else
         class="pet-character"
         :mood="mood.mood"
         :gaze-x="gaze.x"
@@ -292,6 +302,50 @@ onBeforeUnmount(() => {
 .pet-character {
   width: 100%;
   height: 100%;
+}
+
+/* ── 用户图片生成的精灵图：整图级动效（无骨骼，因此只做呼吸/摇摆/影子） ── */
+.pet-sprite-wrap {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+
+.pet-sprite {
+  max-width: 100%;
+  max-height: 100%;
+  transform-origin: 50% 100%;
+  animation: sprite-breathe 3.8s ease-in-out infinite;
+  filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.14));
+  pointer-events: none;
+}
+
+.pet-sprite-shadow {
+  position: absolute;
+  bottom: 0;
+  width: 52%;
+  height: 9px;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(0, 0, 0, 0.22), transparent);
+  animation: sprite-shadow 3.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.pet-sprite-wrap.sleeping .pet-sprite {
+  animation-duration: 6.4s;
+  opacity: 0.92;
+}
+
+@keyframes sprite-breathe {
+  0%, 100% { transform: scale(1, 1) rotate(-1.1deg); }
+  50% { transform: scale(1.02, 0.985) rotate(1.1deg); }
+}
+
+@keyframes sprite-shadow {
+  0%, 100% { transform: scaleX(1); opacity: 0.85; }
+  50% { transform: scaleX(0.88); opacity: 0.55; }
 }
 
 .pet-bubble {

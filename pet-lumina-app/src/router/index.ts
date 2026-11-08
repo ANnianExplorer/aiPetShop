@@ -48,6 +48,11 @@ const router = createRouter({
           component: () => import('@/views/home/Home.vue')
         },
         {
+          path: '/pet-studio',
+          name: 'petStudio',
+          component: () => import('@/views/pet/PetStudio.vue')
+        },
+        {
           path: '/chat',
           name: 'chat',
           component: () => import('@/views/chat/ChatView.vue')

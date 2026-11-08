@@ -76,7 +76,8 @@
     "faqHealthData": "健康データの記録方法は？",
     "faqHealthDataAnswer": "ウェルネスでデータを記録をクリックし、健康指標を入力して分析を送信してください。",
     "faqHealthPlan": "健康計画の作成方法は？",
-    "faqHealthPlanAnswer": "ウェルネスで計画を追加をクリックし、計画タイプを選択して完了基準を設定してください。"
+    "faqHealthPlanAnswer": "ウェルネスで計画を追加をクリックし、計画タイプを選択して完了基準を設定してください。",
+    "petStudio": "画像からデスクトップペット"
   },
   "settings": {
     "title": "一般設定",
@@ -112,56 +113,16 @@
     "noPosts": "投稿はまだありません"
   },
   "pet": {
-    "myPets": "私のペット",
-    "addPet": "ペットを追加",
-    "petName": "ペット名",
-    "petType": "ペットタイプ",
-    "breed": "品種",
-    "age": "年齢",
-    "notes": "メモ",
-    "avatar": "アバター",
-    "dog": "犬",
-    "cat": "猫",
-    "other": "その他",
-    "notSelected": "未選択",
-    "basicInfo": "基本情報",
-    "healthProfile": "健康プロフィール",
-    "healthNotesPlaceholder": "アレルギー、最近の予防接種、特別なケアの必要性...",
-    "saving": "保存中...",
-    "uploading": "アップロード中...",
-    "clickToUpload": "クリックしてペット写真をアップロード",
-    "imageTooLarge": "画像サイズは5MB以下にしてください",
-    "uploadSuccess": "写真のアップロードに成功しました",
-    "uploadFailed": "写真のアップロードに失敗しました",
-    "fillRequired": "すべての項目を入力してください",
-    "addSuccess": "ペットの追加に成功しました",
-    "addFailed": "追加に失敗しました",
-    "petDetail": "ペット詳細",
-    "todaySteps": "今日の歩数",
-    "todayFeeding": "今日の餌やり",
-    "healthScore": "健康スコア",
-    "feedingRecord": "餌やり記録",
-    "fedToday": "今日 {count} 回餌やり済み",
-    "plannedTimes": "計画 {count} 回",
-    "healthRecord": "健康記録",
-    "viewAll": "すべて表示",
-    "noHealthRecords": "健康記録はまだありません",
-    "editPetInfo": "ペット情報を編集",
-    "invalidPetId": "無効なペットID",
-    "petNotFound": "ペットが見つかりません",
-    "fetchFailed": "ペット情報の取得に失敗しました",
-    "avatarUploadSuccess": "アバターのアップロードに成功しました",
-    "avatarUploadFailed": "アバターのアップロードに失敗しました",
-    "saveSuccess": "保存に成功しました",
-    "saveFailed": "保存に失敗しました",
-    "excellent": "優秀",
-    "good": "良好",
-    "fair": "普通",
-    "needsAttention": "要注意",
-    "normal": "正常",
-    "nameExample": "例：タマ",
-    "breedExample": "例：ゴールデンレトリバー",
-    "ageExample": "例：2歳"
+    "aria": "デスクトップペット",
+    "hide": "ペットを隠す",
+    "hint": {
+      "sleepy": "もう遅いので {name} は寝ています。また明日",
+      "worried": "{name} の健康スコアが低めです。記録を確認しましょう",
+      "reminder": "未読のリマインダーが {count} 件あります",
+      "hungry": "{name} は今日のごはんがまだ終わっていません",
+      "happy": "{name} は今日はごきげんです",
+      "idle": "{name} がそばにいます。タップで話しかけてね"
+    }
   },
   "health": {
     "title": "ウェルネス",
@@ -318,18 +279,6 @@
     "urgent": "緊急",
     "gotIt": "了解"
   },
-  "pet": {
-    "aria": "デスクトップペット",
-    "hide": "ペットを隠す",
-    "hint": {
-      "sleepy": "もう遅いので {name} は寝ています。また明日",
-      "worried": "{name} の健康スコアが低めです。記録を確認しましょう",
-      "reminder": "未読のリマインダーが {count} 件あります",
-      "hungry": "{name} は今日のごはんがまだ終わっていません",
-      "happy": "{name} は今日はごきげんです",
-      "idle": "{name} がそばにいます。タップで話しかけてね"
-    }
-  },
   "chat": {
     "send": "送信",
     "placeholder": "Lumina に聞いてみて。例：先週の体重は？",
@@ -365,5 +314,28 @@
     },
     "entry": "Lumina に聞く",
     "entryHint": "ワクチン・体重・駆虫を一言で確認"
+  },
+  "petStudio": {
+    "title": "画像からデスクトップペット",
+    "subtitle": "画像を1枚選ぶと、ホーム右下に登場します",
+    "intro": "背景がシンプルな画像（白背景・単色背景）がおすすめです。処理はすべてブラウザ内で完結し、画像は送信されません。",
+    "choose": "画像を選ぶ",
+    "processing": "処理中…",
+    "preview": "プレビュー",
+    "size": "スプライト {w} × {h} px",
+    "useThis": "この姿にする",
+    "tuning": "調整",
+    "tolerance": "背景の許容値",
+    "toleranceHint": "背景が残るなら大きく、ペットの色が消えるなら小さく",
+    "levels": "色数",
+    "outline": "輪郭の強さ",
+    "restore": "既定の姿に戻す",
+    "saved": "保存しました。ホームで確認できます",
+    "restored": "既定の姿に戻しました",
+    "quota": "画像が大きすぎて保存できません。小さい画像でお試しください",
+    "saveFailed": "保存に失敗しました。別のブラウザか空き容量をご確認ください",
+    "decodeFailed": "画像を読み込めません。別の画像でお試しください",
+    "emptyResult": "すべて背景と判定されました。許容値を小さくしてください",
+    "privacy": "画像はこのブラウザ（localStorage）にのみ保存され、サーバーにも会話メモリにも送られません。"
   }
 }

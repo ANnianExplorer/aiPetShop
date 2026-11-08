@@ -76,7 +76,8 @@
     "faqHealthData": "How to record health data?",
     "faqHealthDataAnswer": "Go to Wellness and click Record Data, fill in the health indicators and submit for analysis.",
     "faqHealthPlan": "How to create a health plan?",
-    "faqHealthPlanAnswer": "Go to Wellness and click Add Plan, select the plan type and set completion criteria."
+    "faqHealthPlanAnswer": "Go to Wellness and click Add Plan, select the plan type and set completion criteria.",
+    "petStudio": "Desk pet from image"
   },
   "settings": {
     "title": "General Settings",
@@ -112,56 +113,16 @@
     "noPosts": "No posts yet"
   },
   "pet": {
-    "myPets": "My Pets",
-    "addPet": "Add Pet",
-    "petName": "Pet Name",
-    "petType": "Pet Type",
-    "breed": "Breed",
-    "age": "Age",
-    "notes": "Notes",
-    "avatar": "Avatar",
-    "dog": "Dog",
-    "cat": "Cat",
-    "other": "Other",
-    "notSelected": "Not selected",
-    "basicInfo": "Basic Info",
-    "healthProfile": "Health Profile",
-    "healthNotesPlaceholder": "Describe allergies, recent vaccinations, special care needs...",
-    "saving": "Saving...",
-    "uploading": "Uploading...",
-    "clickToUpload": "Click to upload pet photo",
-    "imageTooLarge": "Image size cannot exceed 5MB",
-    "uploadSuccess": "Photo uploaded successfully",
-    "uploadFailed": "Photo upload failed",
-    "fillRequired": "Please fill in all required fields",
-    "addSuccess": "Pet added successfully",
-    "addFailed": "Add failed, please try again",
-    "petDetail": "Pet Detail",
-    "todaySteps": "Today's Steps",
-    "todayFeeding": "Today's Feeding",
-    "healthScore": "Health Score",
-    "feedingRecord": "Feeding Record",
-    "fedToday": "Fed {count} times today",
-    "plannedTimes": "Planned {count} times",
-    "healthRecord": "Health Records",
-    "viewAll": "View All",
-    "noHealthRecords": "No health records yet",
-    "editPetInfo": "Edit Pet Info",
-    "invalidPetId": "Invalid pet ID",
-    "petNotFound": "Pet not found",
-    "fetchFailed": "Failed to fetch pet info",
-    "avatarUploadSuccess": "Avatar uploaded successfully",
-    "avatarUploadFailed": "Avatar upload failed",
-    "saveSuccess": "Saved successfully",
-    "saveFailed": "Save failed",
-    "excellent": "Excellent",
-    "good": "Good",
-    "fair": "Fair",
-    "needsAttention": "Needs Attention",
-    "normal": "Normal",
-    "nameExample": "e.g. Buddy",
-    "breedExample": "e.g. Golden Retriever",
-    "ageExample": "e.g. 2 years"
+    "aria": "Desktop pet",
+    "hide": "Hide pet",
+    "hint": {
+      "sleepy": "It's late — {name} is asleep, talk tomorrow",
+      "worried": "{name}'s health score is low. Check its records",
+      "reminder": "You have {count} unread reminders, {name} says don't miss them",
+      "hungry": "{name} hasn't finished today's meals yet",
+      "happy": "{name} is doing great today — say hi",
+      "idle": "{name} is keeping you company. Tap to talk"
+    }
   },
   "health": {
     "title": "Wellness",
@@ -318,18 +279,6 @@
     "urgent": "Urgent",
     "gotIt": "Got it"
   },
-  "pet": {
-    "aria": "Desktop pet",
-    "hide": "Hide pet",
-    "hint": {
-      "sleepy": "It's late — {name} is asleep, talk tomorrow",
-      "worried": "{name}'s health score is low. Check its records",
-      "reminder": "You have {count} unread reminders, {name} says don't miss them",
-      "hungry": "{name} hasn't finished today's meals yet",
-      "happy": "{name} is doing great today — say hi",
-      "idle": "{name} is keeping you company. Tap to talk"
-    }
-  },
   "chat": {
     "send": "Send",
     "placeholder": "Ask Lumina anything, e.g. how was the weight last week?",
@@ -365,5 +314,28 @@
     },
     "entry": "Ask Lumina",
     "entryHint": "Vaccines, weight, deworming — one question away"
+  },
+  "petStudio": {
+    "title": "Desk pet from image",
+    "subtitle": "Upload a picture and it moves to your home screen",
+    "intro": "Pick an image with a clean background (white or flat colour works best). Everything runs in your browser; the image is never uploaded.",
+    "choose": "Choose image",
+    "processing": "Processing…",
+    "preview": "Preview",
+    "size": "Sprite {w} × {h} px",
+    "useThis": "Use this pet",
+    "tuning": "Fine-tune",
+    "tolerance": "Background tolerance",
+    "toleranceHint": "Raise it if background remains; lower it if parts of the pet disappear",
+    "levels": "Colour levels",
+    "outline": "Outline strength",
+    "restore": "Restore default pet",
+    "saved": "Saved — go back home to see it",
+    "restored": "Default pet restored",
+    "quota": "Image too large for storage — try a smaller one",
+    "saveFailed": "Could not save — try another browser or free up storage",
+    "decodeFailed": "Could not read this image — try another one",
+    "emptyResult": "Everything looked like background — lower the tolerance",
+    "privacy": "The image lives only in this browser (localStorage). It is not uploaded and never enters chat memory."
   }
 }

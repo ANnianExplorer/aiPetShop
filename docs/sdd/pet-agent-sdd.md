@@ -317,6 +317,18 @@ cd ..\pet-lumina-app; npm run dev
 | 桌宠（档 A / v2） | H5 + 分层 SVG 角色（7 个 `data-part`：tail/body/arms/head/hair/ears/eyes）；状态由**真实字段**推导（健康分/步数/喂食进度/未读提醒/时段），纯函数 `derivePetMood` 可单测；**部件级 CSS 动画 + 视线跟随 + 拖拽 + 单击爱心**（`petMotion` 纯函数）；可关闭、尊重 `prefers-reduced-motion` | `src/utils/petMood.ts`、`src/utils/petMotion.ts`、`src/components/pet/ChibiPet.vue`、`src/components/pet/DeskPet.vue` |
 | 桌宠不做什么 | 不编造「亲密度」、不随机、不做语音；台词只在本地位图 + i18n 文案，不额外调模型 | `petMood.spec.ts`(10)、`petMotion.spec.ts`(7)、`DeskPet.spec.ts`(5) |
 
+### 8.13 图片生成桌宠（S1.21）
+
+| 主题 | 结论 | 抓手指到 |
+| --- | --- | --- |
+| 定位 | 桌宠形象可由**用户自己的图**生成，不绑定内置角色；内置 7 部件角色作为默认与回退 | `DeskPet.vue` 的 `sprite` 模式 |
+| 管线 | 四角取色 + 边缘 flood fill 抠背景 → alpha 包围盒裁边 → 色阶量化 + 饱和度 → Sobel 描边 → 长边 ≤512 缩放 | `src/utils/petImage.ts`（纯函数，16 例） |
+| 为什么洪泛 | 全图按颜色擦除会误删「白猫的白肚皮」；只删与边缘连通的区域 | `petImage.spec.ts` 的「内部同色不误删」 |
+| 动效 | 整图级：呼吸 / 摇摆 / 影子反向缩放；点拖缩与内置角色一致 | `DeskPet.vue` `.pet-sprite-*` |
+| 存储 | `localStorage` 单键 dataURL，保存前校验结构，配额不足给可读提示；不经过服务端 | `src/utils/petSpriteStore.ts`（10 例，存储可注入） |
+| 边界 | 单图无骨骼 → **不做眨眼/口型**；复杂背景需更干净的底图；不支持动图 | 报告 §6 |
+
+
 ## 9. 质量属性
 
 | 属性 | 设计手段 | 验收 |

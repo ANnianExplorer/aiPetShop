@@ -7,6 +7,7 @@ const { t } = useI18n()
 
 const menuItems = [
   { icon: 'person_edit', labelKey: 'profile.editProfile', route: 'editProfile' },
+  { icon: 'pets', labelKey: 'profile.petStudio', route: 'petStudio' },
   { icon: 'shield_lock', labelKey: 'profile.accountSecurity', route: 'accountSecurity' },
   { icon: 'settings', labelKey: 'profile.generalSettings', route: 'generalSettings' },
   { icon: 'help_center', labelKey: 'profile.helpFeedback', route: 'helpFeedback' },

@@ -449,7 +449,7 @@ $env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:yourpwd@127.0.0.1:3306/petlumina"
 前端：
 
 ```bash
-cd pet-lumina-app && npm run build && npm test    # vue-tsc + vitest（59 例：SSE / 聊天流 / 分类 / 提醒日期 / 桌宠状态机与运动学）
+cd pet-lumina-app && npm run build && npm test    # vue-tsc + vitest（85 例：SSE / 聊天流 / 分类 / 提醒日期 / 桌宠状态机 / 图像生成管线）
 cd pet-lumina-web && npm run typecheck && npm run build   # 管理端 vue-tsc -b（真检查，不是空转）
 
 cd backend && mvn test                            # 后端单测 27 例（仪表盘/排序/验证码/用户管理/发帖话题）
