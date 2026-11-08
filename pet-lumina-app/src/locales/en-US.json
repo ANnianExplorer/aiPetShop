@@ -122,6 +122,30 @@
       "hungry": "{name} hasn't finished today's meals yet",
       "happy": "{name} is doing great today — say hi",
       "idle": "{name} is keeping you company. Tap to talk"
+    },
+    "say": {
+      "tap1": "Hey, I'm busy eating rice",
+      "tap2": "Pat pat — feeling good today",
+      "tap3": "I'll remember that tap",
+      "tap4": "Want to ask Lumina something?",
+      "eat": "Rice time! Token-flavoured",
+      "sleep": "Just a quick nap…",
+      "wake": "I'm awake. What is it?"
+    },
+    "work": {
+      "thinking": "Let me think…",
+      "working": "Checking on it…",
+      "result": "Sorting things out",
+      "waiting": "Waiting for your call",
+      "success": "Done!",
+      "error": "Oops… something went wrong"
+    },
+    "menu": {
+      "eat": "Eat rice",
+      "sleep": "Take a nap",
+      "wake": "Wake up",
+      "chat": "Chat",
+      "hide": "Hide"
     }
   },
   "health": {

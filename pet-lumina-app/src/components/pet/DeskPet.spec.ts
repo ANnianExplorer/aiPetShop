@@ -1,13 +1,16 @@
-import { afterEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { reactive } from 'vue'
 import { mount } from '@vue/test-utils'
 import { createPinia } from 'pinia'
 import { createI18n } from 'vue-i18n'
 import DeskPet from './DeskPet.vue'
 
-// 组件只依赖路由的 push，组件测试里不需要真路由
+// 组件只依赖路由的 push 与当前路径，组件测试里不需要真路由
 const push = vi.fn()
+const route = reactive({ path: '/home' })
 vi.mock('vue-router', () => ({
   useRouter: () => ({ push }),
+  useRoute: () => route,
 }))
 
 const messages = {
@@ -22,6 +25,30 @@ const messages = {
         hungry: '{name} 今天还没喂完，记得投喂',
         happy: '{name} 今天状态不错，陪你待一会儿',
         idle: '{name} 在这儿陪你，有事点我说话',
+      },
+      say: {
+        tap1: '干嘛呀，我正忙着吃白饭呢',
+        tap2: '摸摸头，本鱼今天心情不错',
+        tap3: '你点的这一下，我记住了哦',
+        tap4: '要不要去问问 Lumina 正经事？',
+        eat: '吃白饭！这碗是 token 味的',
+        sleep: '打个盹……',
+        wake: '醒啦，找我干嘛',
+      },
+      work: {
+        thinking: '让我想想…',
+        working: '我去查一下',
+        result: '正在整理线索',
+        waiting: '等你确认一下',
+        success: '好啦！',
+        error: '呜……出错了',
+      },
+      menu: {
+        eat: '吃白饭',
+        sleep: '打个盹',
+        wake: '叫醒它',
+        chat: '去聊天',
+        hide: '收起',
       },
     },
   },
@@ -41,30 +68,36 @@ function mountPet() {
  * 只能自己 new MouseEvent 再 dispatch（PointerEvent 在 jsdom 里也没有可用构造器）。
  */
 function firePointer(el: Element, type: string, x = 0, y = 0) {
-  el.dispatchEvent(
-    new MouseEvent(type, { clientX: x, clientY: y, bubbles: true, cancelable: true }),
-  )
+  el.dispatchEvent(new MouseEvent(type, { clientX: x, clientY: y, bubbles: true, cancelable: true }))
 }
 
 afterEach(() => {
   localStorage.clear()
+  push.mockClear()
+  vi.useRealTimers()
+  vi.restoreAllMocks()
 })
 
-describe('DeskPet', () => {
-  it('渲染分层角色：7 个可动部件都在', () => {
-    const wrapper = mountPet()
-    expect(wrapper.find('.desk-pet').exists()).toBe(true)
-    expect(wrapper.find('.desk-pet').attributes('aria-label')).toBe('桌面宠物')
+beforeEach(() => {
+  route.path = '/home'
+  // jsdom 没装 canvas 包：getContext 会往控制台刷 "Not implemented"，这里直接给 null，
+  // 引擎本来就会退化成空渲染（动画逻辑照跑）
+  vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(null)
+})
 
-    const parts = wrapper.findAll('[data-part]').map((node) => node.attributes('data-part'))
-    expect(parts.sort()).toEqual(['arms', 'body', 'ears', 'eyes', 'hair', 'head', 'tail'])
+describe('DeskPet 外壳', () => {
+  it('挂载一棵 canvas 桌宠，没有残留的 SVG 分层部件', () => {
+    const wrapper = mountPet()
+    const root = wrapper.find('.desk-pet')
+    expect(root.exists()).toBe(true)
+    expect(root.attributes('aria-label')).toBe('桌面宠物')
+    expect(wrapper.find('canvas.desk-pet-canvas').exists()).toBe(true)
+    expect(wrapper.findAll('[data-part]')).toHaveLength(0)
     wrapper.unmount()
   })
 
   it('挂载后主动打招呼，点气泡进入对话页', async () => {
-    vi.useFakeTimers()
     const wrapper = mountPet()
-    await vi.advanceTimersByTimeAsync(900)
     await wrapper.vm.$nextTick()
 
     const bubble = wrapper.find('.pet-bubble')
@@ -74,41 +107,109 @@ describe('DeskPet', () => {
     await bubble.trigger('click')
     expect(push).toHaveBeenCalledWith({ name: 'chat' })
     wrapper.unmount()
-    vi.useRealTimers()
   })
 
-  it('单击角色：出现爱心并有气泡（不是"只换一句台词"）', async () => {
+  it('单击角色会说话（不是「只换个颜色」）', async () => {
+    vi.spyOn(Math, 'random').mockReturnValue(0)
     const wrapper = mountPet()
     const root = wrapper.find('.desk-pet').element
     firePointer(root, 'pointerdown', 10, 10)
     firePointer(root, 'pointerup', 10, 10)
     await wrapper.vm.$nextTick()
 
-    expect(wrapper.findAll('.pet-heart').length).toBeGreaterThan(0)
-    expect(wrapper.find('.pet-bubble').exists()).toBe(true)
-    // 位置没动过，不应该写 localStorage
-    expect(localStorage.getItem('petlumina-deskpet-pos')).toBeNull()
+    expect(wrapper.find('.pet-bubble').text()).toBe('干嘛呀，我正忙着吃白饭呢')
+    // 没拖动就不该写位置
+    expect(localStorage.getItem('petlumina-deskpet-pos-v2')).toBeNull()
     wrapper.unmount()
   })
 
-  it('拖拽超过阈值算移动：写位置，不再当作点击', async () => {
+  it('拖拽超过阈值算移动：写归一化位置，不当成点击', async () => {
     const wrapper = mountPet()
     const root = wrapper.find('.desk-pet').element
     firePointer(root, 'pointerdown', 10, 10)
-    firePointer(root, 'pointermove', 60, 40)
-    firePointer(root, 'pointerup', 60, 40)
+    firePointer(root, 'pointermove', 80, 60)
+    firePointer(root, 'pointerup', 80, 60)
     await wrapper.vm.$nextTick()
 
-    expect(localStorage.getItem('petlumina-deskpet-pos')).toContain('right')
-    expect(wrapper.find('.pet-bubble').exists()).toBe(false)
+    const saved = JSON.parse(localStorage.getItem('petlumina-deskpet-pos-v2') ?? '{}')
+    expect(typeof saved.rx).toBe('number')
+    expect(typeof saved.ry).toBe('number')
     wrapper.unmount()
   })
 
-  it('双击收起，并把选择记到 localStorage', async () => {
+  it('长按开菜单，菜单里能喂它吃白饭', async () => {
+    vi.useFakeTimers()
     const wrapper = mountPet()
-    await wrapper.find('.desk-pet').trigger('dblclick')
+    const root = wrapper.find('.desk-pet').element
+    firePointer(root, 'pointerdown', 10, 10)
+    await vi.advanceTimersByTimeAsync(600)
+    await wrapper.vm.$nextTick()
+
+    const menu = wrapper.find('.pet-menu')
+    expect(menu.exists()).toBe(true)
+    const eat = wrapper.findAll('.pet-menu button')[0]
+    await eat.trigger('click')
+    await wrapper.vm.$nextTick()
+    expect(wrapper.find('.pet-bubble').text()).toBe('吃白饭！这碗是 token 味的')
+    wrapper.unmount()
+  })
+
+  it('菜单里的「去聊天」跳对话页', async () => {
+    vi.useFakeTimers()
+    const wrapper = mountPet()
+    const root = wrapper.find('.desk-pet').element
+    firePointer(root, 'pointerdown', 10, 10)
+    await vi.advanceTimersByTimeAsync(600)
+    await wrapper.vm.$nextTick()
+
+    const chat = wrapper.findAll('.pet-menu button')[3]
+    await chat.trigger('click')
+    expect(push).toHaveBeenCalledWith({ name: 'chat' })
+    wrapper.unmount()
+  })
+
+  it('右侧小叉收起桌宠，并把选择记到 localStorage', async () => {
+    const wrapper = mountPet()
+    await wrapper.find('.pet-close').trigger('click')
+    await wrapper.vm.$nextTick()
     expect(wrapper.find('.desk-pet').exists()).toBe(false)
     expect(localStorage.getItem('petlumina-deskpet-hidden')).toBe('1')
+    wrapper.unmount()
+  })
+
+  it('上次收起过就不再出现（也不建引擎）', async () => {
+    localStorage.setItem('petlumina-deskpet-hidden', '1')
+    const wrapper = mountPet()
+    await wrapper.vm.$nextTick()
+    expect(wrapper.find('.desk-pet').exists()).toBe(false)
+    expect(wrapper.find('canvas').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('登录页不挂桌宠：还没登录不该有个角色飘在上面', async () => {
+    route.path = '/login'
+    const wrapper = mountPet()
+    await wrapper.vm.$nextTick()
+    expect(wrapper.find('.desk-pet').exists()).toBe(false)
+    expect(wrapper.find('canvas').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('登录后进入应用页才出现，退回登录页又消失', async () => {
+    route.path = '/login'
+    const wrapper = mountPet()
+    await wrapper.vm.$nextTick()
+    expect(wrapper.find('.desk-pet').exists()).toBe(false)
+
+    route.path = '/home'
+    await wrapper.vm.$nextTick()
+    await wrapper.vm.$nextTick()
+    expect(wrapper.find('.desk-pet').exists()).toBe(true)
+
+    route.path = '/login'
+    await wrapper.vm.$nextTick()
+    await wrapper.vm.$nextTick()
+    expect(wrapper.find('.desk-pet').exists()).toBe(false)
     wrapper.unmount()
   })
 })

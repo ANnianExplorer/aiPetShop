@@ -328,6 +328,18 @@ cd ..\pet-lumina-app; npm run dev
 | 存储 | `localStorage` 单键 dataURL，保存前校验结构，配额不足给可读提示；不经过服务端 | `src/utils/petSpriteStore.ts`（10 例，存储可注入） |
 | 边界 | 单图无骨骼 → **不做眨眼/口型**；复杂背景需更干净的底图；不支持动图 | 报告 §6 |
 
+### 8.14 桌宠引擎（S1.22，照 dsh-pet 源码复刻）
+
+| 主题 | 结论 | 抓手指到 |
+| --- | --- | --- |
+| 为什么重做 | 前两版是「按想象做」；用户点出没读参考实现。本轮先读 `dsh-pet@0.4.3` 七层源码（素材/播放/透明修正/编排/状态/睡觉/物理），再同构重写 | `docs/plans/s1.22-pet-engine.md` §1 |
+| 渲染 | **canvas 2D**：`Pose`（缩放/旋转/位移/透明度/影子/镜像/道具）+ 29 段程序化片段；以脚底中心为原点，13 种矢量道具 | `src/pet/renderer.ts`、`src/pet/clips.ts` |
+| 编排 | 权重分档 `idle10/turn5/move5/动作池80`；`decideNextClip` + 播完回链 `decideEndedCue`（work-rotate/work-replay/event-done/turn/interaction-done/random） | `src/pet/pickers.ts` |
+| 状态 | SSE → `publishWorkState`（route/tool/done/error + 开流前 thinking + finally error 兜底）→ 六档工作动画，终态亮 2.6s 再回 idle；点击插播后**接回**工作档 | `src/pet/signal.ts`、`src/views/chat/ChatView.vue` |
+| 物理 | 过阻尼弹簧拖拽、甩出 `v_max(1-e^{-v/vmax})` 封顶 3600、8px 子步、落地反弹 .78 + 摩擦 + 220ms 挤压、命中区至少留 24px | `src/pet/physics.ts` |
+| 全局挂件 | 挂在 `App.vue`（不是首页），换页面不丢；登录/注册页不渲染；位置存归一化 `{rx,ry}` | `src/App.vue`、`DeskPet.vue` |
+| 边界 | 无 dsh-pet 的 109 段 VP9-alpha 视频素材（52.7MB、素材禁止商用/二创须署名），动画是参数化而非逐帧表演；无桌面 Helper、无音效 | 报告 §5 |
+
 
 ## 9. 质量属性
 

@@ -12,6 +12,7 @@ import {
   uploadDocument,
 } from '@/api/agent'
 import { applyAgentEvent, historyToBubbles } from '@/utils/chatStream'
+import { publishWorkState } from '@/pet/signal'
 import { useUserStore } from '@/stores/user'
 import type { AgentEvent } from '@/api/agent'
 import type { AgentCitation, AgentSessionItem, ChatBubble, ToolEvent } from '@/types/agent'
@@ -114,6 +115,12 @@ async function onFilePicked(event: Event) {
 }
 
 function handleEvent(event: AgentEvent, assistant: ChatBubble) {
+  // 桌宠联动：一轮对话里「在想 / 在查 / 完成 / 出错」各对应一档动画
+  // （route→thinking、tool→working、done→success、error→error），与 dsh-pet 的档位映射同源。
+  if (event.event === 'route') publishWorkState('thinking')
+  else if (event.event === 'tool') publishWorkState('working')
+  else if (event.event === 'done') publishWorkState('success')
+  else if (event.event === 'error') publishWorkState('error')
   const outcome = applyAgentEvent(assistant, event)
   if (outcome.sessionId) rememberSession(outcome.sessionId)
   if (outcome.dropBubble) {
@@ -145,6 +152,7 @@ async function send(text?: string) {
   }
   bubbles.value.push(assistant)
   streaming.value = true
+  publishWorkState('thinking')
   controller = new AbortController()
   await scrollToBottom()
 
@@ -177,6 +185,8 @@ async function send(text?: string) {
     }
   } finally {
     streaming.value = false
+    // 出错或断流时也要把桌宠从「工作中」放出来，否则它会一直忙到下次对话
+    if (lastError.value !== '') publishWorkState('error')
     controller = null
     await scrollToBottom()
     input.value?.focus()
