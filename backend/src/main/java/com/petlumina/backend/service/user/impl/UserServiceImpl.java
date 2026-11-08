@@ -80,6 +80,7 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User>
         vo.setNickname(user.getNickname());
         vo.setAvatar(user.getAvatar());
         vo.setPhone(user.getPhone());
+        vo.setRole(user.getRole());
         vo.setToken(StpUtil.getTokenValue());
         return vo;
     }

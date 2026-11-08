@@ -95,6 +95,33 @@ class MemoryExportOut(BaseModel):
     facts: list[MemoryFactOut]
 
 
+class GraphNodeOut(BaseModel):
+    id: str
+    kind: str  # pet / fact / event
+    label: str
+    detail: str | None = None
+
+
+class GraphEdgeOut(BaseModel):
+    source: str
+    target: str
+    kind: str  # remembered / happened
+    label: str | None = None
+
+
+class AdminGraphOut(BaseModel):
+    """管理端知识图谱：以「宠物」为中心，连记忆事实与最近对话事件。
+
+    只画 Agent 自己库里的数据（memory_fact / agent_run），不反查业务库——
+    业务真源在 Java，跨服务拼图容易把权限边界拼漏。
+    """
+
+    user_id: str
+    pet_id: str | None = None
+    nodes: list[GraphNodeOut]
+    edges: list[GraphEdgeOut]
+
+
 class ErrorOut(BaseModel):
     code: str
     message: str

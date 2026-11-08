@@ -14,6 +14,7 @@ import pytest
 from conftest import AUTH_HEADERS, make_http, make_settings
 
 from app.api import create_app
+from app.domain.models import MemoryFact
 from app.llm import ScriptedModel
 from app.storage import InMemoryRepository
 from app.tasks import (
@@ -235,3 +236,91 @@ async def test_admin_replays_dead_letters(settings) -> None:
 
     replayed = await queue.receive(TOPIC_AUDIT_TOOL, timeout_s=0.05)
     assert replayed is not None and replayed.attempt == 1
+
+
+@pytest.mark.asyncio
+async def test_admin_deletes_user_memory_with_audit() -> None:
+    """客服场景：管理员替用户删掉抽错的事实，必须留审计。"""
+    repo = InMemoryRepository()
+    await repo.upsert_memory_fact(
+        MemoryFact(id="", user_id="1001", key="allergy", value="牛奶", confidence=0.9)
+    )
+    app = create_app(
+        make_settings(), model=ScriptedModel(), repo=repo, http_client=make_http()
+    )
+    # create_app 会重置 root handler（结构化日志接管），caplog 抓不到；
+    # 这里直接挂在 `agent.admin` logger 上，只关心"有没有记这条审计"。
+    records: list[logging.LogRecord] = []
+
+    class _Capture(logging.Handler):
+        def emit(self, record: logging.LogRecord) -> None:
+            records.append(record)
+
+    handler = _Capture()
+    admin_log = logging.getLogger("agent.admin")
+    admin_log.addHandler(handler)
+    try:
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://agent"
+        ) as http:
+            denied = await http.delete(
+                "/agent/admin/memory",
+                params={"user_id": "1001", "key": "allergy"},
+                headers=AUTH_HEADERS,
+            )
+            assert denied.status_code == 403
+
+            missing = await http.delete(
+                "/agent/admin/memory",
+                params={"user_id": "1001", "key": "food_like"},
+                headers=ADMIN_HEADERS,
+            )
+            assert missing.status_code == 404
+
+            removed = await http.delete(
+                "/agent/admin/memory",
+                params={"user_id": "1001", "key": "allergy"},
+                headers=ADMIN_HEADERS,
+            )
+            assert removed.status_code == 200
+            assert removed.json() == {"deleted": True, "key": "allergy"}
+    finally:
+        admin_log.removeHandler(handler)
+
+    assert await repo.list_memory_facts("1001", None) == []
+    # log_event 把业务字段放在 `record.ctx` 里（不污染 LogRecord 内置属性）
+    audits = [r for r in records if r.msg == "admin.access"]
+    assert any(getattr(r, "ctx", {}).get("scope") == "memory.delete" for r in audits)
+
+
+@pytest.mark.asyncio
+async def test_admin_graph_has_three_layers() -> None:
+    """宠物 — 事实 — 事件：三层都要有节点，边都挂在宠物节点上。"""
+    repo = InMemoryRepository()
+    for key, value in (("pet_name", "Lumina"), ("allergy", "牛奶")):
+        await repo.upsert_memory_fact(
+            MemoryFact(id="", user_id="1001", key=key, value=value, confidence=0.9)
+        )
+    app = create_app(
+        make_settings(), model=ScriptedModel(), repo=repo, http_client=make_http()
+    )
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://agent"
+    ) as http:
+        # 造一条真实 run，让"事件"层有东西可画
+        await http.post("/agent/chat", json={"message": "你好"}, headers=AUTH_HEADERS)
+
+        denied = await http.get("/agent/admin/graph?user_id=1001", headers=AUTH_HEADERS)
+        assert denied.status_code == 403
+
+        resp = await http.get("/agent/admin/graph?user_id=1001", headers=ADMIN_HEADERS)
+        assert resp.status_code == 200
+        body = resp.json()
+        kinds = [node["kind"] for node in body["nodes"]]
+        assert kinds.count("pet") == 1
+        assert kinds.count("fact") == 2
+        assert kinds.count("event") == 1
+
+        pet_id = next(n["id"] for n in body["nodes"] if n["kind"] == "pet")
+        assert all(edge["source"] == pet_id for edge in body["edges"])
+        assert {edge["kind"] for edge in body["edges"]} == {"remembered", "happened"}

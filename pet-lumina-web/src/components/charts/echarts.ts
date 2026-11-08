@@ -1,9 +1,9 @@
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
-import { LineChart, PieChart, BarChart } from 'echarts/charts'
+import { LineChart, PieChart, BarChart, GraphChart } from 'echarts/charts'
 import { GridComponent, TooltipComponent, LegendComponent, TitleComponent } from 'echarts/components'
 
-use([CanvasRenderer, LineChart, PieChart, BarChart, GridComponent, TooltipComponent, LegendComponent, TitleComponent])
+use([CanvasRenderer, LineChart, PieChart, BarChart, GraphChart, GridComponent, TooltipComponent, LegendComponent, TitleComponent])
 
 export const theme = {
   primary: '#6daf92',

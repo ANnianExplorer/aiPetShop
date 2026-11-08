@@ -39,7 +39,7 @@
 
 | 文档 | 版本 | 内容 |
 | --- | --- | --- |
-| [spec/agent-runtime-api.md](spec/agent-runtime-api.md) | v1.9 | `/healthz`、`/readyz`、`/metrics`、`POST /agent/chat`、事件续传、消息回读、会话列表、文档问答（上传/能力矩阵/删除）、记忆（含删除/导出）与用量、管理端只读与队列运维接口的请求/响应/事件/错误码/不变量 |
+| [spec/agent-runtime-api.md](spec/agent-runtime-api.md) | v1.10 | `/healthz`、`/readyz`、`/metrics`、`POST /agent/chat`、事件续传、消息回读、会话列表、文档问答（上传/能力矩阵/删除）、记忆（含删除/导出）与用量、管理端只读与队列运维接口的请求/响应/事件/错误码/不变量 |
 | [spec/web-chat-ui.md](spec/web-chat-ui.md) | v1.0 | 对话页状态机、交互、持久化键、错误映射、布局约束、i18n 键、非目标 |
 
 ### ADR
@@ -87,6 +87,7 @@
 | [reports/2026-11-08-s1.14-e9-e12.md](reports/2026-11-08-s1.14-e9-e12.md) | S1.14 卫生债 E9/E10/E11/E12（清零） | 违规管理接真实接口（命中即 400 + 落记录）、管理端用户增改真落库、话题归属改 `post.topic_id`、App `as any` 清零与假数据下架；Java 27 单测、App 37 单测、三端构建通过、Edge 三页实点；抓到 `sensitive_word` 缺表导致发帖 500 |
 | [reports/2026-11-08-s1.15-doc-rag.md](reports/2026-11-08-s1.15-doc-rag.md) | S1.15 文档问答 RAG（BACKLOG A3） | `doc_file`/`doc_chunk` + 解析/切分/嵌入/检索 + `search_docs` 工具 + App 附件入口；159 单测、`rag_smoke` 10/10、Edge 上传后提问带回引用；D1–D6 六个真缺陷（软删复活、处理器漏装配、迁移注释吞 DDL 等） |
 | [reports/2026-11-08-s1.16-ops.md](reports/2026-11-08-s1.16-ops.md) | S1.16 运维与数据自主（B3·B5·B7） | 在途消息巡检回收（`claimed` ZSET + `attempt+1`）、6 个 Prometheus 指标、记忆删除/导出；181 单测、`ops_smoke` 11/11（含"造一条死掉的在途消息 → 巡检搬回 → 落库"真机闭环） |
+| [reports/2026-11-08-s1.17-admin-console.md](reports/2026-11-08-s1.17-admin-console.md) | S1.17 管理端运维与图谱（B6） | 队列运维/长期记忆/知识图谱三页 + `DELETE /agent/admin/memory`、`GET /agent/admin/graph`；183 单测、Edge 实点三页；抓到 Java `LoginUserVO` 缺 `role` 与 vue-echarts `symbolSize` 回调失效两个真缺陷 |
 
 ## 3. 新增文档怎么起头
 

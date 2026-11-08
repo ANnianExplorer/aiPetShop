@@ -133,6 +133,41 @@ export interface AdminMemory {
   facts: AdminMemoryFact[]
 }
 
+export interface AdminTaskTopic {
+  topic: string
+  depth: number
+  dead_letters: number
+}
+
+export interface AdminTasks {
+  enabled: boolean
+  backend: string
+  processed: number
+  failed: number
+  topics: AdminTaskTopic[]
+}
+
+export interface GraphNode {
+  id: string
+  kind: 'pet' | 'fact' | 'event'
+  label: string
+  detail: string | null
+}
+
+export interface GraphEdge {
+  source: string
+  target: string
+  kind: string
+  label: string | null
+}
+
+export interface AdminGraph {
+  user_id: string
+  pet_id: string | null
+  nodes: GraphNode[]
+  edges: GraphEdge[]
+}
+
 export function listAdminSessions(params: {
   page: number
   page_size: number
@@ -153,6 +188,47 @@ export function getAdminUsage(days = 7): Promise<AdminUsage> {
 export function getAdminMemory(userId: string, petId?: string | null): Promise<AdminMemory> {
   return agent.get('/agent/admin/memory', {
     params: { user_id: userId, ...(petId ? { pet_id: petId } : {}) },
+  })
+}
+
+export function deleteAdminMemory(params: {
+  userId: string
+  key: string
+  petId?: string | null
+}): Promise<{ deleted: boolean; key: string }> {
+  return agent.delete('/agent/admin/memory', {
+    params: {
+      user_id: params.userId,
+      key: params.key,
+      ...(params.petId ? { pet_id: params.petId } : {}),
+    },
+  })
+}
+
+export function getAdminTasks(): Promise<AdminTasks> {
+  return agent.get('/agent/admin/tasks')
+}
+
+export function replayDeadLetter(
+  topic: string,
+  limit = 10,
+): Promise<{ topic: string; replayed: number }> {
+  return agent.post('/agent/admin/tasks/dead-letters/replay', { topic, limit })
+}
+
+export function getAdminGraph(params: {
+  userId: string
+  petId?: string | null
+  sessions?: number
+  runsPerSession?: number
+}): Promise<AdminGraph> {
+  return agent.get('/agent/admin/graph', {
+    params: {
+      user_id: params.userId,
+      ...(params.petId ? { pet_id: params.petId } : {}),
+      sessions: params.sessions ?? 3,
+      runs_per_session: params.runsPerSession ?? 3,
+    },
   })
 }
 

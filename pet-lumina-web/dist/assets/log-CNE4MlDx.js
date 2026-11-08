@@ -1,0 +1,1 @@
+import{j as t}from"./index-BAF_lHK0.js";const g={listPage:e=>t.post("/admin/log/list/page/vo",e),getById:e=>t.get("/log/get/vo",{params:{id:String(e)}}),delete:e=>t.post("/admin/log/delete",{id:e})};export{g as l};

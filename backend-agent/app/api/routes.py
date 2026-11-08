@@ -6,6 +6,7 @@ import contextlib
 import logging
 from collections.abc import AsyncIterator
 from datetime import datetime, timedelta
+from typing import Any
 
 from fastapi import APIRouter, File, Form, Query, Request, UploadFile
 from fastapi.responses import JSONResponse, PlainTextResponse, StreamingResponse
@@ -24,6 +25,7 @@ from ..tasks import TOPIC_DOC_INGEST, TOPICS
 from ..tasks.base import TaskQueueFull
 from .schemas import (
     AdminDayUsage,
+    AdminGraphOut,
     AdminRunOut,
     AdminSessionDetail,
     AdminSessionItem,
@@ -36,6 +38,8 @@ from .schemas import (
     ChatRequest,
     DocumentListOut,
     DocumentOut,
+    GraphEdgeOut,
+    GraphNodeOut,
     HealthOut,
     MemoryExportOut,
     MemoryFactOut,
@@ -504,6 +508,98 @@ async def admin_memory(
             for f in facts
         ],
     )
+
+
+@router.delete("/agent/admin/memory")
+async def admin_delete_memory(
+    request: Request,
+    user_id: str = Query(..., min_length=1, max_length=32),
+    key: str = Query(..., min_length=1, max_length=64),
+    pet_id: str | None = Query(default=None, max_length=32),
+) -> dict[str, Any]:
+    """管理员替用户清理一条抽错的事实（客服场景：用户说"它记错了"）。
+
+    与用户自助删除共用同一个仓储方法，区别只在授权与审计。
+    """
+    admin = await _admin_identity(request)
+    deleted = await _repo(request).delete_memory_fact(user_id, pet_id, key)
+    if not deleted:
+        raise NotFound("这条记忆不存在")
+    log_event(
+        admin_log,
+        logging.INFO,
+        "admin.access",
+        admin_id=admin.user_id,
+        target_user=user_id,
+        scope="memory.delete",
+        key=key,
+    )
+    return {"deleted": True, "key": key}
+
+
+@router.get("/agent/admin/graph", response_model=AdminGraphOut)
+async def admin_graph(
+    request: Request,
+    user_id: str = Query(..., min_length=1, max_length=32),
+    pet_id: str | None = Query(default=None, max_length=32),
+    sessions: int = Query(default=3, ge=1, le=10),
+    runs_per_session: int = Query(default=3, ge=1, le=10),
+) -> AdminGraphOut:
+    """三层图：宠物（中心）— 记忆事实 — 最近对话事件（run）。
+
+    刻意不画业务库里的健康记录/生活记录：那些数据的所有权在 Java 侧，
+    要在 Agent 里画就得复制一份口径，迟早对不上。这里的"事件"指 Agent 自己的 run。
+    """
+    admin = await _admin_identity(request)
+    log_event(
+        admin_log,
+        logging.INFO,
+        "admin.access",
+        admin_id=admin.user_id,
+        target_user=user_id,
+        scope="graph",
+    )
+    repo = _repo(request)
+    pet_node_id = f"pet:{pet_id or 'all'}"
+    nodes: list[GraphNodeOut] = [
+        GraphNodeOut(
+            id=pet_node_id,
+            kind="pet",
+            label=f"宠物 {pet_id}" if pet_id else "全部宠物",
+        )
+    ]
+    edges: list[GraphEdgeOut] = []
+
+    facts = await repo.list_memory_facts(user_id, pet_id, limit=50)
+    for fact in facts:
+        node_id = f"fact:{fact.key}"
+        nodes.append(
+            GraphNodeOut(
+                id=node_id,
+                kind="fact",
+                label=f"{label_of(fact.key)}：{fact.value}",
+                detail=f"confidence={fact.confidence}",
+            )
+        )
+        edges.append(GraphEdgeOut(source=pet_node_id, target=node_id, kind="remembered", label="记得"))
+
+    _, items = await repo.list_sessions(page=1, page_size=sessions, user_id=user_id)
+    for session in items:
+        for run in (await repo.list_runs(session.id))[-runs_per_session:]:
+            node_id = f"run:{run.id}"
+            nodes.append(
+                GraphNodeOut(
+                    id=node_id,
+                    kind="event",
+                    label=f"{run.route} · {run.status}",
+                    detail=f"{run.latency_ms} ms · {run.total_tokens} tokens",
+                )
+            )
+            edges.append(
+                GraphEdgeOut(source=pet_node_id, target=node_id, kind="happened", label="对话")
+            )
+
+    return AdminGraphOut(user_id=user_id, pet_id=pet_id, nodes=nodes, edges=edges)
 
 
 @router.get("/agent/admin/usage", response_model=AdminUsageOut)

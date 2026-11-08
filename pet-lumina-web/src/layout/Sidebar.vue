@@ -19,6 +19,9 @@ const menuItems = [
   { path: '/notification', icon: 'notifications', label: '通知管理' },
   { path: '/violation', icon: 'gpp_maybe', label: '违规管理' },
   { path: '/agent/sessions', icon: 'forum', label: '会话工作台' },
+  { path: '/agent/memory', icon: 'psychology', label: '长期记忆' },
+  { path: '/agent/graph', icon: 'hub', label: '知识图谱' },
+  { path: '/agent/queue', icon: 'queue', label: '队列运维' },
 ]
 
 const bottomMenuItems = [
@@ -42,18 +45,18 @@ const handleLogout = () => {
 <template>
   <aside class="fixed left-4 top-4 bottom-4 flex flex-col py-8 w-60 bg-white/70 backdrop-blur-2xl rounded-[28px] shadow-[0_8px_32px_rgba(75,100,85,0.1),0_0_0_1px_rgba(255,255,255,0.5)] z-50">
     <!-- Logo -->
-    <div class="px-8 mb-12">
+    <div class="px-8 mb-6">
       <h1 class="text-2xl font-black text-primary-container drop-shadow-[0_0_8px_rgba(109,175,146,0.4)] font-[Plus_Jakarta_Sans]">PetLumina</h1>
       <p class="text-xs font-[Plus_Jakarta_Sans] font-medium text-slate-500 mt-1 uppercase tracking-widest">Management Portal</p>
     </div>
 
     <!-- Main Menu -->
-    <nav class="flex-1 flex flex-col gap-2 px-4 overflow-y-auto">
+    <nav class="flex-1 flex flex-col gap-1 px-4 overflow-y-auto no-scrollbar">
       <a
         v-for="(item, index) in menuItems"
         :key="item.path"
         @click="navigate(item.path)"
-        class="flex items-center gap-4 px-4 py-3 rounded-xl transition-all duration-300 cursor-pointer font-[Plus_Jakarta_Sans] text-sm animate-float-up"
+        class="flex items-center gap-4 px-4 py-2.5 rounded-xl transition-all duration-300 cursor-pointer font-[Plus_Jakarta_Sans] text-[13px] animate-float-up"
         :class="isActive(item.path)
           ? 'text-primary-container font-bold border-l-[3px] border-primary-container bg-primary-container/8 shadow-[inset_0_0_20px_rgba(109,175,146,0.06)]'
           : 'text-slate-500 font-medium hover:bg-white/40 hover:text-on-surface hover:scale-[1.01] hover:shadow-[inset_0_0_12px_rgba(255,255,255,0.3)] active:scale-[0.98]'"

@@ -128,6 +128,24 @@ const routes = [
         meta: { title: '会话详情', parent: '会话工作台' },
       },
       {
+        path: 'agent/queue',
+        name: 'agentQueue',
+        component: () => import('@/views/agent/Queue.vue'),
+        meta: { title: '队列运维' },
+      },
+      {
+        path: 'agent/memory',
+        name: 'agentMemory',
+        component: () => import('@/views/agent/Memory.vue'),
+        meta: { title: '长期记忆' },
+      },
+      {
+        path: 'agent/graph',
+        name: 'agentGraph',
+        component: () => import('@/views/agent/Graph.vue'),
+        meta: { title: '知识图谱' },
+      },
+      {
         path: 'settings',
         name: 'systemSettings',
         component: () => import('@/views/settings/SystemSettings.vue'),

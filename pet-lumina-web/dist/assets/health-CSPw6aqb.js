@@ -1,1 +1,0 @@
-import{j as t}from"./index-Bw0K1qRJ.js";const r={listRecords:e=>t.post("/admin/health/record/list/page",e),getRecordDetail:e=>t.get("/admin/health/record/detail",{params:{id:String(e)}})};export{r as h};

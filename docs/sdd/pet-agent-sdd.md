@@ -283,6 +283,17 @@ cd ..\pet-lumina-app; npm run dev
 | 记忆自主 | 删除（物理）+ 导出（`version/exported_at/facts`）；`user_id` 只来自 token | `app/storage/{base,memory,mysql}.py`、`app/api/routes.py` |
 | 语义边界 | 巡检回收是 at-least-once：慢任务可能被执行两次，消费端按 `key`/`event_id` 幂等 | ADR-0009 第 4 条、`tests/test_task_queue.py` |
 
+### 8.10 管理端运维与图谱（S1.17 / BACKLOG B6）
+
+| 关注点 | 做法 | 位置 |
+| --- | --- | --- |
+| 队列现场 | 只读聚合：逐 topic 取 `depth`/`dead_letters`，worker 取 `processed`/`failed`；`TASK_BACKEND=off` 时返回 `enabled=false` 与空 topic 计数 | `app/api/routes.py` 的 `admin_tasks`、`pet-lumina-web/src/views/agent/Queue.vue` |
+| 死信重放 | `limit` 上限 10（前端按死信数取小值），重放后 `attempt=1`；确认框写明"先确认下游已修好" | `RedisTaskQueue.replay_dead_letter`、`Queue.vue` 的 `ElMessageBox.confirm` |
+| 管理员删记忆 | `DELETE /agent/admin/memory`，按 `(user_id, pet_id, key)` 物理删除；打 `admin.access`（`scope=memory.delete`），未命中 404 | `app/api/routes.py`、`app/storage/{memory,mysql}.py` |
+| 三层图谱 | 只读 Agent 侧数据：`pet:{id or all}` 中心 + `fact:{key}` + `run:{id}`；边为 `remembered` / `happened`；上限事实 50、会话 10、每会话 10 轮 | `app/api/routes.py` 的 `admin_graph`、`pet-lumina-web/src/views/agent/Graph.vue` |
+| 权限来源 | 与 6.3/6.4 一致：`role` 来自 Java `/auth/current`（S1.17 给 `LoginUserVO` 补了 `role` 字段），后端模式下忽略请求头 | `app/api/deps.py`、`backend/.../model/vo/LoginUserVO.java` |
+| 前端渲染约束 | 节点尺寸由 `data.symbolSize` 给（series 级回调在本版 vue-echarts 下取不到 params，会退化成 0 尺寸只剩标签），`value` 必须有占位值 | `Graph.vue` 注释、S1.17 REPORT 的 D4 |
+
 ## 9. 质量属性
 
 | 属性 | 设计手段 | 验收 |

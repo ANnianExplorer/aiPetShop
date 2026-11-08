@@ -1,7 +1,7 @@
-# 规格：Agent Runtime HTTP/SSE 契约 v1.8
+# 规格：Agent Runtime HTTP/SSE 契约 v1.10
 
 - 状态：Frozen（实现已按此验收；破坏性变更需升 v2）
-- 日期：2026-11-08（v1.8 增文档问答接口与 I23–I26；v1.7 增 App 会话列表与 I22；v1.6 队列运维接口；v1.5 记忆最终一致；v1.4 幂等与熔断；v1.3 管理端）
+- 日期：2026-11-08（v1.10 增管理端队列/记忆/图谱与 I30–I32；v1.9 记忆删除导出与 `/metrics`；v1.8 文档问答与 I23–I26；v1.7 App 会话列表与 I22；v1.6 队列运维接口；v1.5 记忆最终一致；v1.4 幂等与熔断；v1.3 管理端）
 - 实现：`backend-agent/app/api/`
 - 关联：[SDD](../sdd/pet-agent-sdd.md) · [ADR-0003](../adr/0003-sse-event-contract.md)
 
@@ -284,6 +284,22 @@ App 的历史入口。只返回 **token 解析出的本人**会话，不接受 `
 3. **指标标签只放低基数字段**：`method` / 路由模板 `path` / `status` / `route` / `tool` / `direction`；绝不放 `session_id`、`user_id`、消息正文。
 4. **在途消息可见性超时**：消费者取走消息后登记 `claimed`（score = 取用时刻），超过 `TASK_VISIBLE_TIMEOUT_S` 未 ack 的消息由巡检搬回主队列且 `attempt + 1`；这是 at-least-once 语义，消费端必须幂等。
 
+## 6.8 管理端运维与图谱（S1.17 / BACKLOG B6）
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/agent/admin/tasks` | 队列现场：`{enabled, backend, processed, failed, topics:[{topic, depth, dead_letters}]}` |
+| POST | `/agent/admin/tasks/dead-letters/replay` | 死信放回：`{topic, limit}` → `{topic, replayed}`；`attempt` 归零 |
+| DELETE | `/agent/admin/memory?user_id=&key=&pet_id=` | 管理员物理删除某用户的某条事实：`{deleted, key}`；不存在 `404` |
+| GET | `/agent/admin/graph?user_id=&pet_id=&sessions=&runs_per_session=` | 三层视图：宠物节点 + 记忆事实节点 + 最近运行节点及边 |
+
+约定：
+
+1. **全部需要 `role == "admin"`**：`/agent/admin/**` 统一走 `_admin_identity`；backend 模式下 `role` 只来自 Java `/auth/current`，请求头一律忽略。
+2. **图谱只画 Agent 自己库里的数据**（`memory_fact` / `agent_run`），不反查 Java 业务库——业务真源在 Java，跨服务拼图容易把权限边界拼漏。
+3. **图谱规模有上限**：事实最多 50 条，会话最多 10 个、每会话最多 10 轮；超出部分不画（避免前端力导向图卡死）。
+4. **管理端写操作必须审计**：删记忆记 `admin.access` 且 `scope="memory.delete"`，看图记 `scope="graph"`，只记关系不记正文。
+
 ## 7. 不变量（必须永远成立）
 
 | 编号 | 断言 | 验证 |
@@ -317,6 +333,9 @@ App 的历史入口。只返回 **token 解析出的本人**会话，不接受 `
 | I27 | 记忆删除/导出只作用于本人；他人既查不到也删不动（返回 404，不泄露存在性） | `test_memory_api.py::test_memory_is_isolated_between_users` |
 | I28 | `/metrics` 的路由标签用模板而非原始 URL，且输出中不含用户内容 | `test_metrics.py::test_http_metrics_use_route_template`、`test_metrics_endpoint_renders_prometheus_text` |
 | I29 | 取走超过可见性超时仍未 ack 的消息必须被巡检搬回（`attempt + 1`），ack 过的不得被误搬 | `test_task_queue.py::test_sweep_reclaims_stale_inflight`、`test_sweep_ignores_acked_messages` |
+| I30 | 管理员删除记忆同样只删指定用户指定 key 的一条，且必留 `admin.access`（`scope="memory.delete"`） | `test_admin.py::test_admin_deletes_user_memory_with_audit` |
+| I31 | 管理端图谱三层齐全：1 个宠物节点 + N 个事实节点 + M 个运行节点，所有边都从宠物节点出发 | `test_admin.py::test_admin_graph_has_three_layers` |
+| I32 | 图谱只读 Agent 侧数据，不因 Java 侧字段缺失而 500；规模受 `sessions`/`runs_per_session` 上限约束 | 同上（上限参数在 6.8 约定 3） |
 
 ## 8. 验收用例（可执行）
 
@@ -324,7 +343,7 @@ App 的历史入口。只返回 **token 解析出的本人**会话，不接受 `
 cd backend-agent
 # 含真机仓储契约测试（需要 DSN，否则跳过 mysql 变体）
 $env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:<本机口令>@127.0.0.1:3306/petlumina"
-.\.venv\Scripts\python -m pytest              # 181 passed（含真机 MySQL 契约；不带 DSN 为 171）
+.\.venv\Scripts\python -m pytest              # 183 passed（含真机 MySQL 契约；不带 DSN 为 173）
 .\.venv\Scripts\python -m evals.run           # routing 15/15, safety 6/6, memory 2/2
 .\.venv\Scripts\python -m scripts.e2e_smoke       # 10/10
 .\.venv\Scripts\python -m scripts.p1_smoke        # 9/9（配额/用量/记忆）
@@ -350,3 +369,4 @@ $env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:<本机口令>@127.0.0.1:3306/petl
 | v1.7 | 2026-11-08 | 增 6.5 我的会话列表 `GET /agent/sessions`（本人隔离/排序/分页语义）与 I22；验收命令 146 passed（BACKLOG A2） |
 | v1.8 | 2026-11-08 | 增 6.6 文档问答接口（能力矩阵/上传/列表/详情/删除）、状态语义与 I23–I26；验收命令 169 passed、补 `rag_smoke`（BACKLOG A3 / S1.15） |
 | v1.9 | 2026-11-08 | 增 6.7 记忆删除/导出与 `/metrics`、在途消息可见性超时语义、I27–I29；验收命令 181 passed、补 `ops_smoke`（BACKLOG B3·B5·B7 / S1.16） |
+| v1.10 | 2026-11-08 | 增 6.8 管理端队列现场/死信重放/管理员删记忆/三层图谱、I30–I32；验收命令 183 passed（BACKLOG B6 / S1.17） |

@@ -24,6 +24,9 @@ public class LoginUserVO implements Serializable {
     /** 手机号 */
     private String phone;
 
+    /** 角色（user / admin）：Agent 运行时用它判断管理端权限 */
+    private String role;
+
     /** Token */
     private String token;
 }
