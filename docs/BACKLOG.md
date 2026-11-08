@@ -2,7 +2,7 @@
 
 - 状态：活文档（每次交付后更新；做完的条目移到对应 REPORT，并从本表删除）
 - 更新：2026-11-08
-- 基线：`main` @ `3ad4dec`，已完成到 **S1.18**（见 `docs/pet-agent-architecture.md` §12）
+- 基线：`main` @ `531bba7`，已完成到 **S1.19**（见 `docs/pet-agent-architecture.md` §12）
 
 ## 0. 怎么读这份文档
 
@@ -11,7 +11,7 @@
 3. 优先级按"卡不卡产品可用"分：P0 阻断、P1 该做、P2 值得做、P3 以后。
 4. 估算是"一个人、熟悉代码"的量级，不是承诺。
 
-统计：**P0 3 条（A1、A2、A3 已交付）· P1 8 条（B3/B5/B6/B7 已交付，剩 4 条）· P2 9 条（C2 已交付，剩 8 条）· P3 9 条 · 原项目卫生债 0 条**，原计划 42 条，剩余 21 条（P1 剩 4 + P2 剩 8 + P3 9）。各批证据：E1/E3/E4/E5 见 `docs/reports/2026-11-08-s1.11-hygiene-debts.md`；E2/E6/E7 见 `docs/reports/2026-11-08-s1.12-e2-e6-e7.md`；E8/E13 见 `docs/reports/2026-11-08-s1.13-e8-e13.md`；E9/E10/E11/E12 见 `docs/reports/2026-11-08-s1.14-e9-e12.md`；A3 见 `docs/reports/2026-11-08-s1.15-doc-rag.md`；B3/B5/B7 见 `docs/reports/2026-11-08-s1.16-ops.md`；B6 见 `docs/reports/2026-11-08-s1.17-admin-console.md`；C2 见 `docs/reports/2026-11-08-s1.18-profile.md`。
+统计：**P0 3 条（A1、A2、A3 已交付）· P1 8 条（B2/B3/B4/B5/B6/B7 已交付，剩 2 条）· P2 9 条（C2、C6 已交付，剩 7 条）· P3 9 条 · 原项目卫生债 0 条**，原计划 42 条，剩余 18 条（P1 剩 2 + P2 剩 7 + P3 9）。各批证据：E1/E3/E4/E5 见 `docs/reports/2026-11-08-s1.11-hygiene-debts.md`；E2/E6/E7 见 `docs/reports/2026-11-08-s1.12-e2-e6-e7.md`；E8/E13 见 `docs/reports/2026-11-08-s1.13-e8-e13.md`；E9/E10/E11/E12 见 `docs/reports/2026-11-08-s1.14-e9-e12.md`；A3 见 `docs/reports/2026-11-08-s1.15-doc-rag.md`；B3/B5/B7 见 `docs/reports/2026-11-08-s1.16-ops.md`；B6 见 `docs/reports/2026-11-08-s1.17-admin-console.md`；C2 见 `docs/reports/2026-11-08-s1.18-profile.md`；B2/B4/C6 见 `docs/reports/2026-11-08-s1.19-b4-b2-pet.md`。
 
 ---
 
@@ -30,9 +30,9 @@
 | # | 缺口 | 现状 | 依赖 / 卡点 | 验收标准 | 估算 |
 |---|---|---|---|---|---|
 | B1 | **RocketMQ 生产实现（S1.9-c）** | 只有 `TaskQueue` 抽象 + 内存/Redis 实现；ADR-0009 定的是"MQ 在 Java 侧" | 本机无 broker、无 Docker；Java 需引 `rocketmq-spring-boot-starter` | 起一个 broker，Python 侧通过 `TaskQueue` 适配器收发；`tasks_smoke` 在 MQ 后端下 8/8 | 2–3 天 |
-| B2 | **多副本韧性未验证** | 熔断状态在进程内；事件流 / 限流已走 Redis，但没起过两个实例 | 需要反向代理或两端口 + 压测脚本 | 起 2 个实例：同一用户的 SSE 续传在另一实例可读；限流合计 20/min 不被放大 2 倍 | 2 天 |
+| B2 | ✅ **多副本韧性**（2026-11-08，S1.19） | 已交付：8099/8100 双副本，`scripts.multi_replica_smoke` 8/8（跨副本事件回放、同幂等键同 run、任务不重复消费、记忆共享、限流共享）；**熔断仍是进程内状态**（已知限制，写进 SPEC 6.10） | 剩余：熔断跨副本共享（Redis 计数） | 已达成：两个实例同时在线，8 项检查全过 | 2 天 |
 | B3 | ✅ **`processing` 泄漏扫描（2026-11-08，S1.16）** | 已交付：`claimed` ZSET + 巡检搬回（`attempt+1`）。**僵死 run 收敛仍未做**（强杀进程后 `agent_run` 仍会停在 `running`） | 剩余部分需定策略（按 `create_time < now - stale_run_timeout_s` 收敛 vs 外部巡检），多副本下不能无脑 cancel 别人的活 run | 已达成：消费者卡住 60s 后消息被另一 worker 接手、`processing` 不长期堆积（`scripts.ops_smoke` 第 10–11 项）；**待办**：`running` 超 15 分钟被标记 `cancelled` 且管理端可见原因 | 0.5 天 |
-| B4 | **死信运维只到"手动放回"** | 单 topic、最多 100 条、无自动重试策略、无告警 | 依赖 B3 的扫描器（已具备） | 死信 > N 时打 WARN 并可配置自动重试（指数退避）；批量重放（多 topic） | 1 天 |
+| B4 | ✅ **死信自动重试**（2026-11-08，S1.19） | 已交付：失败进 `:retry` ZSET 指数退避（`5s→600s` 封顶）、到期提升、`redrives` 有界自动重投（默认关闭）；**死信告警阈值仍未做** | 剩余：死信超阈值打 WARN / 接告警通道 | 已达成：退避/到期/上限三条用例 + 真机退避链；`TASK_DLQ_REDRIVE_INTERVAL_S` 控制是否自动重投 | 1 天 |
 | B5 | ✅ **可观测缺指标**（2026-11-08，S1.16） | 已交付 `/metrics`（6 个指标）；**trace 未做**（Langfuse 仍是可选项） | 剩余部分需选型 Langfuse / OpenTelemetry | 已达成：`pet_agent_runs_total{route,status}`、`tokens_total{direction}`、`tool_calls_total{tool,ok}`、`queue_depth{topic}`、HTTP 两项；**待办**：一次 run 在 trace 里能看到对应 span | 2 天 |
 | B6 | ✅ **管理端缺"队列页 / 记忆页 / 知识图谱"**（2026-11-08，S1.17） | 已交付三页：队列运维（现场 + 死信重放）、长期记忆（按用户查/删）、知识图谱（宠物—事实—事件三层力导向图）；后端补 `DELETE /agent/admin/memory` 与 `GET /agent/admin/graph` | 前端工作量 | 已达成：Edge 实点三页 + `test_admin.py` 两例（删记忆审计、三层图谱） | 已完成 |
 | B7 | ✅ **记忆不可删、不可导出**（2026-11-08，S1.16） | 已交付 `DELETE /agent/memory/me` 与 `GET /agent/memory/me/export`；管理端/App 尚无对应 UI（见 B6） | 隐私合规要求 | 已达成：删除后导出为空、下一轮不再注入（`test_memory_api.py` 5 例 + `scripts.ops_smoke`）；**待办**：前端入口 | 0.5 天 |
@@ -49,7 +49,7 @@
 | C3 | **记忆抽取质量评测偏薄** | `evals` 里 `memory` 只有 2 条用例 | 需标注更多真实句式 | `memory` 套件 ≥40 条（含否定句"它不过敏"、多宠物、方言），阈值 ≥0.9 | 2 天 |
 | C4 | **引用回跳只覆盖 log** | `kind==='log'` 才可点；post / health 没有 locator | 需要后端 VO 补定位字段 | 健康记录引用能跳到对应日期；帖子引用能跳到帖子详情 | 2 天 |
 | C5 | **语音链路** | 无 | 参考 Open-LLM-VTuber（本地 ASR/TTS + 打断） | 浏览器录音 → 转写 → 走同一 `POST /agent/chat`；TTS 可关 | 5 天 |
-| C6 | **桌宠** | 只有架构方案（§4 三档） | 资产管线（序列帧 → Live2D → VRM）+ 状态机 | A 档：App 内 H5 序列帧，`idle/happy/hungry/sleepy/worried` 五态；同台词 30 分钟不重复 | 8 天 |
+| C6 | ✅ **桌宠（档 A）**（2026-11-08，S1.19） | 已交付：App 内 H5 + 内联 SVG，状态由真实字段推导（`derivePetMood` 纯函数）、点击说话、可关闭、尊重 reduced-motion；**Live2D/VRM 与语音未做** | 剩余：档 B（Live2D）/ 档 C（VRM）+ 主动陪伴 | 已达成：五态 + 10 条状态单测 + 3 条组件测试 + 浏览器实点截图 | 8 天 |
 | C7 | **压测与容量基线** | 无 | 依赖 B2 | 记录 20 并发 SSE 下的首 token P95、错误率、峰值内存；给出单实例上限 | 2 天 |
 | C8 | **CI 未真正跑过** | `agent-ci.yml` 已写，本机无 docker | 推送后 GitHub Actions 状态未知 | Actions 上 `check` 与 `image` 两个 job 绿；首次跑通后把徽章贴到 README | 0.5 天 |
 | C9 | **前端 e2e 自动化** | 全部靠手动开 Edge 点 | 需 Playwright + 固定桩数据 | 三条用例：登录→对话→看到引用；管理员→会话详情；429 → 提示 + 重试 | 2 天 |
@@ -109,4 +109,5 @@ E1–E13 全部完成，本表不再列条目。证据分布：
 7. ~~**A3 文档问答 RAG**~~ ✅ 已完成（2026-11-08）：`doc_file`/`doc_chunk` + 解析/切分/嵌入/检索 + `search_docs` 工具 + App 附件入口，`rag_smoke` 10/10。见 `docs/reports/2026-11-08-s1.15-doc-rag.md`。
 8. ~~**B3 / B5 / B7 运维三件套**~~ ✅ 已完成（2026-11-08）：在途消息巡检回收（`claimed` ZSET + `attempt+1`）、`/metrics` 六个指标、记忆删除/导出；`ops_smoke` 11/11。见 `docs/reports/2026-11-08-s1.16-ops.md`。
 9. ~~**B6 管理端三页**~~ ✅ 已完成（2026-11-08）：队列运维（现场 + 死信重放）、长期记忆（查/删）、知识图谱（宠物—事实—事件）；Edge 实点三页，`pytest` 183 passed。见 `docs/reports/2026-11-08-s1.17-admin-console.md`。
-10. ~~**C2 用户画像**~~ ✅ 已完成（2026-11-08）：`profile_snapshot` 版本化快照 + 确定性 builder + 记忆消费后重算 + 四接口 + 管理端画像页；`pytest` 203 passed、真机 `v2 facts=3`、Edge 实点。见 `docs/reports/2026-11-08-s1.18-profile.md`。下一批建议 **B4（死信自动重试）**、**B2（多副本验证）** 或 **C1（`memory_episode` 情景记忆）**。
+10. ~~**C2 用户画像**~~ ✅ 已完成（2026-11-08）：`profile_snapshot` 版本化快照 + 确定性 builder + 记忆消费后重算 + 四接口 + 管理端画像页；`pytest` 203 passed、真机 `v2 facts=3`、Edge 实点。见 `docs/reports/2026-11-08-s1.18-profile.md`。
+11. ~~**B4 死信自动重试 / B2 多副本 / C6 桌宠**~~ ✅ 已完成（2026-11-08，S1.19）：退避 `5s→600s` 封顶 + `redrives` 有界重投（默认关）；双副本 `multi_replica_smoke` 8/8；桌宠档 A（纯函数状态机 + H5 组件）。`pytest` 208 passed、App 50 tests。见 `docs/reports/2026-11-08-s1.19-b4-b2-pet.md`。下一批建议 **B3 僵死 run 收敛**、**C1 `memory_episode` 情景记忆** 或 **B1 RocketMQ**。

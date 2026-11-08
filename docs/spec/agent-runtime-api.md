@@ -1,4 +1,4 @@
-# 规格：Agent Runtime HTTP/SSE 契约 v1.11
+# 规格：Agent Runtime HTTP/SSE 契约 v1.12
 
 - 状态：Frozen（实现已按此验收；破坏性变更需升 v2）
 - 日期：2026-11-08（v1.11 增宠物画像与 I33–I36；v1.10 管理端队列/记忆/图谱与 I30–I32；v1.9 记忆删除导出与 `/metrics`；v1.8 文档问答与 I23–I26；v1.7 App 会话列表与 I22；v1.6 队列运维接口；v1.5 记忆最终一致；v1.4 幂等与熔断；v1.3 管理端）
@@ -329,6 +329,38 @@ meta        { factWatermark, builtAt }
 4. **过期标记而非静默旧值**：`stale=true` 表示「事实比画像新」，前端必须显式提示；判定用 `meta.factWatermark` 与 `memory_fact` 的最大 `update_time` 比较。
 5. **因果顺序**：重算挂在记忆消费之后（同一个 consumer），不允许与记忆写入并发——否则会产出 `fact_count=0` 的空画像。
 
+## 6.10 任务重试与多副本语义（S1.19 / BACKLOG B4·B2）
+
+**重试（B4）**：`nack` 后消息先进**退避队列**（Redis `{prefix}:{topic}:retry` ZSET，score = 到期时刻），
+`backoff = min(base * 2^(attempt-1), cap)`（默认 `base=5s`、`cap=600s`），巡检到期后搬回主队列并 `attempt+1`；
+超过 `max_attempts` 进死信。**`depth(topic)` 只统计主队列**，不含退避与死信——看积压不要漏看这两个数。
+
+| 配置 | 默认 | 语义 |
+| --- | --- | --- |
+| `TASK_RETRY_BASE_S` | 5 | 首次退避秒数 |
+| `TASK_RETRY_CAP_S` | 600 | 退避上限 |
+| `TASK_DLQ_REDRIVE_INTERVAL_S` | 0 | 死信自动重投周期；**0 = 关闭** |
+| `TASK_DLQ_MAX_REDRIVES` | 3 | 同一条消息最多被自动重投几次（`redrives` 字段） |
+| `TASK_DLQ_REDRIVE_LIMIT` | 5 | 每轮每 topic 最多重投几条 |
+
+约定：
+
+1. **重投也有上限**：`redrives` 达到上限的留在死信等人处理，不做"无限自动重试"；
+2. **自动重投默认关闭**：打开是显式运维决策，必须在变更单里写清下游修好了什么；
+3. **at-least-once**：重复投递由消费端幂等兜底（审计按事件 id `INSERT IGNORE`、记忆按唯一键 upsert）。
+
+**多副本（B2）**：两个副本共享 MySQL + Redis 时
+
+| 能力 | 是否共享 | 依据 |
+| --- | --- | --- |
+| 任务消费（不重复） | ✅ | 队列在 Redis，`BRPOPLPUSH` 抢占 |
+| 事件回放 | ✅ | `RedisEventStore` 跨副本可读 |
+| 限流窗口 | ✅ | `RedisRateLimiter` 按用户计数 |
+| 幂等键 | ✅ | `agent_run` 唯一键 `(user_id, idempotency_key)` |
+| 熔断状态 | ❌（已知限制） | 进程内 `CircuitBreaker`，多副本各自熔断 |
+
+验收：`python -m scripts.multi_replica_smoke`（两个副本 8 项全过）。
+
 ## 7. 不变量（必须永远成立）
 
 | 编号 | 断言 | 验证 |
@@ -370,6 +402,9 @@ meta        { factWatermark, builtAt }
 | I34 | 同一批事实重复构建结果一致（除 `meta.builtAt`） | `test_profile.py::test_builder_is_deterministic` |
 | I35 | 事实更新后画像标 `stale=true`，重建后清除 | `test_profile.py::test_profile_marks_stale_when_new_fact_arrives` |
 | I36 | 画像只有本人可读；管理端读取他人画像需 admin 且留 `admin.access`（`scope="profile"`） | `test_profile.py::test_profile_isolated_between_users`、`test_admin_reads_other_users_profile_with_audit` |
+| I37 | 任务失败先进退避队列（不在主队列），到期才搬回；退避时间随次数指数增长并封顶 | `test_task_queue.py::test_retry_not_promoted_before_due`、`test_backoff_grows_and_caps` |
+| I38 | 死信自动重投默认关闭，且同一条消息最多重投 `max_redrives` 次（按 `redrives` 字段计） | `test_task_queue.py::test_redrive_dead_letters_respects_max_redrives` |
+| I39 | 多副本共享 MySQL/Redis 时：同一任务只被消费一次、事件跨副本可回放、幂等与限流跨副本一致 | `scripts.multi_replica_smoke`（8/8） |
 
 ## 8. 验收用例（可执行）
 
@@ -377,7 +412,7 @@ meta        { factWatermark, builtAt }
 cd backend-agent
 # 含真机仓储契约测试（需要 DSN，否则跳过 mysql 变体）
 $env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:<本机口令>@127.0.0.1:3306/petlumina"
-.\.venv\Scripts\python -m pytest              # 203 passed（含真机 MySQL 契约；不带 DSN 为 192 passed + 1 skipped）
+.\.venv\Scripts\python -m pytest              # 208 passed（含真机 MySQL 契约；不带 DSN 为 197 passed + 1 skipped）
 .\.venv\Scripts\python -m evals.run           # routing 15/15, safety 6/6, memory 2/2
 .\.venv\Scripts\python -m scripts.e2e_smoke       # 10/10
 .\.venv\Scripts\python -m scripts.p1_smoke        # 9/9（配额/用量/记忆）
@@ -386,6 +421,7 @@ $env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:<本机口令>@127.0.0.1:3306/petl
 .\.venv\Scripts\python -m scripts.tasks_smoke        # 8/8（队列现场/死信重放）
 .\.venv\Scripts\python -m scripts.rag_smoke          # 10/10（上传→解析→检索→引用→删除）
 .\.venv\Scripts\python -m scripts.ops_smoke          # 11/11（指标/记忆导出删除/在途巡检）
+.\.venv\Scripts\python -m scripts.multi_replica_smoke # 8/8（两个副本：事件/幂等/消费/限流）
 .\.venv\Scripts\ruff.exe check .              # All checks passed
 ```
 
@@ -405,3 +441,4 @@ $env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:<本机口令>@127.0.0.1:3306/petl
 | v1.9 | 2026-11-08 | 增 6.7 记忆删除/导出与 `/metrics`、在途消息可见性超时语义、I27–I29；验收命令 181 passed、补 `ops_smoke`（BACKLOG B3·B5·B7 / S1.16） |
 | v1.10 | 2026-11-08 | 增 6.8 管理端队列现场/死信重放/管理员删记忆/三层图谱、I30–I32；验收命令 183 passed（BACKLOG B6 / S1.17） |
 | v1.11 | 2026-11-08 | 增 6.9 宠物画像（四个接口 + data 结构 + 五条约定）、I33–I36；验收命令 203 passed（BACKLOG C2 / S1.18） |
+| v1.12 | 2026-11-08 | 增 6.10 任务退避重试（backoff/重投上限/默认关闭）与多副本语义（共享 vs 熔断单实例）；验收命令 208 passed、补 `multi_replica_smoke`（BACKLOG B4·B2 / S1.19） |

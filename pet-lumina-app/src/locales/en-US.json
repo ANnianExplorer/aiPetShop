@@ -318,6 +318,18 @@
     "urgent": "Urgent",
     "gotIt": "Got it"
   },
+  "pet": {
+    "aria": "Desktop pet",
+    "hide": "Hide pet",
+    "hint": {
+      "sleepy": "It's late — {name} is asleep, talk tomorrow",
+      "worried": "{name}'s health score is low. Check its records",
+      "reminder": "You have {count} unread reminders, {name} says don't miss them",
+      "hungry": "{name} hasn't finished today's meals yet",
+      "happy": "{name} is doing great today — say hi",
+      "idle": "{name} is keeping you company. Tap to talk"
+    }
+  },
   "chat": {
     "send": "Send",
     "placeholder": "Ask Lumina anything, e.g. how was the weight last week?",

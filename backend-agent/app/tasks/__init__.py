@@ -48,10 +48,17 @@ def create_task_queue(settings: Settings) -> TaskQueue | None:
             topic=TOPIC_MEMORY_OBSERVE,
             max_size=settings.task_queue_size,
             max_attempts=settings.task_max_attempts,
+            retry_base_s=settings.task_retry_base_s,
+            retry_cap_s=settings.task_retry_cap_s,
         )
     try:
         client = create_redis(settings.redis_url)
-        return RedisTaskQueue(client, max_attempts=settings.task_max_attempts)
+        return RedisTaskQueue(
+            client,
+            max_attempts=settings.task_max_attempts,
+            retry_base_s=settings.task_retry_base_s,
+            retry_cap_s=settings.task_retry_cap_s,
+        )
     except Exception as exc:  # 连不上 Redis 也不该让服务起不来
         log_event(task_log, logging.ERROR, "task queue init failed",
                   backend=backend, error=f"{type(exc).__name__}: {exc}")

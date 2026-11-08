@@ -43,7 +43,7 @@ App / 管理端 ──SSE──>  api/          传输层：鉴权、请求校�
 | `app/memory/` | `extract`/`ops`/`service` | 事实抽取（规则）、ADD/UPDATE/NOOP 算子、写入与召回 |
 | `app/tasks/` | `base`/`inprocess`/`redis`/`consumers`/`worker` | 旁路任务队列：记忆抽取与审计出请求路径；队列满退回同步 |
 | `app/rag/` | `models`/`chunker`/`embedder`/`ocr`/`media`/`parsers`/`service` | 文档问答：解析→切分→嵌入→检索；缺 `tesseract`/`ffmpeg` 时明确降级并给原因 |
-| `tests/` | 契约级单测 | 203 项（含真机契约），不依赖网络/密钥 |
+| `tests/` | 契约级单测 | 208 项（含真机契约），不依赖网络/密钥 |
 | `evals/` | 评测用例 + 阈值 runner | 23 条用例，不过阈值就退出码非 0 |
 
 ## 快速开始
@@ -61,7 +61,7 @@ copy .env.example .env          # 填 PET_AGENT_LLM_API_KEY
 ```bash
 curl http://localhost:8099/healthz    # 进程活着
 curl http://localhost:8099/readyz     # 能接流量（存储+模型都 ok 才是 200）
-.venv\Scripts\python -m pytest        # 203 passed（设 PET_AGENT_TEST_MYSQL_DSN 时含真机契约）
+.venv\Scripts\python -m pytest        # 208 passed（设 PET_AGENT_TEST_MYSQL_DSN 时含真机契约）
 .venv\Scripts\python -m evals.run     # routing/safety/memory 三套件，硬阈值
 .venv\Scripts\ruff.exe check .        # 静态检查
 ```
@@ -118,6 +118,11 @@ mysql -u root -p < backend/sql/v2.12-agent-idempotency.sql  # 幂等键（S1.8 P
 | `PET_AGENT_TASK_MAX_ATTEMPTS` | `3` | 消费失败重试次数，超过进死信 |
 | `PET_AGENT_TASK_VISIBLE_TIMEOUT_S` | `120` | 取走后超过这么久还没 ack，就认为消费者死了、搬回队列（`attempt+1`） |
 | `PET_AGENT_TASK_SWEEP_INTERVAL_S` | `60` | 巡检间隔；`<=0` 关闭（只保留启动时的 `recover`） |
+| `PET_AGENT_TASK_RETRY_BASE_S` | `5` | 失败退避首秒数（`min(base·2^(attempt-1), cap)`） |
+| `PET_AGENT_TASK_RETRY_CAP_S` | `600` | 退避上限 |
+| `PET_AGENT_TASK_DLQ_REDRIVE_INTERVAL_S` | `0` | 死信自动重投周期；`0` = 关闭（需要显式运维决策） |
+| `PET_AGENT_TASK_DLQ_MAX_REDRIVES` | `3` | 同一条消息最多被自动重投几次 |
+| `PET_AGENT_TASK_DLQ_REDRIVE_LIMIT` | `5` | 每轮每 topic 最多重投几条 |
 
 ## 接口
 
@@ -185,7 +190,7 @@ event: error   data: {code, message, retryable}
 ## 测试与评测
 
 - `ruff check .` → 静态检查（配置在 `pyproject.toml`，CI 第一道门）。
-- `pytest` → 203 项（设 `PET_AGENT_TEST_MYSQL_DSN` 时含真机 MySQL 契约；不带 DSN 为 192 通过 + 1 跳过）：路由、网关六道防线、存储契约（内存/MySQL 同一套断言）、图（L1/L2/hop 上限/坏参数）、API（SSE 事件序列、续传三种方式等价、越权、失败收敛、429 与配额头、记忆注入与用量聚合）、配额（分钟/日窗口、用户隔离、Redis fail-open、`Retry-After`）、事件存储（两实现同契约：序号、游标、裁剪、坏数据跳过）、记忆（抽取规则、ADD/UPDATE/NOOP、隔离、低置信度过滤、导出与删除）、会话列表（本人隔离、最后活跃排序、分页 total）、文档 RAG（切分/嵌入确定性/多编码解析/PDF 分页/OCR 缺失降级/去重与软删复活/检索隔离/删除后不可检索）、可观测（request_id/日志字段/readyz 降级/指标模板与不含用户内容）、管理端（403/401、列表筛选、详情含 steps、审计不含正文、伪造 header 无效、删记忆审计、三层图谱、他人画像与审计）、画像（确定性构建、斤换 kg、低置信度忽略、疫苗过期进 careGaps、版本递增与裁剪、事实更新后 stale）、幂等（同 key 只执行一次、并发唯一键、非法 key 422）、熔断（三态迁移、half_open 单探测、401 不误熔断、readyz 联动）、队列（启动补偿、死信重放、可见性超时巡检）。
+- `pytest` → 208 项（设 `PET_AGENT_TEST_MYSQL_DSN` 时含真机 MySQL 契约；不带 DSN 为 197 通过 + 1 跳过）：路由、网关六道防线、存储契约（内存/MySQL 同一套断言）、图（L1/L2/hop 上限/坏参数）、API（SSE 事件序列、续传三种方式等价、越权、失败收敛、429 与配额头、记忆注入与用量聚合）、配额（分钟/日窗口、用户隔离、Redis fail-open、`Retry-After`）、事件存储（两实现同契约：序号、游标、裁剪、坏数据跳过）、记忆（抽取规则、ADD/UPDATE/NOOP、隔离、低置信度过滤、导出与删除）、会话列表（本人隔离、最后活跃排序、分页 total）、文档 RAG（切分/嵌入确定性/多编码解析/PDF 分页/OCR 缺失降级/去重与软删复活/检索隔离/删除后不可检索）、可观测（request_id/日志字段/readyz 降级/指标模板与不含用户内容）、管理端（403/401、列表筛选、详情含 steps、审计不含正文、伪造 header 无效、删记忆审计、三层图谱、他人画像与审计）、画像（确定性构建、斤换 kg、低置信度忽略、疫苗过期进 careGaps、版本递增与裁剪、事实更新后 stale）、幂等（同 key 只执行一次、并发唯一键、非法 key 422）、熔断（三态迁移、half_open 单探测、401 不误熔断、readyz 联动）、队列（启动补偿、死信重放、可见性超时巡检）。
 - `python -m evals.run` → 三套件、阈值硬卡：`routing ≥ 95%`、`safety = 100%`、`memory = 100%`。
   用例在 `evals/cases.jsonl`，加一行就是加一条回归；报告落 `evals/reports/latest.json`。
 - 三者都不需要真模型：`ScriptedModel` 把模型的输出变成脚本，测的是**我们的编排**，不是模型的智商。
@@ -245,10 +250,20 @@ P1 专项（配额/用量/记忆，用独立账号 `token-7007`，限流放最�
 .venv\Scripts\python -m scripts.ops_smoke        # 11/11（建议 TASK_SWEEP_INTERVAL_S=2、TASK_VISIBLE_TIMEOUT_S=1）
 ```
 
+多副本专项（两个 Agent 实例共享 MySQL + Redis，例如 8099 与 8100）：
+
+```bash
+.venv\Scripts\python -m scripts.multi_replica_smoke   # 8/8（跨副本事件回放/幂等/不重复消费/记忆/限流）
+```
+
+> 该脚本走**真 Java 登录**（`AUTH_MODE=backend` + `BACKEND_BASE_URL` 指向 8080），
+> 其余冒烟脚本用桩身份 `token-*`，需要 `BACKEND_BASE_URL` 指向 8097（`tests/stub_java.py`）。
+
 > 真机形态跑法：`REPO_BACKEND=mysql`、`EVENT_BACKEND=redis`、`RATE_LIMIT_BACKEND=redis`、
-> `TASK_BACKEND=redis`，七个冒烟全部可跑（10/9/6/8/8/10/11）。Redis 5 不支持 RESP3，客户端已固定 `protocol=2`。
+> `TASK_BACKEND=redis`，八个冒烟全部可跑（10/9/6/8/8/10/11/8）。Redis 5 不支持 RESP3，客户端已固定 `protocol=2`。
 > 崩溃恢复：进程启动时先把 `:processing` 里的在途消息搬回队列再开消费，日志 `task inflight recovered on startup`；
-> 运行期卡死的消息由巡检按 `TASK_VISIBLE_TIMEOUT_S` 回收，日志 `task inflight swept`。
+> 运行期卡死的消息由巡检按 `TASK_VISIBLE_TIMEOUT_S` 回收，日志 `task inflight swept`；
+> 失败消息先进 `:retry` ZSET 按指数退避，日志 `task retry scheduled`（含 `delay_s`），到期由巡检搬回。
 
 真实模型专项（必须有 key，验证"不是本地桩"）：
 

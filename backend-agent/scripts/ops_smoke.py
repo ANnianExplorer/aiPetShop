@@ -18,6 +18,8 @@ import re
 import sys
 import time
 from dataclasses import dataclass, field
+from typing import Any
+from urllib.parse import unquote, urlparse
 
 import httpx
 import pymysql
@@ -25,12 +27,30 @@ import redis.asyncio as aioredis
 
 AGENT = os.environ.get("PET_AGENT_URL", "http://127.0.0.1:8099")
 REDIS_URL = os.environ.get("PET_AGENT_REDIS_URL", "redis://127.0.0.1:6379/0")
+
+
+def _dsn_parts() -> dict[str, Any]:
+    """从 PET_AGENT_MYSQL_DSN（或 PET_AGENT_TEST_MYSQL_DSN）里取库名/账号，避免再写一份口令。"""
+    raw = os.environ.get("PET_AGENT_MYSQL_DSN") or os.environ.get("PET_AGENT_TEST_MYSQL_DSN") or ""
+    if not raw:
+        return {}
+    parsed = urlparse(raw)
+    return {
+        "host": parsed.hostname or "127.0.0.1",
+        "port": parsed.port or 3306,
+        "user": unquote(parsed.username or "root"),
+        "password": unquote(parsed.password or ""),
+        "database": (parsed.path or "/petlumina").lstrip("/"),
+    }
+
+
 MYSQL = {
     "host": "127.0.0.1",
     "port": 3306,
     "user": "root",
     "password": os.environ.get("PETLUMINA_DB_PASSWORD", ""),
     "database": "petlumina",
+    **_dsn_parts(),
 }
 UID = f"{int(time.time()) % 100000:05d}"
 TOKEN = f"token-{UID}"

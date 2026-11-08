@@ -8,6 +8,7 @@
 from __future__ import annotations
 
 import logging
+import time
 
 import httpx
 import pytest
@@ -185,13 +186,14 @@ async def test_admin_tasks_reports_disabled_when_backend_off(
 @pytest.mark.asyncio
 async def test_admin_replays_dead_letters(settings) -> None:
     """死信要能被放回队列重试，且 attempt 归零——否则一失败又立刻进死信。"""
-    queue = InProcessTaskQueue(topic=TOPIC_AUDIT_TOOL, max_attempts=2)
-    # 造一条死信：取出来两次都 nack
+    queue = InProcessTaskQueue(topic=TOPIC_AUDIT_TOOL, max_attempts=2, retry_base_s=0.0, retry_cap_s=0.0)
+    # 造一条死信：取出来两次都 nack（B4 起失败先进退避队列，要显式到期搬回）
     await queue.publish(TOPIC_AUDIT_TOOL, key="run:tool", payload={"name": "get_pet_profile"})
     for _ in range(2):
         message = await queue.receive(TOPIC_AUDIT_TOOL, timeout_s=0.05)
         assert message is not None
         await queue.nack(message, error="boom")
+        await queue.retry_due([TOPIC_AUDIT_TOOL], now=time.time() + 3600)
 
     app = create_app(
         settings,

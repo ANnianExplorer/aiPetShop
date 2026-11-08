@@ -39,7 +39,7 @@
 
 | 文档 | 版本 | 内容 |
 | --- | --- | --- |
-| [spec/agent-runtime-api.md](spec/agent-runtime-api.md) | v1.11 | `/healthz`、`/readyz`、`/metrics`、`POST /agent/chat`、事件续传、消息回读、会话列表、文档问答（上传/能力矩阵/删除）、记忆（含删除/导出）与用量、宠物画像、管理端只读与队列运维接口的请求/响应/事件/错误码/不变量 |
+| [spec/agent-runtime-api.md](spec/agent-runtime-api.md) | v1.12 | `/healthz`、`/readyz`、`/metrics`、`POST /agent/chat`、事件续传、消息回读、会话列表、文档问答（上传/能力矩阵/删除）、记忆（含删除/导出）与用量、宠物画像、管理端只读与队列运维接口、任务退避重试与多副本语义的请求/响应/事件/错误码/不变量 |
 | [spec/web-chat-ui.md](spec/web-chat-ui.md) | v1.0 | 对话页状态机、交互、持久化键、错误映射、布局约束、i18n 键、非目标 |
 
 ### ADR
@@ -66,6 +66,8 @@
 | [plans/s1.9-task-queue.md](plans/s1.9-task-queue.md) | S1.9 任务队列：把记忆抽取/审计挪出请求路径，RocketMQ 作为生产实现 | S1.9-a、S1.9-b 已完成；RocketMQ 待启动 |
 | [plans/s1.15-doc-rag.md](plans/s1.15-doc-rag.md) | S1.15 文档问答 RAG：上传/解析/切分/嵌入/检索/引用（BACKLOG A3） | 已完成 |
 | [plans/s1.16-ops-metrics-memory.md](plans/s1.16-ops-metrics-memory.md) | S1.16 运维与数据自主：在途消息巡检 / `/metrics` / 记忆删除导出（B3·B5·B7） | 已完成 |
+| [plans/s1.18-profile.md](plans/s1.18-profile.md) | S1.18 宠物画像：版本化快照 + 确定性 builder + 管理端画像页（C2） | 已完成 |
+| [plans/s1.19-b4-b2-deskpet.md](plans/s1.19-b4-b2-deskpet.md) | S1.19 退避重试 / 多副本验证 / 桌宠档 A（B4·B2·C6） | 已完成 |
 
 ### REPORT
 
@@ -89,6 +91,7 @@
 | [reports/2026-11-08-s1.16-ops.md](reports/2026-11-08-s1.16-ops.md) | S1.16 运维与数据自主（B3·B5·B7） | 在途消息巡检回收（`claimed` ZSET + `attempt+1`）、6 个 Prometheus 指标、记忆删除/导出；181 单测、`ops_smoke` 11/11（含"造一条死掉的在途消息 → 巡检搬回 → 落库"真机闭环） |
 | [reports/2026-11-08-s1.17-admin-console.md](reports/2026-11-08-s1.17-admin-console.md) | S1.17 管理端运维与图谱（B6） | 队列运维/长期记忆/知识图谱三页 + `DELETE /agent/admin/memory`、`GET /agent/admin/graph`；183 单测、Edge 实点三页；抓到 Java `LoginUserVO` 缺 `role` 与 vue-echarts `symbolSize` 回调失效两个真缺陷 |
 | [reports/2026-11-08-s1.18-profile.md](reports/2026-11-08-s1.18-profile.md) | S1.18 宠物画像（C2） | 版本化 `profile_snapshot` + 确定性 builder + 记忆消费后重算 + 四接口 + 管理端画像页；203 单测、真机 `v2 facts=3`、Edge 实点；抓到画像与记忆并发导致空画像的顺序缺陷 |
+| [reports/2026-11-08-s1.19-b4-b2-pet.md](reports/2026-11-08-s1.19-b4-b2-pet.md) | S1.19 退避重试 / 多副本 / 桌宠（B4·B2·C6） | 失败进 `:retry` ZSET 指数退避（5s→600s 封顶）+ `redrives` 有界重投（默认关）；双副本 `multi_replica_smoke` 8/8；桌宠档 A（纯函数状态机 + H5 组件）；208 单测、App 50 tests |
 
 ## 3. 新增文档怎么起头
 

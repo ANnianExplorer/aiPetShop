@@ -457,8 +457,11 @@ DSH 本身就是一个 harness（本仓库的会话就跑在它上面：skills /
 
 | S1.15 / A3 | 文档问答 RAG：`doc_file`/`doc_chunk`、文本/PDF/OCR/视频抽帧解析、切分 + 确定性嵌入、`search_docs` 工具（引用 `kind=doc`）、App 附件上传 | `docs/reports/2026-11-08-s1.15-doc-rag.md`：169 passed、`rag_smoke` 10/10、Edge 上传→提问→引用；D1–D7 |
 | S1.16 / B3·B5·B7 | 在途消息可见性超时巡检（`claimed` ZSET + `attempt+1`）、`/metrics` 六组指标、记忆删除/导出（物理删除 + 版本化导出） | `docs/reports/2026-11-08-s1.16-ops.md`：181 passed、`ops_smoke` 11/11（含"造一条死掉的在途消息 → 巡检搬回 → 落库"） |
+| S1.17 / B6 | 管理端「队列运维 / 长期记忆 / 知识图谱」三页 + 删记忆（审计）+ 三层图谱接口；Java `LoginUserVO` 补 `role` | `docs/reports/2026-11-08-s1.17-admin-console.md`：183 passed、Edge 三页实点 |
+| S1.18 / C2 | 版本化宠物画像 `profile_snapshot` + 确定性 builder + 记忆消费后重算（同 consumer，避免空画像）+ 四接口 + 管理端画像页 | `docs/reports/2026-11-08-s1.18-profile.md`：203 passed、真机 `v2 facts=3` |
+| S1.19 / B4·B2·C6 | 失败进 `:retry` ZSET 指数退避（5s→600s 封顶）+ `redrives` 有界自动重投（默认关）；双副本一致性验证；桌宠档 A（`derivePetMood` 纯函数 + 内联 SVG） | `docs/reports/2026-11-08-s1.19-b4-b2-pet.md`：208 passed、`multi_replica_smoke` 8/8、App 50 tests |
 
-**S1 未做**（下一步）：Langfuse 追踪、`agent_run` 与 trace 对齐的自动化校验、多副本熔断共享状态（Redis）、并发压测、RocketMQ 实现（S1.9-c，需 broker）、僵死 `agent_run` 超时收敛（B3 剩余部分）、死信自动重试（B4）、管理端队列/记忆页（B6）。
+**S1 未做**（下一步）：Langfuse 追踪、`agent_run` 与 trace 对齐的自动化校验、多副本熔断共享状态（Redis）、并发压测、RocketMQ 实现（S1.9-c，需 broker）、僵死 `agent_run` 超时收敛（B3 剩余部分）、死信告警阈值（B4 剩余）、桌宠档 B/C（Live2D/VRM）。
 
 ---
 

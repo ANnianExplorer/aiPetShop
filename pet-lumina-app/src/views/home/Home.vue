@@ -7,6 +7,7 @@ import { useUserStore } from '@/stores/user'
 import TodayReminders from '@/components/home/TodayReminders.vue'
 import PetStatusBento from '@/components/home/PetStatusBento.vue'
 import CommunityTrends from '@/components/home/CommunityTrends.vue'
+import DeskPet from '@/components/pet/DeskPet.vue'
 import { reminderApi } from '@/api/reminder'
 import { postApi } from '@/api/post'
 import type { Reminder, Post } from '@/types'
@@ -120,5 +121,8 @@ onMounted(async () => {
     >
       <span class="material-symbols-outlined text-3xl">add</span>
     </button>
+
+    <!-- 桌宠：只用真实数据驱动状态，可关闭 -->
+    <DeskPet />
   </div>
 </template>

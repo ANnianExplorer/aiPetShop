@@ -36,6 +36,7 @@ class TaskMessage:
     key: str
     payload: Mapping[str, Any] = field(default_factory=dict)
     attempt: int = 1
+    redrives: int = 0
 
     def to_json(self) -> dict[str, Any]:
         return {
@@ -44,6 +45,7 @@ class TaskMessage:
             "key": self.key,
             "payload": dict(self.payload),
             "attempt": self.attempt,
+            "redrives": self.redrives,
         }
 
     @classmethod
@@ -54,7 +56,33 @@ class TaskMessage:
             key=str(raw["key"]),
             payload=dict(raw.get("payload") or {}),
             attempt=int(raw.get("attempt", 1)),
+            redrives=int(raw.get("redrives", 0)),
         )
+
+    def reborn(self, *, attempt: int, redrives: int | None = None) -> TaskMessage:
+        """同一条消息换个计数再来一次（保留 id/key/payload）。"""
+        return TaskMessage(
+            id=self.id,
+            topic=self.topic,
+            key=self.key,
+            payload=self.payload,
+            attempt=attempt,
+            redrives=self.redrives if redrives is None else redrives,
+        )
+
+
+def backoff_seconds(attempt: int, *, base: float = 5.0, cap: float = 600.0) -> float:
+    """指数退避：base * 2^(attempt-1)，封顶 cap。
+
+    失败一次就立刻重投会让下游抖动变成热循环；退避把重试摊开到分钟级。
+    """
+    base = max(0.0, float(base))
+    cap = max(0.0, float(cap))
+    if base == 0 or cap == 0:
+        return 0.0
+    exponent = max(0, int(attempt) - 1)
+    # 指数可能很大，先夹住指数避免溢出
+    return min(cap, base * float(2 ** min(exponent, 30)))
 
 
 TaskHandler = Callable[[TaskMessage], Awaitable[None]]
@@ -98,6 +126,21 @@ class TaskQueue(Protocol):
         视为消费者已死，搬回主队列并把 `attempt + 1`（防止「一取就崩」死循环）。
         代价是慢任务可能被执行两次——消费端必须幂等（ADR-0009 第 4 条）。
         内存实现没有跨进程在途态，返回 0，不假装能扫。
+        """
+
+    async def retry_due(self, topics: Sequence[str], *, now: float | None = None) -> int:
+        """把退避到期的重试消息搬回待消费队列，返回条数（B4）。
+
+        `nack` 不会立刻回主队列，而是写进 `:retry`（ZSET，score 为到期时间）；
+        巡检器周期性调用本方法把它们放回。测试可注入 `now` 免等待。
+        """
+
+    async def redrive_dead_letters(
+        self, topics: Sequence[str], *, limit_per_topic: int, max_redrives: int
+    ) -> int:
+        """自动重投死信（有界）：`redrives + 1`，达上限的留在死信等人处理。
+
+        默认不开启——死信通常意味着代码/数据问题，自动重投只会刷日志。
         """
 
     async def aclose(self) -> None: ...

@@ -157,6 +157,9 @@ def create_app(
             topics=list(TOPICS),
             sweep_interval_s=settings.task_sweep_interval_s,
             visible_timeout_s=settings.task_visible_timeout_s,
+            dlq_redrive_interval_s=settings.task_dlq_redrive_interval_s,
+            dlq_max_redrives=settings.task_dlq_max_redrives,
+            dlq_redrive_limit=settings.task_dlq_redrive_limit,
         )
         if tasks
         else None

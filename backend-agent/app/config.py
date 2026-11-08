@@ -78,6 +78,13 @@ class Settings(BaseSettings):
     task_visible_timeout_s: float = Field(default=120.0, gt=0)
     # 巡检间隔；<= 0 表示关闭巡检（只保留进程启动时的 recover）
     task_sweep_interval_s: float = Field(default=60.0, ge=0)
+    # 失败退避（B4）：第 n 次失败后等待 min(base * 2^(n-1), cap) 秒再重投
+    task_retry_base_s: float = Field(default=5.0, ge=0)
+    task_retry_cap_s: float = Field(default=600.0, ge=0)
+    # 死信自动重投（默认关闭：死信通常意味着代码/数据问题，自动重投只会刷日志）
+    task_dlq_redrive_interval_s: float = Field(default=0.0, ge=0)
+    task_dlq_max_redrives: int = Field(default=3, ge=0, le=10)
+    task_dlq_redrive_limit: int = Field(default=5, ge=1, le=100)
 
     # ---- 文档问答（RAG）----
     # hash：本地哈希嵌入（确定性、零网络）；openai：走兼容 /embeddings 的接口

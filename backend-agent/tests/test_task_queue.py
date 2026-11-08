@@ -21,7 +21,7 @@ from app.tasks import (
     RedisTaskQueue,
     TaskWorker,
 )
-from app.tasks.base import TaskMessage
+from app.tasks.base import TaskMessage, backoff_seconds
 from app.tasks.consumers import build_handlers
 
 
@@ -122,6 +122,12 @@ async def test_nack_retries_then_dead_letters(queue) -> None:
     assert first is not None
     await queue.nack(first, error="boom")
 
+    # B4：失败不立刻回主队列，先进退避队列（否则下游抖动会变成热循环）
+    assert await queue.depth("t") == 0
+    assert await queue.receive("t", timeout_s=0.05) is None
+    promoted = await queue.retry_due(["t"], now=time.time() + 3600)
+    assert promoted == 1
+
     second = await queue.receive("t", timeout_s=0.05)
     assert second is not None
     assert second.attempt == 2
@@ -156,7 +162,8 @@ async def test_inprocess_queue_full_raises() -> None:
 
 
 async def test_worker_dispatches_and_retries() -> None:
-    queue = InProcessTaskQueue(topic=TOPIC_MEMORY_OBSERVE, max_attempts=2)
+    # B4：重试先退避，worker 的巡检负责到期搬回；这里把退避压到 0 让用例可确定
+    queue = InProcessTaskQueue(topic=TOPIC_MEMORY_OBSERVE, max_attempts=2, retry_base_s=0.0, retry_cap_s=0.0)
     seen: list[TaskMessage] = []
     attempts = {"n": 0}
 
@@ -166,7 +173,7 @@ async def test_worker_dispatches_and_retries() -> None:
             raise RuntimeError("第一次失败")
         seen.append(message)
 
-    worker = TaskWorker(queue, {TOPIC_MEMORY_OBSERVE: flaky})
+    worker = TaskWorker(queue, {TOPIC_MEMORY_OBSERVE: flaky}, sweep_interval_s=0.01)
     await worker.start()
     try:
         await queue.publish(TOPIC_MEMORY_OBSERVE, key="k", payload={})
@@ -180,12 +187,14 @@ async def test_worker_dispatches_and_retries() -> None:
 
 
 async def test_worker_dead_letters_after_max_attempts() -> None:
-    queue = InProcessTaskQueue(topic=TOPIC_AUDIT_TOOL, max_attempts=2)
+    queue = InProcessTaskQueue(
+        topic=TOPIC_AUDIT_TOOL, max_attempts=2, retry_base_s=0.0, retry_cap_s=0.0
+    )
 
     async def always_fail(_: TaskMessage) -> None:
         raise RuntimeError("永久失败")
 
-    worker = TaskWorker(queue, {TOPIC_AUDIT_TOOL: always_fail})
+    worker = TaskWorker(queue, {TOPIC_AUDIT_TOOL: always_fail}, sweep_interval_s=0.01)
     await worker.start()
     try:
         await queue.publish(TOPIC_AUDIT_TOOL, key="k", payload={})
@@ -195,6 +204,7 @@ async def test_worker_dead_letters_after_max_attempts() -> None:
 
     assert worker.failed == 2
     assert worker.processed == 0
+    assert worker.promoted >= 1  # 至少一次「退避到期搬回」
 
 
 async def _has_dead(queue) -> bool:
@@ -291,6 +301,7 @@ async def test_replay_dead_letter_resets_attempt(queue) -> None:
         message = await queue.receive("t", timeout_s=0.05)
         assert message is not None
         await queue.nack(message, error="boom")
+        await queue.retry_due(["t"], now=time.time() + 3600)
 
     dead = await queue.dead_letters("t")
     assert len(dead) == 1
@@ -312,6 +323,7 @@ async def test_replay_dead_letter_respects_limit(queue) -> None:
         message = await queue.receive("t", timeout_s=0.05)
         assert message is not None
         await queue.nack(message, error="boom")
+        await queue.retry_due(["t"], now=time.time() + 3600)
         message = await queue.receive("t", timeout_s=0.05)
         assert message is not None
         await queue.nack(message, error="boom")
@@ -361,3 +373,57 @@ async def test_sweep_ignores_acked_messages(queue) -> None:
 
     assert await queue.sweep(["t"], older_than_s=1) == 0
     assert await queue.depth("t") == 0
+
+# --- B4 退避与有界重投 -------------------------------------------------------
+
+
+def test_backoff_grows_and_caps() -> None:
+    assert backoff_seconds(1) == 5.0
+    assert backoff_seconds(2) == 10.0
+    assert backoff_seconds(5) == 80.0
+    assert backoff_seconds(100) == 600.0  # 封顶，不能指数爆炸
+    assert backoff_seconds(1, base=0.0) == 0.0
+    assert backoff_seconds(-3) == 5.0  # 非法次数按首次算
+
+
+async def test_retry_not_promoted_before_due(queue) -> None:
+    await queue.publish("t", key="k", payload={})
+    message = await queue.receive("t", timeout_s=0.05)
+    assert message is not None
+    await queue.nack(message, error="boom")
+
+    # 还没到期：不能提前搬回，否则退避等于没做
+    assert await queue.retry_due(["t"], now=time.time()) == 0
+    assert await queue.depth("t") == 0
+    assert await queue.retry_due(["t"], now=time.time() + 3600) == 1
+    assert await queue.depth("t") == 1
+
+
+async def test_redrive_dead_letters_respects_max_redrives(queue) -> None:
+    await queue.publish("t", key="k", payload={})
+    for _ in range(2):
+        message = await queue.receive("t", timeout_s=0.05)
+        assert message is not None
+        await queue.nack(message, error="boom")
+        await queue.retry_due(["t"], now=time.time() + 3600)
+    assert len(await queue.dead_letters("t")) == 1
+
+    # 上限 0：一条都不许自动放回（默认关闭的语义）
+    assert await queue.redrive_dead_letters(["t"], limit_per_topic=5, max_redrives=0) == 0
+    assert len(await queue.dead_letters("t")) == 1
+
+    # 上限 1：放回一次并记 redrives=1
+    assert await queue.redrive_dead_letters(["t"], limit_per_topic=5, max_redrives=1) == 1
+    replayed = await queue.receive("t", timeout_s=0.05)
+    assert replayed is not None
+    assert replayed.attempt == 1 and replayed.redrives == 1
+
+    # 再失败两次回到死信；此时 redrives 已达上限，不许再放回
+    for _ in range(2):
+        await queue.nack(replayed, error="boom")
+        await queue.retry_due(["t"], now=time.time() + 3600)
+        nxt = await queue.receive("t", timeout_s=0.05)
+        if nxt is not None:
+            replayed = nxt
+    assert len(await queue.dead_letters("t")) == 1
+    assert await queue.redrive_dead_letters(["t"], limit_per_topic=5, max_redrives=1) == 0

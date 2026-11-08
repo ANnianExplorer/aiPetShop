@@ -318,6 +318,18 @@
     "urgent": "紧急",
     "gotIt": "我知道了"
   },
+  "pet": {
+    "aria": "桌面宠物",
+    "hide": "收起桌宠",
+    "hint": {
+      "sleepy": "这么晚了，{name} 已经睡啦，有事明天再说",
+      "worried": "{name} 的健康分有点低，去看看它的记录吧",
+      "reminder": "你有 {count} 条未读提醒，{name} 提醒你别错过",
+      "hungry": "{name} 今天还没喂完，记得投喂",
+      "happy": "{name} 今天状态不错，陪你待一会儿",
+      "idle": "{name} 在这儿陪你，有事点我说话"
+    }
+  },
   "chat": {
     "send": "发送",
     "placeholder": "问问 Lumina 吧，比如「上周体重怎么样」",

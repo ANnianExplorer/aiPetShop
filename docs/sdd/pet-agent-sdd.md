@@ -306,6 +306,17 @@ cd ..\pet-lumina-app; npm run dev
 | 对话注入 | 只注入「风险 / 待办」两行，不把整份画像塞进 system（控制 token，也避免模型复述内部结构） | `app/graph/nodes.py` 的 `prepare_node` |
 | 可追溯 | `evidence` 每条带 `factId`；删事实后重建，结论随之消失 | `Profile.vue` 证据表、S1.18 REPORT D1 |
 
+### 8.12 退避重试、多副本与桌宠（S1.19 / BACKLOG B4·B2·C6）
+
+| 关注点 | 做法 | 位置 |
+| --- | --- | --- |
+| 失败退避 | `nack` 写 `{prefix}:{topic}:retry` ZSET（score=到期时刻），`backoff = min(base·2^(attempt-1), cap)`；巡检 `retry_due` 到期搬回，`attempt + 1` | `app/tasks/{base,inprocess,redis_queue}.py`、`TaskWorker._sweep_loop` |
+| 死信重投 | **默认关闭**（`TASK_DLQ_REDRIVE_INTERVAL_S=0`）；打开后按周期挑最早死信，`redrives + 1`，达 `TASK_DLQ_MAX_REDRIVES` 就留在死信等人处理 | `redrive_dead_letters`、`test_redrive_dead_letters_respects_max_redrives` |
+| 为什么退避 | 下游抖动时立刻重投会变成热循环，把一次故障放大成雪崩；指数退避 + 上限把压力摊平 | `docs/plans/s1.19-b4-b2-deskpet.md` §1 |
+| 多副本一致性 | 队列/事件/限流/幂等都在 Redis 或 MySQL 里共享；**熔断是进程内状态**，多副本各自熔断（已知限制，写进 SPEC 6.10） | `scripts/multi_replica_smoke`（8/8） |
+| 桌宠（档 A） | H5 + 内联 SVG；状态由**真实字段**推导（健康分/步数/喂食进度/未读提醒/时段），纯函数 `derivePetMood` 可单测；可关闭、尊重 `prefers-reduced-motion` | `src/utils/petMood.ts`、`src/components/pet/DeskPet.vue` |
+| 桌宠不做什么 | 不编造「亲密度」、不随机、不做语音；台词只在本地位图 + i18n 文案，不额外调模型 | `petMood.spec.ts`、`DeskPet.spec.ts`（13 例） |
+
 ## 9. 质量属性
 
 | 属性 | 设计手段 | 验收 |
@@ -320,6 +331,8 @@ cd ..\pet-lumina-app; npm run dev
 | 可追溯 | `agent.admin` 只读接口 + `admin.access` 审计 | `test_admin.py`（9 例）+ `scripts.admin_smoke`（6/6）+ 浏览器实测 |
 | 不重复计费 | 用户维度幂等键 + 回放 | `test_idempotency.py`（4 例）+ `scripts.idempotency_smoke`（8/8，真 MySQL/Redis） |
 | 故障隔离 | 熔断 + `503` 快速失败 + 探针降级 | `test_circuit.py`（8 例）+ 真机 `/readyz` 四项 check |
+| 不雪崩 | 失败指数退避 + 死信有界重投（默认关） | `test_task_queue.py`（B4 三条）+ `scripts.multi_replica_smoke`（8/8） |
+| 多副本可扩 | 队列/事件/限流/幂等共享存储，熔断标注为单实例限制 | `scripts.multi_replica_smoke`（8/8） |
 
 ## 10. 扩展点
 
