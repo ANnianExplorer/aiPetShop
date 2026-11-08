@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { mount } from '@vue/test-utils'
 import { createPinia } from 'pinia'
 import { createI18n } from 'vue-i18n'
@@ -36,15 +36,32 @@ function mountPet() {
   })
 }
 
+/**
+ * jsdom 的 MouseEvent.clientX 是只读 getter，@vue/test-utils 的 trigger 会直接赋值 →
+ * 只能自己 new MouseEvent 再 dispatch（PointerEvent 在 jsdom 里也没有可用构造器）。
+ */
+function firePointer(el: Element, type: string, x = 0, y = 0) {
+  el.dispatchEvent(
+    new MouseEvent(type, { clientX: x, clientY: y, bubbles: true, cancelable: true }),
+  )
+}
+
+afterEach(() => {
+  localStorage.clear()
+})
+
 describe('DeskPet', () => {
-  it('渲染成 SVG 宠物，并带无障碍标签', () => {
+  it('渲染分层角色：7 个可动部件都在', () => {
     const wrapper = mountPet()
     expect(wrapper.find('.desk-pet').exists()).toBe(true)
-    expect(wrapper.find('svg.pet-svg').exists()).toBe(true)
     expect(wrapper.find('.desk-pet').attributes('aria-label')).toBe('桌面宠物')
+
+    const parts = wrapper.findAll('[data-part]').map((node) => node.attributes('data-part'))
+    expect(parts.sort()).toEqual(['arms', 'body', 'ears', 'eyes', 'hair', 'head', 'tail'])
+    wrapper.unmount()
   })
 
-  it('挂载后主动打招呼，点击气泡进入对话页', async () => {
+  it('挂载后主动打招呼，点气泡进入对话页', async () => {
     vi.useFakeTimers()
     const wrapper = mountPet()
     await vi.advanceTimersByTimeAsync(900)
@@ -56,15 +73,42 @@ describe('DeskPet', () => {
 
     await bubble.trigger('click')
     expect(push).toHaveBeenCalledWith({ name: 'chat' })
+    wrapper.unmount()
     vi.useRealTimers()
   })
 
-  it('点关闭后隐藏并把选择记到 localStorage', async () => {
+  it('单击角色：出现爱心并有气泡（不是"只换一句台词"）', async () => {
     const wrapper = mountPet()
-    await wrapper.find('.pet-close').trigger('click')
+    const root = wrapper.find('.desk-pet').element
+    firePointer(root, 'pointerdown', 10, 10)
+    firePointer(root, 'pointerup', 10, 10)
+    await wrapper.vm.$nextTick()
+
+    expect(wrapper.findAll('.pet-heart').length).toBeGreaterThan(0)
+    expect(wrapper.find('.pet-bubble').exists()).toBe(true)
+    // 位置没动过，不应该写 localStorage
+    expect(localStorage.getItem('petlumina-deskpet-pos')).toBeNull()
+    wrapper.unmount()
+  })
+
+  it('拖拽超过阈值算移动：写位置，不再当作点击', async () => {
+    const wrapper = mountPet()
+    const root = wrapper.find('.desk-pet').element
+    firePointer(root, 'pointerdown', 10, 10)
+    firePointer(root, 'pointermove', 60, 40)
+    firePointer(root, 'pointerup', 60, 40)
+    await wrapper.vm.$nextTick()
+
+    expect(localStorage.getItem('petlumina-deskpet-pos')).toContain('right')
+    expect(wrapper.find('.pet-bubble').exists()).toBe(false)
+    wrapper.unmount()
+  })
+
+  it('双击收起，并把选择记到 localStorage', async () => {
+    const wrapper = mountPet()
+    await wrapper.find('.desk-pet').trigger('dblclick')
     expect(wrapper.find('.desk-pet').exists()).toBe(false)
     expect(localStorage.getItem('petlumina-deskpet-hidden')).toBe('1')
-    localStorage.removeItem('petlumina-deskpet-hidden')
     wrapper.unmount()
   })
 })

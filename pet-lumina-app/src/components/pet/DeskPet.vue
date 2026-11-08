@@ -1,18 +1,31 @@
 <script setup lang="ts">
 /**
- * 桌宠（档 A：H5 + SVG）。
+ * 桌宠外壳：位置 / 视线 / 拖拽 / 气泡 / 爱心 / 隐藏。
  *
- * 只用真实数据驱动状态（见 utils/petMood.ts），不编造亲密度；
- * 点击说话、可关闭、尊重 reduced-motion；关闭状态存在 localStorage。
+ * 角色本体在 ChibiPet.vue（纯展示 + CSS 部件动画）；这里只负责"反应"：
+ * 指针移动 → 瞳孔与头部偏移；单击 → 跳跃 + 爱心 + 说一句；拖拽 → 换位并记住；
+ * 双击 → 收起。所有定时器与监听在卸载时清理。
  */
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useUserStore } from '@/stores/user'
-import { derivePetMood, moodAnimation } from '@/utils/petMood'
+import { derivePetMood } from '@/utils/petMood'
+import {
+  GAZE_LIMIT,
+  clamp,
+  movedEnough,
+  normalizeGaze,
+  smooth,
+} from '@/utils/petMotion'
+import ChibiPet from '@/components/pet/ChibiPet.vue'
 
 const HIDDEN_KEY = 'petlumina-deskpet-hidden'
+const POS_KEY = 'petlumina-deskpet-pos'
+const PET_WIDTH = 132
+const PET_HEIGHT = 158
+const EDGE = 12
 
 const { t } = useI18n()
 const router = useRouter()
@@ -22,8 +35,19 @@ const { currentPet, unreadNotifications } = storeToRefs(userStore)
 const hidden = ref(false)
 const speaking = ref(false)
 const reduced = ref(false)
+const dragging = ref(false)
+const pos = ref({ right: 84, bottom: 104 })
+const gaze = ref({ x: 0, y: 0 })
+const hearts = ref<{ id: number; x: number }[]>([])
+const rootEl = ref<HTMLElement | null>(null)
+
 let speakTimer: ReturnType<typeof setTimeout> | null = null
 let mediaQuery: MediaQueryList | null = null
+let gazeTarget = { x: 0, y: 0 }
+let rafId: number | null = null
+let heartSeq = 0
+let dragStart = { x: 0, y: 0, right: 0, bottom: 0, moved: false }
+const heartTimers: ReturnType<typeof setTimeout>[] = []
 
 const mood = computed(() =>
   derivePetMood({
@@ -36,12 +60,18 @@ const mood = computed(() =>
   }),
 )
 
-const animationClass = computed(() => moodAnimation(mood.value.mood, reduced.value))
+const sleeping = computed(() => mood.value.mood === 'sleepy')
 
-const bubble = computed(() => {
-  // 说话优先用状态说明，其次回到名字；count 供「有 N 条未读」那条文案用
-  return t(mood.value.hintKey, { name: mood.value.name, count: unreadNotifications.value })
-})
+const bubble = computed(() =>
+  t(mood.value.hintKey, { name: mood.value.name, count: unreadNotifications.value }),
+)
+
+const rootStyle = computed(() => ({
+  right: `${pos.value.right}px`,
+  bottom: `${pos.value.bottom}px`,
+  width: `${PET_WIDTH}px`,
+  height: `${PET_HEIGHT}px`,
+}))
 
 function onReducedChange(event: MediaQueryListEvent | MediaQueryList) {
   reduced.value = event.matches
@@ -64,70 +94,181 @@ function hidePet() {
   try {
     localStorage.setItem(HIDDEN_KEY, '1')
   } catch {
-    // 隐私模式下存不了就算了，下次刷新再出现
+    // 隐私模式存不了就算了，下次刷新再出现
   }
+}
+
+/** 视线的平滑推进：用 rAF 而不是 pointermove 里直接改，避免高频重排。 */
+function stepGaze() {
+  const nx = smooth(gaze.value.x, gazeTarget.x, 0.18)
+  const ny = smooth(gaze.value.y, gazeTarget.y, 0.18)
+  if (nx !== gaze.value.x || ny !== gaze.value.y) {
+    gaze.value = { x: nx, y: ny }
+  }
+  rafId = requestAnimationFrame(stepGaze)
+}
+
+function onPointerMove(event: PointerEvent) {
+  if (dragging.value) {
+    const dx = event.clientX - dragStart.x
+    const dy = event.clientY - dragStart.y
+    if (!dragStart.moved && movedEnough(dx, dy)) dragStart.moved = true
+    if (dragStart.moved) {
+      pos.value = {
+        right: clamp(dragStart.right - dx, EDGE, window.innerWidth - PET_WIDTH - EDGE),
+        bottom: clamp(dragStart.bottom - dy, EDGE, window.innerHeight - PET_HEIGHT - EDGE),
+      }
+    }
+    return
+  }
+  const el = rootEl.value
+  if (!el) return
+  gazeTarget = normalizeGaze(el.getBoundingClientRect(), event.clientX, event.clientY, GAZE_LIMIT)
+}
+
+function onPointerDown(event: PointerEvent) {
+  dragStart = {
+    x: event.clientX,
+    y: event.clientY,
+    right: pos.value.right,
+    bottom: pos.value.bottom,
+    moved: false,
+  }
+  dragging.value = true
+  ;(event.currentTarget as HTMLElement).setPointerCapture?.(event.pointerId)
+}
+
+function onPointerUp() {
+  const wasDrag = dragStart.moved
+  dragging.value = false
+  if (wasDrag) {
+    try {
+      localStorage.setItem(POS_KEY, JSON.stringify(pos.value))
+    } catch {
+      // 存不了位置不影响使用
+    }
+    return
+  }
+  // 单击：跳跃 + 爱心 + 说一句
+  jump()
+  spawnHearts()
+  speak()
+}
+
+function jump() {
+  const el = rootEl.value
+  // jsdom / 老浏览器没有 Element.animate：动画降级，但点击反馈（爱心 + 气泡）照常
+  if (!el || reduced.value || typeof el.animate !== 'function') return
+  el.animate(
+    [
+      { transform: 'translateY(0) scale(1, 1)' },
+      { transform: 'translateY(-10px) scale(0.97, 1.03)', offset: 0.35 },
+      { transform: 'translateY(0) scale(1.03, 0.97)', offset: 0.7 },
+      { transform: 'translateY(0) scale(1, 1)' },
+    ],
+    { duration: 420, easing: 'ease-out' },
+  )
+}
+
+function spawnHearts() {
+  if (reduced.value) return
+  for (let i = 0; i < 3; i += 1) {
+    const heart = { id: (heartSeq += 1), x: 30 + Math.round(Math.random() * 50) }
+    hearts.value.push(heart)
+    const timer = setTimeout(() => {
+      hearts.value = hearts.value.filter((h) => h.id !== heart.id)
+    }, 1100)
+    heartTimers.push(timer)
+  }
+}
+
+function onDoubleClick() {
+  hidePet()
 }
 
 onMounted(() => {
   try {
     hidden.value = localStorage.getItem(HIDDEN_KEY) === '1'
+    const saved = localStorage.getItem(POS_KEY)
+    if (saved) {
+      const parsed = JSON.parse(saved) as { right?: number; bottom?: number }
+      if (typeof parsed.right === 'number' && typeof parsed.bottom === 'number') {
+        pos.value = {
+          right: clamp(parsed.right, EDGE, window.innerWidth - PET_WIDTH - EDGE),
+          bottom: clamp(parsed.bottom, EDGE, window.innerHeight - PET_HEIGHT - EDGE),
+        }
+      }
+    }
   } catch {
-    hidden.value = false
+    // 读不到就用默认位置
   }
   if (typeof window !== 'undefined' && window.matchMedia) {
     mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)')
     onReducedChange(mediaQuery)
     mediaQuery.addEventListener('change', onReducedChange)
   }
-  // 进页面主动打个招呼：用户不点也知道它「活着」，三秒后自动收起
+  window.addEventListener('pointermove', onPointerMove, { passive: true })
+  rafId = requestAnimationFrame(stepGaze)
+  // 进页面先打个招呼：不点也知道它「活着」
   speakTimer = setTimeout(() => speak(), 800)
 })
 
 onBeforeUnmount(() => {
   if (speakTimer) clearTimeout(speakTimer)
+  if (rafId !== null) cancelAnimationFrame(rafId)
+  heartTimers.forEach((timer) => clearTimeout(timer))
   mediaQuery?.removeEventListener('change', onReducedChange)
+  window.removeEventListener('pointermove', onPointerMove)
 })
 </script>
 
 <template>
   <Teleport to="body">
-    <div v-if="!hidden" class="desk-pet" role="complementary" :aria-label="t('pet.aria')" @click="speak">
-    <transition name="pet-pop">
+    <div
+      v-if="!hidden"
+      ref="rootEl"
+      class="desk-pet"
+      :class="{ dragging }"
+      :style="rootStyle"
+      role="complementary"
+      :aria-label="t('pet.aria')"
+      @pointerdown="onPointerDown"
+      @pointerup="onPointerUp"
+      @pointercancel="onPointerUp"
+      @dblclick="onDoubleClick"
+    >
+      <transition name="pet-pop">
+        <button v-if="speaking" class="pet-bubble" type="button" @pointerdown.stop @click.stop="openChat">
+          {{ bubble }}
+        </button>
+      </transition>
+
+      <span
+        v-for="heart in hearts"
+        :key="heart.id"
+        class="pet-heart"
+        :style="{ left: `${heart.x}%` }"
+        aria-hidden="true"
+      >♥</span>
+
+      <ChibiPet
+        class="pet-character"
+        :mood="mood.mood"
+        :gaze-x="gaze.x"
+        :gaze-y="gaze.y"
+        :sleeping="sleeping"
+        :reduced-motion="reduced"
+      />
+
       <button
-        v-if="speaking"
-        class="pet-bubble"
+        class="pet-close"
         type="button"
-        @click.stop="openChat"
+        :aria-label="t('pet.hide')"
+        @pointerdown.stop
+        @click.stop="hidePet"
       >
-        {{ bubble }}
+        <span class="material-symbols-outlined">close</span>
       </button>
-    </transition>
-
-    <div class="pet-body" :class="animationClass">
-      <svg viewBox="0 0 96 96" class="pet-svg" aria-hidden="true">
-        <ellipse cx="48" cy="86" rx="26" ry="5" class="pet-shadow" />
-        <path
-          d="M48 14c16 0 27 12 27 28 0 17-11 30-27 30S21 59 21 42c0-16 11-28 27-28z"
-          class="pet-fur"
-        />
-        <path d="M30 18l-7-11 15 6z" class="pet-fur pet-ear" />
-        <path d="M66 18l7-11-15 6z" class="pet-fur pet-ear" />
-        <ellipse cx="48" cy="52" rx="16" ry="13" class="pet-face" />
-        <g class="pet-eyes">
-          <circle cx="41" cy="45" r="2.6" class="pet-eye" />
-          <circle cx="55" cy="45" r="2.6" class="pet-eye" />
-        </g>
-        <path d="M45 52h6l-3 3z" class="pet-nose" />
-        <path d="M44 57c1.6 2 6.4 2 8 0" class="pet-mouth" />
-        <circle cx="32" cy="52" r="3.4" class="pet-cheek" />
-        <circle cx="64" cy="52" r="3.4" class="pet-cheek" />
-      </svg>
-      <span v-if="mood.mood === 'sleepy'" class="pet-zzz" aria-hidden="true">z</span>
-    </div>
-
-    <button class="pet-close" type="button" :aria-label="t('pet.hide')" @click.stop="hidePet">
-      <span class="material-symbols-outlined">close</span>
-    </button>
     </div>
   </Teleport>
 </template>
@@ -135,82 +276,38 @@ onBeforeUnmount(() => {
 <style scoped>
 .desk-pet {
   position: fixed;
-  /* 避开右下角的「新建提醒」FAB（56px 宽、right 20px）与底部胶囊导航 */
-  right: 84px;
-  bottom: 104px;
   z-index: 45;
-  width: 96px;
   pointer-events: auto;
-  cursor: pointer;
-}
-
-.pet-body {
-  pointer-events: auto;
-  cursor: pointer;
-  transition: transform 160ms ease;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
   transform-origin: center bottom;
-}.pet-body:active {
-  transform: scale(0.94);
+}
+.desk-pet.dragging {
+  cursor: grabbing;
+  transition: none;
 }
 
-.pet-svg {
-  width: 96px;
-  height: 96px;
-  filter: drop-shadow(0 8px 14px rgba(75, 100, 85, 0.22));
-}
-.pet-fur {
-  fill: var(--color-primary, #4d6b57);
-}
-.pet-ear {
-  fill: var(--color-primary, #4d6b57);
-}
-.pet-face {
-  fill: #f6f3ea;
-}
-.pet-eye {
-  fill: #2b3a30;
-}
-.pet-nose {
-  fill: #d98d8d;
-}
-.pet-mouth {
-  fill: none;
-  stroke: #2b3a30;
-  stroke-width: 1.6;
-  stroke-linecap: round;
-}
-.pet-cheek {
-  fill: #f0b7b7;
-  opacity: 0.75;
-}
-.pet-shadow {
-  fill: rgba(43, 58, 48, 0.12);
-}
-.pet-zzz {
-  position: absolute;
-  right: 4px;
-  top: 2px;
-  font-size: 14px;
-  font-weight: 700;
-  color: var(--color-primary, #4d6b57);
-  animation: pet-zzz-float 2.6s ease-in-out infinite;
+.pet-character {
+  width: 100%;
+  height: 100%;
 }
 
 .pet-bubble {
   position: absolute;
-  right: 8px;
-  bottom: 100%;
-  margin-bottom: 8px;
-  width: 168px;
+  right: 6px;
+  bottom: calc(100% - 6px);
+  width: 186px;
   padding: 8px 12px;
   border-radius: 16px;
-  background: rgba(255, 255, 255, 0.92);
+  background: rgba(255, 255, 255, 0.94);
   color: #2b3a30;
   font-size: 12px;
-  line-height: 1.4;
+  line-height: 1.45;
   text-align: left;
-  box-shadow: 0 6px 18px rgba(75, 100, 85, 0.16);
-  pointer-events: auto;
+  box-shadow: 0 8px 22px rgba(75, 100, 85, 0.18);
+  backdrop-filter: blur(6px);
 }
 .dark .pet-bubble {
   background: rgba(38, 48, 42, 0.94);
@@ -219,19 +316,37 @@ onBeforeUnmount(() => {
 
 .pet-close {
   position: absolute;
-  top: -6px;
-  left: -6px;
-  width: 22px;
-  height: 22px;
+  top: 2px;
+  right: 0;
+  width: 20px;
+  height: 20px;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.88);
   color: #6b7a70;
   display: grid;
   place-items: center;
-  pointer-events: auto;
+  opacity: 0;
+  transition: opacity 160ms ease;
+}
+.desk-pet:hover .pet-close {
+  opacity: 1;
 }
 .pet-close .material-symbols-outlined {
-  font-size: 14px;
+  font-size: 13px;
+}
+
+.pet-heart {
+  position: absolute;
+  bottom: 42%;
+  font-size: 13px;
+  color: #ef8fa4;
+  pointer-events: none;
+  animation: pet-heart-rise 1.1s ease-out forwards;
+}
+@keyframes pet-heart-rise {
+  0% { opacity: 0; transform: translateY(0) scale(0.6); }
+  25% { opacity: 1; }
+  100% { opacity: 0; transform: translateY(-38px) scale(1.05) rotate(8deg); }
 }
 
 .pet-pop-enter-active,
@@ -241,108 +356,6 @@ onBeforeUnmount(() => {
 .pet-pop-enter-from,
 .pet-pop-leave-to {
   opacity: 0;
-  transform: translateY(6px);
-}
-
-/* 动画：全部是纯 CSS，减少动效时由 pet-static 覆盖 */
-.pet-bounce {
-  animation: pet-bounce 1.8s ease-in-out infinite;
-}
-.pet-breathe {
-  animation: pet-breathe 3.4s ease-in-out infinite;
-}
-.pet-wiggle {
-  animation: pet-wiggle 2.2s ease-in-out infinite;
-}
-.pet-shake {
-  animation: pet-shake 2.6s ease-in-out infinite;
-}
-.pet-blink .pet-eyes {
-  animation: pet-blink 4.2s ease-in-out infinite;
-}
-.pet-static,
-.pet-static .pet-eyes,
-.pet-static .pet-zzz {
-  animation: none !important;
-}
-
-@keyframes pet-bounce {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-6px);
-  }
-}
-@keyframes pet-breathe {
-  0%,
-  100% {
-    transform: scale(1);
-  }
-  50% {
-    transform: scale(1.04);
-  }
-}
-@keyframes pet-wiggle {
-  0%,
-  100% {
-    transform: rotate(0deg);
-  }
-  30% {
-    transform: rotate(-3deg);
-  }
-  60% {
-    transform: rotate(3deg);
-  }
-}
-@keyframes pet-shake {
-  0%,
-  100% {
-    transform: translateX(0);
-  }
-  20% {
-    transform: translateX(-2px);
-  }
-  40% {
-    transform: translateX(2px);
-  }
-  60% {
-    transform: translateX(-1px);
-  }
-}
-@keyframes pet-blink {
-  0%,
-  92%,
-  100% {
-    opacity: 1;
-  }
-  95% {
-    opacity: 0.1;
-  }
-}
-@keyframes pet-zzz-float {
-  0% {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  40% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(-10px);
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .pet-bounce,
-  .pet-breathe,
-  .pet-wiggle,
-  .pet-shake,
-  .pet-blink .pet-eyes,
-  .pet-zzz {
-    animation: none;
-  }
+  transform: translateY(6px) scale(0.96);
 }
 </style>

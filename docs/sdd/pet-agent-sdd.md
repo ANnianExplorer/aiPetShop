@@ -314,8 +314,8 @@ cd ..\pet-lumina-app; npm run dev
 | 死信重投 | **默认关闭**（`TASK_DLQ_REDRIVE_INTERVAL_S=0`）；打开后按周期挑最早死信，`redrives + 1`，达 `TASK_DLQ_MAX_REDRIVES` 就留在死信等人处理 | `redrive_dead_letters`、`test_redrive_dead_letters_respects_max_redrives` |
 | 为什么退避 | 下游抖动时立刻重投会变成热循环，把一次故障放大成雪崩；指数退避 + 上限把压力摊平 | `docs/plans/s1.19-b4-b2-deskpet.md` §1 |
 | 多副本一致性 | 队列/事件/限流/幂等都在 Redis 或 MySQL 里共享；**熔断是进程内状态**，多副本各自熔断（已知限制，写进 SPEC 6.10） | `scripts/multi_replica_smoke`（8/8） |
-| 桌宠（档 A） | H5 + 内联 SVG；状态由**真实字段**推导（健康分/步数/喂食进度/未读提醒/时段），纯函数 `derivePetMood` 可单测；可关闭、尊重 `prefers-reduced-motion` | `src/utils/petMood.ts`、`src/components/pet/DeskPet.vue` |
-| 桌宠不做什么 | 不编造「亲密度」、不随机、不做语音；台词只在本地位图 + i18n 文案，不额外调模型 | `petMood.spec.ts`、`DeskPet.spec.ts`（13 例） |
+| 桌宠（档 A / v2） | H5 + 分层 SVG 角色（7 个 `data-part`：tail/body/arms/head/hair/ears/eyes）；状态由**真实字段**推导（健康分/步数/喂食进度/未读提醒/时段），纯函数 `derivePetMood` 可单测；**部件级 CSS 动画 + 视线跟随 + 拖拽 + 单击爱心**（`petMotion` 纯函数）；可关闭、尊重 `prefers-reduced-motion` | `src/utils/petMood.ts`、`src/utils/petMotion.ts`、`src/components/pet/ChibiPet.vue`、`src/components/pet/DeskPet.vue` |
+| 桌宠不做什么 | 不编造「亲密度」、不随机、不做语音；台词只在本地位图 + i18n 文案，不额外调模型 | `petMood.spec.ts`(10)、`petMotion.spec.ts`(7)、`DeskPet.spec.ts`(5) |
 
 ## 9. 质量属性
 
