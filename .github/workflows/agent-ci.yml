@@ -2,6 +2,9 @@ name: agent-ci
 
 on:
   push:
+    # 只跟 main：打标签也会触发 push 事件，那样同一个提交会被跑两遍（而且会让提交显示成红色）
+    branches:
+      - main
     paths:
       - "backend-agent/**"
       - ".github/workflows/agent-ci.yml"
@@ -50,4 +53,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Build image
-        run: docker build -t pet-agent:ci backend-agent
+        # 构建上下文用 "."：本 job 的工作目录已经被 defaults 设成 backend-agent，
+        # 再写一遍 backend-agent 会变成 backend-agent/backend-agent（不存在）。
+        run: docker build -t pet-agent:ci .
