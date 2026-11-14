@@ -69,6 +69,16 @@ class AgentRepository(Protocol):
         error: str | None = None,
     ) -> None: ...
 
+    async def sweep_stale_runs(self, older_than_s: float, *, error: str) -> list[str]:
+        """把「进程没了、run 还停在 running」的脏数据收敛成终态，返回被收敛的 id。
+
+        判据是**开始时间**而不是最后活动时间：运行总时长本来就被 `run_deadline_s` 兜住，
+        超过阈值还停在 `running` 只能是进程没来得及收尾（强杀、OOM、断电）。
+        必须条件更新（`WHERE status='running'`），多副本同时巡检时只有第一个能改到，
+        第二个拿到 0 行就跳过——不能无脑覆盖别人的活。
+        """
+        ...
+
     async def audit_tool_call(
         self,
         run_id: str,

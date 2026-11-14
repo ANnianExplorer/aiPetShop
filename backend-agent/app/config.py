@@ -62,6 +62,11 @@ class Settings(BaseSettings):
     run_follow_timeout_s: float = Field(default=90.0, gt=0)
     # 跟随轮询间隔：0.05s → 首 token 最坏多等 50ms，够小
     run_follow_poll_s: float = Field(default=0.05, gt=0, le=1.0)
+    # 僵尸 run 收敛阈值（秒）：开始时间超过它还在 running，只能是进程没来得及收尾。
+    # 必须大于 run_deadline_s，否则会把还在正常跑的 run 误判成僵尸。
+    stale_run_timeout_s: float = Field(default=900.0, gt=0)
+    # 巡检间隔（秒）：0 表示只在启动时扫一次
+    run_sweep_interval_s: float = Field(default=60.0, ge=0)
 
     # ---- 配额 ----
     rate_limit_enabled: bool = True

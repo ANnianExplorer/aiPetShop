@@ -118,6 +118,22 @@ async def test_finish_unknown_run(repo: AgentRepository) -> None:
         await repo.finish_run("9999999999999999999", RunStatus.SUCCEEDED, Usage(), 1)
 
 
+async def test_sweep_never_touches_fresh_runs(repo: AgentRepository) -> None:
+    """巡检的判据是「开始时间」，刚起来的 run 一根汗毛都不该动。
+
+    MySQL 库里可能残留别的用例留下的老 run，所以只断言「我们这条没被碰」，
+    不断言返回值是空列表。
+    """
+    sid = await _session(repo)
+    run = await repo.start_run(
+        Run(id="", session_id=sid, user_message_id="", route=Route.L1, intent=Intent.CHAT, model="m")
+    )
+    closed = await repo.sweep_stale_runs(900, error="巡检")
+    assert run.id not in closed
+    stored = await repo.get_run(run.id)
+    assert stored is not None and stored.status is RunStatus.RUNNING
+
+
 async def test_audit_tool_call(repo: AgentRepository) -> None:
     await repo.audit_tool_call("9000000000000000001", "search_logs", True, None, 12, "abc123")
     if isinstance(repo, InMemoryRepository):

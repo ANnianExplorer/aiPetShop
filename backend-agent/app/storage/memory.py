@@ -26,6 +26,8 @@ from ..domain.models import (
 )
 from ..rag.models import Chunk, Document, DocumentStatus
 
+_TIME_FMT = "%Y-%m-%d %H:%M:%S.%f"
+
 
 class InMemoryRepository:
     def __init__(self) -> None:
@@ -217,6 +219,26 @@ class InMemoryRepository:
         # `get_run` 返回的是这个 Run 对象本身，状态不同步的话它会永远停在 running
         # （MySQL 版每次从行里重建，天然一致）。断线跟随靠状态收口，这里必须对齐。
         record["run"].status = status
+
+    async def sweep_stale_runs(self, older_than_s: float, *, error: str) -> list[str]:
+        now = datetime.now()
+        stale: list[tuple[str, int]] = []
+        for run_id, record in self._runs.items():
+            if record["status"] is not RunStatus.RUNNING:
+                continue
+            created = datetime.strptime(str(record["created"]), _TIME_FMT)
+            elapsed = (now - created).total_seconds()
+            if elapsed >= older_than_s:
+                stale.append((run_id, int(max(0.0, elapsed) * 1000)))
+        closed: list[str] = []
+        for run_id, elapsed_ms in stale:
+            try:
+                await self.finish_run(run_id, RunStatus.CANCELLED, Usage(), elapsed_ms, error)
+            except ValueError:
+                # 巡检和真正的收尾撞上了：对方已经写了终态，这里认输就好
+                continue
+            closed.append(run_id)
+        return closed
 
     async def audit_tool_call(
         self,
@@ -494,4 +516,4 @@ class InMemoryRepository:
 def _now() -> str:
     # 微秒精度：内存实现没有数据库的 NOW()，同一秒内多次写入必须可区分，
     # 否则「画像是否过期」「同秒会话排序」这类比较会失真。
-    return datetime.now().strftime("%Y-%m-%d %H:%M:%S.%f")
+    return datetime.now().strftime(_TIME_FMT)

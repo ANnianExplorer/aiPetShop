@@ -11,7 +11,7 @@
 3. 优先级按"卡不卡产品可用"分：P0 阻断、P1 该做、P2 值得做、P3 以后。
 4. 估算是"一个人、熟悉代码"的量级，不是承诺。
 
-统计：**P0 3 条（A1、A2、A3 已交付）· P1 8 条（B2/B3/B4/B5/B6/B7/B8 已交付，剩 1 条）· P2 9 条（C2、C6 已交付，剩 7 条）· P3 9 条 · 原项目卫生债 0 条**，原计划 42 条，剩余 17 条（P1 剩 1 + P2 剩 7 + P3 9）。各批证据：E1/E3/E4/E5 见 `docs/reports/2026-11-08-s1.11-hygiene-debts.md`；E2/E6/E7 见 `docs/reports/2026-11-08-s1.12-e2-e6-e7.md`；E8/E13 见 `docs/reports/2026-11-08-s1.13-e8-e13.md`；E9/E10/E11/E12 见 `docs/reports/2026-11-08-s1.14-e9-e12.md`；A3 见 `docs/reports/2026-11-08-s1.15-doc-rag.md`；B3/B5/B7 见 `docs/reports/2026-11-08-s1.16-ops.md`；B6 见 `docs/reports/2026-11-08-s1.17-admin-console.md`；C2 见 `docs/reports/2026-11-08-s1.18-profile.md`；B2/B4/C6 见 `docs/reports/2026-11-08-s1.19-b4-b2-pet.md`；B8 见 `docs/reports/2026-11-14-s1.23-auto-reconnect.md`。
+统计：**P0 3 条（A1、A2、A3 已交付）· P1 8 条（B2/B3/B4/B5/B6/B7/B8 已交付，剩 1 条）· P2 9 条（C2、C6 已交付，剩 7 条）· P3 9 条 · 原项目卫生债 0 条**，原计划 42 条，剩余 16 条（P1 剩 1 + P2 剩 7 + P3 8）。各批证据：E1/E3/E4/E5 见 `docs/reports/2026-11-08-s1.11-hygiene-debts.md`；E2/E6/E7 见 `docs/reports/2026-11-08-s1.12-e2-e6-e7.md`；E8/E13 见 `docs/reports/2026-11-08-s1.13-e8-e13.md`；E9/E10/E11/E12 见 `docs/reports/2026-11-08-s1.14-e9-e12.md`；A3 见 `docs/reports/2026-11-08-s1.15-doc-rag.md`；B5/B7 见 `docs/reports/2026-11-08-s1.16-ops.md`；B6 见 `docs/reports/2026-11-08-s1.17-admin-console.md`；C2 见 `docs/reports/2026-11-08-s1.18-profile.md`；B2/B4/C6 见 `docs/reports/2026-11-08-s1.19-b4-b2-pet.md`；B8 见 `docs/reports/2026-11-14-s1.23-auto-reconnect.md`；B3 收尾见 `docs/reports/2026-11-14-s1.24-stale-run-reaper.md`。
 
 ---
 
@@ -31,7 +31,7 @@
 |---|---|---|---|---|---|
 | B1 | **RocketMQ 生产实现（S1.9-c）** | 只有 `TaskQueue` 抽象 + 内存/Redis 实现；ADR-0009 定的是"MQ 在 Java 侧" | 本机无 broker、无 Docker；Java 需引 `rocketmq-spring-boot-starter` | 起一个 broker，Python 侧通过 `TaskQueue` 适配器收发；`tasks_smoke` 在 MQ 后端下 8/8 | 2–3 天 |
 | B2 | ✅ **多副本韧性**（2026-11-08，S1.19） | 已交付：8099/8100 双副本，`scripts.multi_replica_smoke` 8/8（跨副本事件回放、同幂等键同 run、任务不重复消费、记忆共享、限流共享）；**熔断仍是进程内状态**（已知限制，写进 SPEC 6.10） | 剩余：熔断跨副本共享（Redis 计数） | 已达成：两个实例同时在线，8 项检查全过 | 2 天 |
-| B3 | ✅ **`processing` 泄漏扫描（2026-11-08，S1.16）** | 已交付：`claimed` ZSET + 巡检搬回（`attempt+1`）。**僵死 run 收敛仍未做**（强杀进程后 `agent_run` 仍会停在 `running`） | 剩余部分需定策略（按 `create_time < now - stale_run_timeout_s` 收敛 vs 外部巡检），多副本下不能无脑 cancel 别人的活 run | 已达成：消费者卡住 60s 后消息被另一 worker 接手、`processing` 不长期堆积（`scripts.ops_smoke` 第 10–11 项）；**待办**：`running` 超 15 分钟被标记 `cancelled` 且管理端可见原因 | 0.5 天 |
+| B3 | ✅ **`processing` 泄漏扫描 + 僵死 run 收敛** | 已全部交付：`claimed` ZSET + 巡检搬回（`attempt+1`，2026-11-08 S1.16）；僵尸 run 由 `app/runtime/janitor.py` 收敛（启动收尸 + 60s 定时巡检，2026-11-14 S1.24） | 无剩余 | 已达成：消费者卡住 60s 后消息被另一 worker 接手、`processing` 不长期堆积（`scripts.ops_smoke` 第 10–11 项）；`running` 超 15 分钟被标记 `cancelled` 且 `error` 写明原因（管理端 `AdminRunOut.error` 可见）；不误杀/幂等/上线即收尸/配置护栏 4 条用例 | 0.5 天 |
 | B4 | ✅ **死信自动重试**（2026-11-08，S1.19） | 已交付：失败进 `:retry` ZSET 指数退避（`5s→600s` 封顶）、到期提升、`redrives` 有界自动重投（默认关闭）；**死信告警阈值仍未做** | 剩余：死信超阈值打 WARN / 接告警通道 | 已达成：退避/到期/上限三条用例 + 真机退避链；`TASK_DLQ_REDRIVE_INTERVAL_S` 控制是否自动重投 | 1 天 |
 | B5 | ✅ **可观测缺指标**（2026-11-08，S1.16） | 已交付 `/metrics`（6 个指标）；**trace 未做**（Langfuse 仍是可选项） | 剩余部分需选型 Langfuse / OpenTelemetry | 已达成：`pet_agent_runs_total{route,status}`、`tokens_total{direction}`、`tool_calls_total{tool,ok}`、`queue_depth{topic}`、HTTP 两项；**待办**：一次 run 在 trace 里能看到对应 span | 2 天 |
 | B6 | ✅ **管理端缺"队列页 / 记忆页 / 知识图谱"**（2026-11-08，S1.17） | 已交付三页：队列运维（现场 + 死信重放）、长期记忆（按用户查/删）、知识图谱（宠物—事实—事件三层力导向图）；后端补 `DELETE /agent/admin/memory` 与 `GET /agent/admin/graph` | 前端工作量 | 已达成：Edge 实点三页 + `test_admin.py` 两例（删记忆审计、三层图谱） | 已完成 |

@@ -338,6 +338,30 @@ class MySqlRepository:
                 (usage.total, rid),
             )
 
+    async def sweep_stale_runs(self, older_than_s: float, *, error: str) -> list[str]:
+        pool = await self._ensure_pool()
+        closed: list[str] = []
+        # 先挑候选：只认创建时间过期的 running；再逐条条件更新。
+        # 条件更新是并发安全的关键——两个副本同时巡检时，后一个 `rowcount == 0` 直接跳过，
+        # 不会把别人还在跑的 run 覆盖成取消。
+        async with pool.acquire() as conn, conn.cursor() as cur:
+            await cur.execute(
+                "SELECT id FROM agent_run WHERE status='running'"
+                " AND create_time < DATE_SUB(NOW(3), INTERVAL %s SECOND) LIMIT 200",
+                (int(max(0.0, older_than_s)),),
+            )
+            rows = await cur.fetchall()
+            for (rid,) in rows:
+                await cur.execute(
+                    "UPDATE agent_run SET status=%s,error=%s,"
+                    " latency_ms=GREATEST(0, TIMESTAMPDIFF(MICROSECOND, create_time, NOW(3)) DIV 1000)"
+                    " WHERE id=%s AND status='running'",
+                    (RunStatus.CANCELLED.value, error[:512], int(rid)),
+                )
+                if cur.rowcount:
+                    closed.append(str(rid))
+        return closed
+
     async def audit_tool_call(
         self,
         run_id: str,

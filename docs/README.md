@@ -72,6 +72,7 @@
 | [plans/s1.21-image-to-pet.md](plans/s1.21-image-to-pet.md) | S1.21 图片生成桌宠：抠背景 + 卡通化 + 精灵图动效（C6 扩展） | 已完成 |
 | [plans/s1.22-pet-engine.md](plans/s1.22-pet-engine.md) | S1.22 桌宠引擎：照 dsh-pet 源码重写编排/物理/状态机（C6 引擎版） | 已完成 |
 | [plans/s1.23-auto-reconnect.md](plans/s1.23-auto-reconnect.md) | S1.23 断线自动重连：运行生命周期脱离 HTTP 连接 + `follow=1` 续传（B8） | 已完成 |
+| [plans/s1.24-stale-run-reaper.md](plans/s1.24-stale-run-reaper.md) | S1.24 僵尸 run 收敛：启动收尸 + 定时巡检，条件更新防误杀（B3 收尾） | 已完成 |
 
 ### REPORT
 
@@ -100,6 +101,7 @@
 | [reports/2026-11-08-s1.22-pet-engine.md](reports/2026-11-08-s1.22-pet-engine.md) | S1.22 桌宠引擎（C6 引擎版） | canvas 2D + 29 段程序化动画；同构复刻 dsh-pet 的权重分档/播完回链/工作六态/睡觉三段/弹簧拖拽/落地挤压；全局挂件 + 登录页守卫；App 128 tests（引擎 45 / 外壳 10）、tsc 0、build 0、真机三态 + 帧差 4879；D1–D5（没读源码、C:\Users\XiaoNian 只读、CRLF 静默不命中、只挂首页、测试与契约打架） |
 | [reports/2026-11-08-s1.21-image-pet.md](reports/2026-11-08-s1.21-image-pet.md) | S1.21 图片生成桌宠（C6 扩展） | 四角取色 + 边缘洪泛抠背景 → alpha 裁边 → 色阶量化 + 描边 → 512px 精灵图；存储可注入、localStorage 单键；App 85 tests（petImage 16 / petSpriteStore 10）、build 通过、真机上传→保存→首页生效；D1–D4（as const 字面量类型、vi.spyOn 拦不住 localStorage、i18n 脚本路径、dev 冷启动白屏） |
 | [reports/2026-11-14-s1.23-auto-reconnect.md](reports/2026-11-14-s1.23-auto-reconnect.md) | S1.23 断线自动重连（B8） | 后端把 run 从 HTTP 连接里拆出来（`RunSupervisor` 托管 + `?follow=1` 挂到终态），前端 `[3s,3s,6s]` 续传、`after` 恒为已收最大 id；backend 202 passed + 1 skipped（MySQL 变体未开 DSN）、`reconnect_smoke` 5/5（真 uvicorn + 真 socket 掐线，续传等了 656 ms）、App 136 tests + tsc 0 + build 0；抓到内存仓储 `finish_run` 状态永停 `running` 的真缺陷 |
+| [reports/2026-11-14-s1.24-stale-run-reaper.md](reports/2026-11-14-s1.24-stale-run-reaper.md) | S1.24 僵尸 run 收敛（B3 收尾） | 启动收尸 + 60s 定时巡检，判据是「开始时间 > 900s」；条件更新保证多副本下只收敛一次；backend 209 passed + 1 skipped、ruff 全绿；4 条不误杀/幂等/上线即收尸/配置护栏用例 |
 
 ## 3. 新增文档怎么起头
 

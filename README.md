@@ -436,7 +436,7 @@ Agent 侧的验收是"可复现命令"，不是口头结论：
 cd backend-agent
 # 可选：设置 DSN 后 tests/test_repository_contract.py 会额外跑一组 MySQL 契约变体
 $env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:yourpwd@127.0.0.1:3306/petlumina"
-.venv\Scripts\python -m pytest            # 未设 DSN 时 202 passed + 1 skipped（跳过的就是 MySQL 变体）
+.venv\Scripts\python -m pytest            # 未设 DSN 时 209 passed + 1 skipped（跳过的就是 MySQL 变体）
 .venv\Scripts\python -m evals.run         # routing 15/15、safety 6/6、memory 2/2
 .venv\Scripts\python -m scripts.e2e_smoke          # 10/10（SSE / 续传 / 越权）
 .venv\Scripts\python -m scripts.reconnect_smoke    # 5/5（掐线后 run 仍跑完、follow 续上不重不漏）
@@ -459,7 +459,7 @@ cd backend && mvn test                            # 后端单测 27 例（仪表
 
 文档入口：[`docs/README.md`](./docs/README.md)（四类文档职责 + 索引），
 面向决策的背景见 [`docs/pet-agent-architecture.md`](./docs/pet-agent-architecture.md)，
-**还差什么**见 [`docs/BACKLOG.md`](./docs/BACKLOG.md)（原 42 条，剩 17 条；卫生债 E1–E13 已清零）。
+**还差什么**见 [`docs/BACKLOG.md`](./docs/BACKLOG.md)（原 42 条，剩 16 条；卫生债 E1–E13 已清零）。
 
 ## 更新日志
 
@@ -477,8 +477,9 @@ cd backend && mvn test                            # 后端单测 27 例（仪表
 - App：首页「问 Lumina」入口 + 全屏对话页（流式、工具提示、引用回跳、历史会话恢复）+ **历史会话面板**（`GET /agent/sessions`，列表切换与刷新恢复）
 - 断线自动重连（S1.23）：run 的生命周期与 HTTP 连接解耦（`RunSupervisor` 托管执行 + `GET /agent/runs/{id}/events?follow=1` 挂到终态），App 断网后按 `[3s,3s,6s]` 用「run_id + 已收最大 id」续传，不重发、不重复、界面显示「正在重连（第 N 次）」
 - 管理端：会话工作台（会话列表 / 详情：对话流 + 运行轨迹 + 长期记忆 / 全局用量）
-- 文档体系：9 条 ADR、2 份 SPEC、1 份 SDD、12 份 PLAN、23 份 REPORT（见 `docs/README.md`）
-- 验收：202 单测 + 1 skipped（未开 DSN）、23 条评测、9 个真进程冒烟（10/9/6/8/8/10/11/8 + `reconnect_smoke` 5/5）+ 真实模型冒烟 13/13（L1 P50 929 ms / P95 1064 ms）、App 136 tests + `vue-tsc` 0 + build 0、`ruff` 全绿
+- 僵尸 run 收敛（S1.24）：进程被 `kill -9` 后 `agent_run` 不会永远停在 `running`——启动先收尸 + 每 60s 巡检，判据是「开始时间 > 15 分钟」，条件更新保证多副本只收敛一次，`error` 写明原因（管理端可见）
+- 文档体系：9 条 ADR、2 份 SPEC、1 份 SDD、13 份 PLAN、24 份 REPORT（见 `docs/README.md`）
+- 验收：209 单测 + 1 skipped（未开 DSN）、23 条评测、9 个真进程冒烟（10/9/6/8/8/10/11/8 + `reconnect_smoke` 5/5）+ 真实模型冒烟 13/13（L1 P50 929 ms / P95 1064 ms）、App 136 tests + `vue-tsc` 0 + build 0、`ruff` 全绿
 
 ### v2.7 (2026-06-03)
 

@@ -33,6 +33,7 @@ from ..rag import DocumentService
 from ..rag.embedder import build_embedder
 from ..runtime import AgentRunner
 from ..runtime.eventlog import EventStore, create_event_store
+from ..runtime.janitor import janitor_log, janitor_loop, sweep_once
 from ..runtime.supervisor import RunSupervisor
 from ..storage import AgentRepository, create_repository
 from ..tasks import TOPICS, TaskQueue, create_task_queue
@@ -182,6 +183,27 @@ def create_app(
 
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+        # 先扫一遍上一轮进程消失留下的僵尸 run，再接收新请求：
+        # 它们停在 running 会让管理端误以为「还在跑」，前端重连也永远等不到 done。
+        with contextlib.suppress(Exception):
+            reaped = await sweep_once(repository, timeout_s=settings.stale_run_timeout_s)
+            if reaped:
+                log_event(
+                    janitor_log,
+                    logging.WARNING,
+                    "stale runs reaped on startup",
+                    count=len(reaped),
+                    sample=reaped[:5],
+                )
+        if settings.run_sweep_interval_s > 0:
+            supervisor.spawn(
+                janitor_loop(
+                    repository,
+                    timeout_s=settings.stale_run_timeout_s,
+                    interval_s=settings.run_sweep_interval_s,
+                ),
+                name="run-janitor",
+            )
         # 先补偿上一次进程崩在「在途」里的消息，再开消费协程：
         # 顺序反了会和新 consumer 抢同一条消息。
         if tasks is not None:
