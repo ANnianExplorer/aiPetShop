@@ -1,4 +1,4 @@
-# backend-agent · PetLumina Agent Runtime
+﻿# backend-agent · PetLumina Agent Runtime
 
 宠物智能体的**执行引擎层**。不替代 Spring Boot 后端：业务真源（用户/宠物/健康/记录）仍在 Java + MySQL，
 本服务只负责「调度 + 工具 + 记忆 + 运行轨迹」，通过用户自己的 `satoken` 调 `/api/v1/*` 取数。
@@ -61,7 +61,7 @@ copy .env.example .env          # 填 PET_AGENT_LLM_API_KEY
 ```bash
 curl http://localhost:8099/healthz    # 进程活着
 curl http://localhost:8099/readyz     # 能接流量（存储+模型都 ok 才是 200）
-.venv\Scripts\python -m pytest        # 208 passed（设 PET_AGENT_TEST_MYSQL_DSN 时含真机契约）
+.venv\Scripts\python -m pytest        # 216 passed（设 PET_AGENT_TEST_MYSQL_DSN 时含真机契约）
 .venv\Scripts\python -m evals.run     # routing/safety/memory 三套件，硬阈值
 .venv\Scripts\ruff.exe check .        # 静态检查
 ```

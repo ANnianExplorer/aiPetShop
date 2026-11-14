@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue'
-import { useRouter } from 'vue-router'
+import { computed, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { healthApi } from '@/api/health'
 import { useUserStore } from '@/stores/user'
@@ -8,6 +8,7 @@ import { formatDateShort } from '@/utils/format'
 import type { PetHealthData } from '@/types'
 
 const router = useRouter()
+const route = useRoute()
 const userStore = useUserStore()
 const { currentPet } = storeToRefs(userStore)
 const loading = ref(false)
@@ -17,13 +18,33 @@ const goBack = () => {
 }
 
 const weeklyData = ref<PetHealthData[]>([])
+// 从对话里的健康引用跳过来时带着 petId 与 date：那只宠物 + 那一天要被框出来，
+// 否则用户点进来只看到一片"本周"，还得自己找是哪一条。
+const queryPetId = typeof route.query.petId === 'string' ? route.query.petId : ''
+const focusDate = typeof route.query.date === 'string' ? route.query.date.slice(0, 10) : ''
+
+const dayKey = (day: PetHealthData): string => (day.date ? String(day.date).slice(0, 10) : '')
+
+const isFocusedDay = (day: PetHealthData): boolean => !!focusDate && dayKey(day) === focusDate
+
+const hasFocus = computed(
+  () => !!focusDate && weeklyData.value.some((day) => isFocusedDay(day))
+)
 
 onMounted(async () => {
-  if (!currentPet.value) return
+  const petId = queryPetId || currentPet.value?.id
+  if (!petId) return
   try {
     loading.value = true
-    const data = await healthApi.weekly(currentPet.value.id)
+    const data = await healthApi.weekly(petId)
     weeklyData.value = Array.isArray(data) ? data : []
+    if (hasFocus.value) {
+      // 等一帧让 v-highlight 的类名先挂上，再滚过去
+      await Promise.resolve()
+      document
+        .querySelector('[data-citation-focus="true"]')
+        ?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    }
   } catch (e) {
     weeklyData.value = []
   } finally {
@@ -148,6 +169,8 @@ const goToRecord = () => {
               v-for="(day, index) in weeklyData"
               :key="day.date || day.id || index"
               class="bg-surface-container-low rounded-xl p-4"
+              :class="isFocusedDay(day) ? 'ring-2 ring-primary bg-primary/5' : ''"
+              :data-citation-focus="isFocusedDay(day) ? 'true' : undefined"
             >
               <div class="flex items-center justify-between mb-3">
                 <span class="font-label-bold text-label-bold text-on-surface">{{ getDayLabel(day) }}</span>

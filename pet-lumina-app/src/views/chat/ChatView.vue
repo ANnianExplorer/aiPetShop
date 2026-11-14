@@ -11,6 +11,7 @@ import {
   uploadDocument,
 } from '@/api/agent'
 import { applyAgentEvent, historyToBubbles } from '@/utils/chatStream'
+import { citationRoute } from '@/utils/citationRoute'
 import { streamChatResilient } from '@/utils/resilientChat'
 import { publishWorkState } from '@/pet/signal'
 import { useUserStore } from '@/stores/user'
@@ -227,8 +228,10 @@ function onKeydown(event: KeyboardEvent) {
 }
 
 function openCitation(citation: AgentCitation) {
-  if (citation.kind === 'log') {
-    void router.push(`/log/${citation.id}`)
+  // 路由由后端随引用一起给出（S1.25）：前端只负责跳，不再按 kind 硬编码
+  const target = citationRoute(citation)
+  if (target) {
+    void router.push(target)
     return
   }
   showToast(citation.label)

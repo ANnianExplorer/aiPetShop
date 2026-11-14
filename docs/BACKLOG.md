@@ -11,7 +11,7 @@
 3. 优先级按"卡不卡产品可用"分：P0 阻断、P1 该做、P2 值得做、P3 以后。
 4. 估算是"一个人、熟悉代码"的量级，不是承诺。
 
-统计：**P0 3 条（A1、A2、A3 已交付）· P1 8 条（B2/B3/B4/B5/B6/B7/B8 已交付，剩 1 条）· P2 9 条（C2、C6 已交付，剩 7 条）· P3 9 条 · 原项目卫生债 0 条**，原计划 42 条，剩余 16 条（P1 剩 1 + P2 剩 7 + P3 8）。各批证据：E1/E3/E4/E5 见 `docs/reports/2026-11-08-s1.11-hygiene-debts.md`；E2/E6/E7 见 `docs/reports/2026-11-08-s1.12-e2-e6-e7.md`；E8/E13 见 `docs/reports/2026-11-08-s1.13-e8-e13.md`；E9/E10/E11/E12 见 `docs/reports/2026-11-08-s1.14-e9-e12.md`；A3 见 `docs/reports/2026-11-08-s1.15-doc-rag.md`；B5/B7 见 `docs/reports/2026-11-08-s1.16-ops.md`；B6 见 `docs/reports/2026-11-08-s1.17-admin-console.md`；C2 见 `docs/reports/2026-11-08-s1.18-profile.md`；B2/B4/C6 见 `docs/reports/2026-11-08-s1.19-b4-b2-pet.md`；B8 见 `docs/reports/2026-11-14-s1.23-auto-reconnect.md`；B3 收尾见 `docs/reports/2026-11-14-s1.24-stale-run-reaper.md`。
+统计：**P0 3 条（A1、A2、A3 已交付）· P1 8 条（B2/B3/B4/B5/B6/B7/B8 已交付，剩 1 条）· P2 9 条（C2、C4、C6 已交付，剩 6 条）· P3 9 条 · 原项目卫生债 0 条**，原计划 42 条，剩余 15 条（P1 剩 1 + P2 剩 6 + P3 8）。各批证据：E1/E3/E4/E5 见 `docs/reports/2026-11-08-s1.11-hygiene-debts.md`；E2/E6/E7 见 `docs/reports/2026-11-08-s1.12-e2-e6-e7.md`；E8/E13 见 `docs/reports/2026-11-08-s1.13-e8-e13.md`；E9/E10/E11/E12 见 `docs/reports/2026-11-08-s1.14-e9-e12.md`；A3 见 `docs/reports/2026-11-08-s1.15-doc-rag.md`；B5/B7 见 `docs/reports/2026-11-08-s1.16-ops.md`；B6 见 `docs/reports/2026-11-08-s1.17-admin-console.md`；C2 见 `docs/reports/2026-11-08-s1.18-profile.md`；B2/B4/C6 见 `docs/reports/2026-11-08-s1.19-b4-b2-pet.md`；B8 见 `docs/reports/2026-11-14-s1.23-auto-reconnect.md`；B3 收尾见 `docs/reports/2026-11-14-s1.24-stale-run-reaper.md`；C4 见 `docs/reports/2026-11-14-s1.25-citation-jump-links.md`。
 
 ---
 
@@ -47,7 +47,7 @@
 | C1 | **情景记忆 `memory_episode`** | 表建了，从未写入；无向量 | 依赖向量库选型（pgvector） | 一次"上周洗澡"的对话能被召回为情景片段，并带原消息 id | 3 天 |
 | C2 | ✅ **用户画像 `profile_snapshot`**（2026-11-08，S1.18） | 已交付：版本化快照 + 确定性 builder + 记忆消费后重算 + 四接口 + 管理端画像页 | `routine`/行为趋势、人工修正、版本 diff、画像导出仍未做 | 已达成：`test_profile.py` 20 例、真机 `v2 facts=3`、Edge 实点画像页；**待办**：从日志聚合作息 | 已完成 |
 | C3 | **记忆抽取质量评测偏薄** | `evals` 里 `memory` 只有 2 条用例 | 需标注更多真实句式 | `memory` 套件 ≥40 条（含否定句"它不过敏"、多宠物、方言），阈值 ≥0.9 | 2 天 |
-| C4 | **引用回跳只覆盖 log** | `kind==='log'` 才可点；post / health 没有 locator | 需要后端 VO 补定位字段 | 健康记录引用能跳到对应日期；帖子引用能跳到帖子详情 | 2 天 |
+| C4 | ✅ **引用回跳 locator 化**（2026-11-14，S1.25） | 已交付：`citation.locator` 改为 App 内路由（`/log/{id}`、`/post/{id}`、`/pet-detail/{id}`、`/weekly-health-detail?petId=…&date=…`）；新增只读工具 `search_posts` 补上帖子引用来源；前端 `citationRoute()` 不再按 kind 硬编码，老会话按 kind 兜底 | 未做：真机人工点一次（本机 Java 8080 未起） | 已达成：健康引用带周记录最大日期并高亮定位、帖子引用跳 `/post/{id}`；`test_citations.py` 7 例 + `e2e_smoke` 10/10 里 citation 已是 `/log/7001` | |
 | C5 | **语音链路** | 无 | 参考 Open-LLM-VTuber（本地 ASR/TTS + 打断） | 浏览器录音 → 转写 → 走同一 `POST /agent/chat`；TTS 可关 | 5 天 |
 | C6 | ✅ **桌宠（引擎版：canvas + 程序化动画）**（2026-11-08，S1.19 档 A → S1.20 分层 SVG → S1.21 图片生成 → S1.22 照 dsh-pet 重写引擎） | 已交付：①照 `dsh-pet` 源码同构的引擎——权重分档/播完回链/工作六态/睡觉三段/弹簧拖拽+甩出封顶+落地挤压/命中区保底；②29 段程序化动画 + 13 种道具 + 气泡 + 长按菜单（吃白饭/打盹/叫醒/去聊天/收起）；③全局挂件（换页面不丢）+ 登录页不渲染 + 位置归一化持久化；④图片生成形象沿用 S1.21 管线。**未做**：视频素材档、Live2D/VRM、音频 | 剩余：引入 dsh-pet 视频素材（需署名/非商用确认）、手动涂抹修正、音效与语音、余额/工作时长事件刷新 | 已达成：App 128 tests（引擎 45 + 外壳 10）、tsc 0、build 0、真机首页/对话页/登录页三态 + 帧差 4879 | 9 天 |
 | C7 | **压测与容量基线** | 无 | 依赖 B2 | 记录 20 并发 SSE 下的首 token P95、错误率、峰值内存；给出单实例上限 | 2 天 |

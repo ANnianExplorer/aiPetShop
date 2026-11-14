@@ -1,4 +1,4 @@
-# 规格：Agent Runtime HTTP/SSE 契约 v1.13
+﻿# 规格：Agent Runtime HTTP/SSE 契约 v1.14
 
 - 状态：Frozen（实现已按此验收；破坏性变更需升 v2）
 - 日期：2026-11-08（v1.11 增宠物画像与 I33–I36；v1.10 管理端队列/记忆/图谱与 I30–I32；v1.9 记忆删除导出与 `/metrics`；v1.8 文档问答与 I23–I26；v1.7 App 会话列表与 I22；v1.6 队列运维接口；v1.5 记忆最终一致；v1.4 幂等与熔断；v1.3 管理端）
@@ -142,7 +142,12 @@ data: {"text":"9月1日打过疫苗，"}
 | `done` | `{run_id, session_id, message_id, route, intent, answer, citations[], steps[], usage{prompt_tokens,completion_tokens}, latency_ms}` | 恰好 1 次，终止 | `answer` 是完整答案（前端以它为准） |
 | `error` | `{code, message, retryable, detail?}` | 0 或 1 次，终止 | 出现即 run 失败 |
 
-`citations[]` 元素：`{kind, id, label, locator}`，`kind` 目前为 `log`（`locator` 是记录时间）或 `record`。
+`citations[]` 元素：`{kind, id, label, locator}`。
+
+- `kind` 目前为 `pet` / `health` / `log` / `post` / `doc`；
+- **`locator` 是 App 内路由**（`/` 开头，见 v1.14）：`/pet-detail/{id}`、`/log/{id}`、`/post/{id}`、
+  `/weekly-health-detail?petId=…&date=…`；`doc` 的 `locator` 是文档内的定位串，不是 App 路由。
+- 前端只按「能否跳转」判断，不再按 `kind` 硬编码；没有路由形态 `locator` 的历史数据由前端按 `kind` 兜底。
 `steps[]` 元素：`{seq, kind, name, status, latency_ms, error}`。
 
 ### 4.4 事件顺序保证
@@ -410,6 +415,7 @@ meta        { factWatermark, builtAt }
 | I40 | 关闭 SSE 消费端**不取消**运行：run 仍跑到 `succeeded`，事件日志恰好一条 `done` 且在末尾 | `test_reconnect.py::test_closing_consumer_does_not_cancel_run` |
 | I41 | `?follow=1` 从任意 `after` 续传时事件 id 严格递增、不重不漏，末尾必是终止事件 | `test_reconnect.py::test_follow_returns_events_after_cursor`、`test_follow_waits_for_running_run` |
 | I42 | 不带 `follow` 的 `/events` 仍是快照语义；幂等回放路径原样转发、不接管成跟随 | `test_reconnect.py::test_snapshot_stays_snapshot_without_follow`、`test_idempotent_replay_still_forwards` |
+| I43 | `citations[].locator` 是 App 内路由（`/` 开头），前端据此跳转；`doc` 例外（文档内定位串） | `test_citations.py::test_every_locator_is_an_app_route`、`citationRoute.spec.ts` |
 
 ## 8. 验收用例（可执行）
 
@@ -447,4 +453,6 @@ $env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:<本机口令>@127.0.0.1:3306/petl
 | v1.10 | 2026-11-08 | 增 6.8 管理端队列现场/死信重放/管理员删记忆/三层图谱、I30–I32；验收命令 183 passed（BACKLOG B6 / S1.17） |
 | v1.11 | 2026-11-08 | 增 6.9 宠物画像（四个接口 + data 结构 + 五条约定）、I33–I36；验收命令 203 passed（BACKLOG C2 / S1.18） |
 | v1.12 | 2026-11-08 | 增 6.10 任务退避重试（backoff/重投上限/默认关闭）与多副本语义（共享 vs 熔断单实例）；验收命令 208 passed、补 `multi_replica_smoke`（BACKLOG B4·B2 / S1.19） |
+| v1.13 | 2026-11-14 | 4.4 第 4 条改为「断开不取消运行」；§5 增 `follow` 参数（挂到终止）与三个结束条件、`run_follow_timeout_s`/`run_follow_poll_s`；增 I40–I42；验收命令 202 passed + 1 skipped（MySQL 变体未开 DSN）、前端 `resilientChat.spec.ts` 8 例（BACKLOG B8 / S1.23） |
+| v1.14 | 2026-11-14 | `citations[].locator` 明确为 App 内路由（`/pet-detail`、`/log`、`/post`、`/weekly-health-detail?petId=&date=`），新增只读工具 `search_posts` 提供帖子引用来源；增 I43；验收 216 passed + 1 skipped、App 141 tests、`e2e_smoke` 10/10（BACKLOG C4 / S1.25） |
 | v1.13 | 2026-11-14 | 4.4 第 4 条改为「断开不取消运行」；§5 增 `follow` 参数（挂到终止）与三个结束条件、`run_follow_timeout_s`/`run_follow_poll_s`；增 I40–I42；验收命令 202 passed + 1 skipped（MySQL 变体未开 DSN）、前端 `resilientChat.spec.ts` 8 例（BACKLOG B8 / S1.23） |

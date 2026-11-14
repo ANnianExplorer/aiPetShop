@@ -80,6 +80,7 @@ async def test_l2_runs_tool_then_answers() -> None:
         "get_pet_profile",
         "get_health_summary",
         "search_logs",
+        "search_posts",
     }
     # 回归：L2 第一次调用模型时必须已经带上 system + 用户问题，
     # 否则模型在"空对话"里出牌（曾因 route→agent 跳过 prepare 而踩过）。

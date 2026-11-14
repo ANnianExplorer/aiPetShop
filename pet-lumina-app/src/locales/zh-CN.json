@@ -335,6 +335,7 @@
       "get_pet_profile": "查看档案",
       "get_health_summary": "查询健康数据",
       "search_logs": "翻找记录",
+      "search_posts": "逛社区帖子",
       "search_docs": "查资料"
     },
     "entry": "问 Lumina",

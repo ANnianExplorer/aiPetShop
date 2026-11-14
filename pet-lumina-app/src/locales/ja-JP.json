@@ -335,6 +335,7 @@
       "get_pet_profile": "プロフィール確認",
       "get_health_summary": "健康データ照会",
       "search_logs": "記録を検索",
+      "search_posts": "コミュニティを閲覧",
       "search_docs": "資料を検索"
     },
     "entry": "Lumina に聞く",

@@ -335,6 +335,7 @@
       "get_pet_profile": "Reading profile",
       "get_health_summary": "Checking health data",
       "search_logs": "Searching logs",
+      "search_posts": "Browsing community",
       "search_docs": "Searching files"
     },
     "entry": "Ask Lumina",

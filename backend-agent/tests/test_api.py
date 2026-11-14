@@ -47,6 +47,7 @@ async def test_healthz(client: httpx.AsyncClient) -> None:
         "get_pet_profile",
         "get_health_summary",
         "search_logs",
+        "search_posts",
         "search_docs",
     }
 

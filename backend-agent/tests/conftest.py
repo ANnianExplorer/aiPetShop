@@ -34,6 +34,17 @@ def _cleanup_docs_root() -> Any:
 
 
 JAVA_PET = {"id": "5001", "name": "Lumina", "breed": "布偶", "age": 2}
+JAVA_POST_PAGE = {
+    "records": [
+        {
+            "id": "9001",
+            "content": "换粮第三天终于不软便了，记录一下",
+            "category": "daily",
+            "createTime": "2026-11-10 20:11:00",
+        }
+    ],
+    "total": 1,
+}
 JAVA_LOG_PAGE = {
     "records": [
         {
@@ -54,6 +65,7 @@ _JAVA_ROUTES = {
     "/api/v1/health/dashboard": {"petId": "5001", "heartRate": 92, "sleepHours": 9.5},
     "/api/v1/health/record/weekly": [{"date": "2026-11-05", "steps": 3200}],
     "/api/v1/log/list/page/vo": JAVA_LOG_PAGE,
+    "/api/v1/post/list/page/vo": JAVA_POST_PAGE,
 }
 
 
