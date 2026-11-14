@@ -50,6 +50,11 @@ cd pet-lumina-app && npm run preview
 - 不提交：`.vscode/`、`.venv/`、`node_modules/`、`__pycache__/`、`.pytest_cache/`、`.ruff_cache/`、`backend-agent/data/`、`backend/application-local.yml`。
 - 每轮交付前跑一次 `git status --porcelain`，除上述忽略项外应为空；有残留文件先清理再提交。
 
+## 本机提交环境（夜间维护踩坑记录）
+- 本机 `git config user.name/user.email` **未配置**，直接 `git commit` 会报 `Author identity unknown` 并返回 128。历史作者统一是 `ANnian2022 <3480088617@qq.com>`，所以提交/打标签时临时指定：
+  `git -c user.name="ANnian2022" -c user.email="3480088617@qq.com" commit -F <消息文件>`
+- 中文提交信息**不要**用 PowerShell here-string 拼 `-m`（结束符 `"@` 必须独占一行，否则参数被拆碎，git 报 `error: pathspec 'N' did not match any file(s)`）。用 write 工具写 `%TEMP%\xxx-commit.txt` 再 `git commit -F`。
+
 
 ## GitHub Pages
 - 构建输出目录：`pet-lumina-app/dist`（已在仓库中）
