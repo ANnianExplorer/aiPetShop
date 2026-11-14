@@ -1,4 +1,4 @@
-# 文档地图（Pet-Agent）
+﻿# 文档地图（Pet-Agent）
 
 > 这份索引回答一个问题：**每个阶段交付了什么，凭什么说它是对的。**
 
@@ -74,6 +74,7 @@
 | [plans/s1.23-auto-reconnect.md](plans/s1.23-auto-reconnect.md) | S1.23 断线自动重连：运行生命周期脱离 HTTP 连接 + `follow=1` 续传（B8） | 已完成 |
 | [plans/s1.24-stale-run-reaper.md](plans/s1.24-stale-run-reaper.md) | S1.24 僵尸 run 收敛：启动收尸 + 定时巡检，条件更新防误杀（B3 收尾） | 已完成 |
 | [plans/s1.25-citation-jump-links.md](plans/s1.25-citation-jump-links.md) | S1.25 引用回跳：`locator` 改为 App 路由 + 补齐帖子引用来源（C4） | 已完成 |
+| [plans/s1.26-ci-docker-context.md](plans/s1.26-ci-docker-context.md) | S1.26 CI 修复：`docker build` 构建上下文写重 + 推标签重复触发（C8） | 已完成 |
 
 ### REPORT
 
@@ -104,6 +105,7 @@
 | [reports/2026-11-14-s1.23-auto-reconnect.md](reports/2026-11-14-s1.23-auto-reconnect.md) | S1.23 断线自动重连（B8） | 后端把 run 从 HTTP 连接里拆出来（`RunSupervisor` 托管 + `?follow=1` 挂到终态），前端 `[3s,3s,6s]` 续传、`after` 恒为已收最大 id；backend 202 passed + 1 skipped（MySQL 变体未开 DSN）、`reconnect_smoke` 5/5（真 uvicorn + 真 socket 掐线，续传等了 656 ms）、App 136 tests + tsc 0 + build 0；抓到内存仓储 `finish_run` 状态永停 `running` 的真缺陷 |
 | [reports/2026-11-14-s1.24-stale-run-reaper.md](reports/2026-11-14-s1.24-stale-run-reaper.md) | S1.24 僵尸 run 收敛（B3 收尾） | 启动收尸 + 60s 定时巡检，判据是「开始时间 > 900s」；条件更新保证多副本下只收敛一次；backend 209 passed + 1 skipped、ruff 全绿；4 条不误杀/幂等/上线即收尸/配置护栏用例 |
 | [reports/2026-11-14-s1.25-citation-jump-links.md](reports/2026-11-14-s1.25-citation-jump-links.md) | S1.25 引用回跳（C4） | `citation.locator` 变成 App 路由 + 新增 `search_posts` 工具；健康引用带周记录最大日期并高亮定位；backend 216 passed + 1 skipped、App 141 tests + tsc 0 + build 0、`e2e_smoke` 10/10（citation 已是 `/log/7001`） |
+| [reports/2026-11-14-s1.26-ci-docker-context.md](reports/2026-11-14-s1.26-ci-docker-context.md) | S1.26 CI 真正跑通（C8） | 从 S1.6 起 34 次运行全红，唯一挂的是 `docker build`（上下文 `backend-agent/backend-agent` 不存在）；改成 `.` 后运行 #35 两个 job 全绿（53s） |
 
 ## 3. 新增文档怎么起头
 

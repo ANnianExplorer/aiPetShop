@@ -1,4 +1,4 @@
-# 未完成事项清单（Backlog）
+﻿# 未完成事项清单（Backlog）
 
 - 状态：活文档（每次交付后更新；做完的条目移到对应 REPORT，并从本表删除）
 - 更新：2026-11-14
@@ -11,7 +11,7 @@
 3. 优先级按"卡不卡产品可用"分：P0 阻断、P1 该做、P2 值得做、P3 以后。
 4. 估算是"一个人、熟悉代码"的量级，不是承诺。
 
-统计：**P0 3 条（A1、A2、A3 已交付）· P1 8 条（B2/B3/B4/B5/B6/B7/B8 已交付，剩 1 条）· P2 9 条（C2、C4、C6 已交付，剩 6 条）· P3 9 条 · 原项目卫生债 0 条**，原计划 42 条，剩余 15 条（P1 剩 1 + P2 剩 6 + P3 8）。各批证据：E1/E3/E4/E5 见 `docs/reports/2026-11-08-s1.11-hygiene-debts.md`；E2/E6/E7 见 `docs/reports/2026-11-08-s1.12-e2-e6-e7.md`；E8/E13 见 `docs/reports/2026-11-08-s1.13-e8-e13.md`；E9/E10/E11/E12 见 `docs/reports/2026-11-08-s1.14-e9-e12.md`；A3 见 `docs/reports/2026-11-08-s1.15-doc-rag.md`；B5/B7 见 `docs/reports/2026-11-08-s1.16-ops.md`；B6 见 `docs/reports/2026-11-08-s1.17-admin-console.md`；C2 见 `docs/reports/2026-11-08-s1.18-profile.md`；B2/B4/C6 见 `docs/reports/2026-11-08-s1.19-b4-b2-pet.md`；B8 见 `docs/reports/2026-11-14-s1.23-auto-reconnect.md`；B3 收尾见 `docs/reports/2026-11-14-s1.24-stale-run-reaper.md`；C4 见 `docs/reports/2026-11-14-s1.25-citation-jump-links.md`。
+统计：**P0 3 条（A1、A2、A3 已交付）· P1 8 条（B2/B3/B4/B5/B6/B7/B8 已交付，剩 1 条）· P2 9 条（C2、C4、C6、C8 已交付，剩 5 条）· P3 9 条 · 原项目卫生债 0 条**，原计划 42 条，剩余 14 条（P1 剩 1 + P2 剩 5 + P3 8）。各批证据：E1/E3/E4/E5 见 `docs/reports/2026-11-08-s1.11-hygiene-debts.md`；E2/E6/E7 见 `docs/reports/2026-11-08-s1.12-e2-e6-e7.md`；E8/E13 见 `docs/reports/2026-11-08-s1.13-e8-e13.md`；E9/E10/E11/E12 见 `docs/reports/2026-11-08-s1.14-e9-e12.md`；A3 见 `docs/reports/2026-11-08-s1.15-doc-rag.md`；B5/B7 见 `docs/reports/2026-11-08-s1.16-ops.md`；B6 见 `docs/reports/2026-11-08-s1.17-admin-console.md`；C2 见 `docs/reports/2026-11-08-s1.18-profile.md`；B2/B4/C6 见 `docs/reports/2026-11-08-s1.19-b4-b2-pet.md`；B8 见 `docs/reports/2026-11-14-s1.23-auto-reconnect.md`；B3 收尾见 `docs/reports/2026-11-14-s1.24-stale-run-reaper.md`；C4 见 `docs/reports/2026-11-14-s1.25-citation-jump-links.md`；C8 见 `docs/reports/2026-11-14-s1.26-ci-docker-context.md`。
 
 ---
 
@@ -51,7 +51,7 @@
 | C5 | **语音链路** | 无 | 参考 Open-LLM-VTuber（本地 ASR/TTS + 打断） | 浏览器录音 → 转写 → 走同一 `POST /agent/chat`；TTS 可关 | 5 天 |
 | C6 | ✅ **桌宠（引擎版：canvas + 程序化动画）**（2026-11-08，S1.19 档 A → S1.20 分层 SVG → S1.21 图片生成 → S1.22 照 dsh-pet 重写引擎） | 已交付：①照 `dsh-pet` 源码同构的引擎——权重分档/播完回链/工作六态/睡觉三段/弹簧拖拽+甩出封顶+落地挤压/命中区保底；②29 段程序化动画 + 13 种道具 + 气泡 + 长按菜单（吃白饭/打盹/叫醒/去聊天/收起）；③全局挂件（换页面不丢）+ 登录页不渲染 + 位置归一化持久化；④图片生成形象沿用 S1.21 管线。**未做**：视频素材档、Live2D/VRM、音频 | 剩余：引入 dsh-pet 视频素材（需署名/非商用确认）、手动涂抹修正、音效与语音、余额/工作时长事件刷新 | 已达成：App 128 tests（引擎 45 + 外壳 10）、tsc 0、build 0、真机首页/对话页/登录页三态 + 帧差 4879 | 9 天 |
 | C7 | **压测与容量基线** | 无 | 依赖 B2 | 记录 20 并发 SSE 下的首 token P95、错误率、峰值内存；给出单实例上限 | 2 天 |
-| C8 | **CI 未真正跑过** | `agent-ci.yml` 已写，本机无 docker | 推送后 GitHub Actions 状态未知 | Actions 上 `check` 与 `image` 两个 job 绿；首次跑通后把徽章贴到 README | 0.5 天 |
+| C8 | ✅ **CI 真正跑通**（2026-11-14，S1.26） | 已交付：`docker build` 的构建上下文写重（`defaults.run.working-directory: backend-agent` + `docker build ... backend-agent` → 上下文变成 `backend-agent/backend-agent`）从 S1.6 起 34 次运行 34 次红，已改成 `.`；`on.push` 加 `branches: [main]` 避免推标签重复触发。CI 运行 #35 两个 job 全绿（53 秒） | 剩余：CI 仍只覆盖 `backend-agent`，前端三件套与 `backend/` 的 `mvn test` 未纳入 | 已达成：Actions 上 `lint + test + evals` 与 `docker build` 两个 job 绿（run #35，`conclusion=success`）；README 已贴徽章 | 0.5 天 |
 | C9 | **前端 e2e 自动化** | 全部靠手动开 Edge 点 | 需 Playwright + 固定桩数据 | 三条用例：登录→对话→看到引用；管理员→会话详情；429 → 提示 + 重试 | 2 天 |
 
 ---
