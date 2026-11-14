@@ -319,6 +319,7 @@
     "retry": "重试",
     "historyFailed": "历史记录加载失败",
     "sendFailed": "消息没有发出去，请重试",
+    "reconnecting": "网络抖了一下，正在重连（第 {n} 次）…",
     "loginExpired": "登录已过期，请重新登录",
     "emptyTitle": "嗨，我是 Lumina",
     "emptyBody": "我知道毛孩子的疫苗、体重、驱虫和日常记录。问我点什么吧——答案都会标出依据。",

@@ -33,6 +33,8 @@ from ..storage.base import AgentRepository
 from ..tasks.base import TaskQueue, TaskQueueFull
 from ..tools import ToolGateway
 from .eventlog import EventStore
+from .follow import follow_events
+from .supervisor import RunSupervisor
 
 FALLBACK_ANSWER = "（这次没有生成内容，换个说法再问我一次？）"
 run_log = logging.getLogger("agent.run")
@@ -58,6 +60,19 @@ class Caller:
     token: str
 
 
+@dataclass
+class _StreamContext:
+    """`_drive` 与 `stream` 之间的交接牌：这次到底有没有可托管的新 run。
+
+    - `run_id`：新 run 建出来后填上，表示"后续事件可以去事件日志里等"；
+    - `replay_only`：幂等命中了已有 run，事件是现成的回放，不该再被后台接管
+      （否则会重新驱动一次执行，等于把 I16 撕开）。
+    """
+
+    run_id: str | None = None
+    replay_only: bool = False
+
+
 class AgentRunner:
     def __init__(
         self,
@@ -71,6 +86,7 @@ class AgentRunner:
         memory: MemoryService | None = None,
         tasks: TaskQueue | None = None,
         profiles: ProfileService | None = None,
+        supervisor: RunSupervisor | None = None,
     ) -> None:
         self._settings = settings
         self._repo = repo
@@ -81,8 +97,72 @@ class AgentRunner:
         self._memory = memory
         self._tasks = tasks
         self._profiles = profiles
+        self._supervisor = supervisor or RunSupervisor()
 
     async def stream(self, cmd: ChatCommand, caller: Caller) -> AsyncIterator[Event]:
+        """对外的唯一入口：先同步拿到首事件，再把执行交给后台任务。
+
+        首事件（route / error / 幂等回放的第一条）必须留在请求路径里：客户端要它才知道
+        run_id，重连才有游标可谈。从第二条事件起一律走事件日志——请求路径只是"读者"，
+        它断开不会影响写者（后台任务）。
+        """
+        ctx = _StreamContext()
+        drive = self._drive(cmd, caller, ctx)
+        try:
+            first = await anext(drive)
+        except StopAsyncIteration:
+            return
+
+        if ctx.replay_only or ctx.run_id is None:
+            # 没有可托管的 run：要么是幂等回放（事件已经现成），要么压根没建出 run
+            # （模型未配置）。这两种情况都没有"续传"可言，原样转发即可。
+            yield first
+            async for event in drive:
+                yield event
+            return
+
+        run_id = ctx.run_id
+        # 先托管、再交付首事件：客户端可能收到 route 就断（切后台），
+        # 若先 yield 再 spawn，那一瞬间的断开仍会把 run 冲掉——窗口小，但不是零。
+        self._supervisor.spawn(self._drain(drive, run_id), name=f"run:{run_id}")
+        yield first
+        async for event in follow_events(
+            self._eventlog,
+            self._repo,
+            run_id,
+            first.seq,
+            poll_s=self._settings.run_follow_poll_s,
+            idle_timeout_s=self._settings.run_follow_timeout_s,
+        ):
+            yield event
+
+    async def _drain(self, drive: AsyncIterator[Event], run_id: str) -> None:
+        """后台把运行跑完：事件由 `_record` 直接写进日志，这里只负责推进执行。
+
+        绝不能在客户端断开时被取消——"运行的生命周期属于 run，不属于这条连接"。
+        只有进程退出（supervisor.aclose）才会取消它，届时 `_drive` 的 finally 会把
+        run 收成 cancelled，不留 `running` 僵尸。
+        """
+        try:
+            async for _event in drive:
+                pass
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:  # `_drive` 已把 AgentError 转成 error 事件，这里只兜底
+            log_event(
+                run_log,
+                logging.ERROR,
+                "run drain crashed",
+                run_id=run_id,
+                error=f"{type(exc).__name__}: {exc}",
+            )
+        finally:
+            with contextlib.suppress(Exception):
+                await drive.aclose()
+
+    async def _drive(
+        self, cmd: ChatCommand, caller: Caller, ctx: _StreamContext
+    ) -> AsyncIterator[Event]:
         if self._model is None or self._graph is None:
             yield await self._record(
                 None,
@@ -115,6 +195,7 @@ class AgentRunner:
                         run_id=existing.id,
                         idempotency_key=cmd.client_message_id,
                     )
+                    ctx.replay_only = True
                     async for event in self._replay(session.id, existing):
                         yield event
                     return
@@ -147,10 +228,12 @@ class AgentRunner:
                     idempotency_key=cmd.client_message_id,
                     reason="unique_key_race",
                 )
+                ctx.replay_only = True
                 async for event in self._replay(session.id, run):
                     yield event
                 return
             run_id = run.id
+            ctx.run_id = run_id
             self._gateway.reset_run(run_id)
             run_id_var.set(run_id)
             log_event(

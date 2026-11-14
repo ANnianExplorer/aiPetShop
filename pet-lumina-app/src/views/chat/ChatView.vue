@@ -8,13 +8,14 @@ import {
   AgentRequestError,
   fetchSessionMessages,
   fetchSessions,
-  streamChat,
   uploadDocument,
 } from '@/api/agent'
 import { applyAgentEvent, historyToBubbles } from '@/utils/chatStream'
+import { streamChatResilient } from '@/utils/resilientChat'
 import { publishWorkState } from '@/pet/signal'
 import { useUserStore } from '@/stores/user'
 import type { AgentEvent } from '@/api/agent'
+import type { LinkState } from '@/utils/resilientChat'
 import type { AgentCitation, AgentSessionItem, ChatBubble, ToolEvent } from '@/types/agent'
 
 const { t } = useI18n()
@@ -36,6 +37,9 @@ const historyError = ref('')
 const sessions = ref<AgentSessionItem[]>([])
 const fileInput = ref<HTMLInputElement | null>(null)
 const uploading = ref(false)
+// 链路状态：断线自动重连时告诉用户「不是没反应，是在接回去」
+const linkState = ref<LinkState>('live')
+const retryAttempt = ref(0)
 
 let controller: AbortController | null = null
 let seqCounter = 0
@@ -134,11 +138,23 @@ function handleEvent(event: AgentEvent, assistant: ChatBubble) {
   }
 }
 
+function handleLink(state: LinkState, attempt: number) {
+  linkState.value = state
+  retryAttempt.value = attempt
+  if (state === 'reconnecting') {
+    // 重连中：清掉上一条错误，让桌宠回到「在想」而不是一直摊成错误脸
+    lastError.value = ''
+    publishWorkState('thinking')
+  }
+}
+
 async function send(text?: string) {
   const content = (text ?? draft.value).trim()
   if (!content || streaming.value) return
 
   lastError.value = ''
+  linkState.value = 'live'
+  retryAttempt.value = 0
   draft.value = ''
   bubbles.value.push({ id: nextId('user'), role: 'user', content, citations: [], tools: [] })
 
@@ -157,14 +173,17 @@ async function send(text?: string) {
   await scrollToBottom()
 
   try {
-    await streamChat(
+    // 断线重连交给 resilientChat：它拿 run_id + 已收最大 id 去续传，
+    // 不重发消息，所以同一轮不会被执行两次。
+    await streamChatResilient(
       {
         message: content,
         sessionId: sessionId.value,
         // 后端 id 是 19 位 BigInteger，前端类型标的是 number：统一转字符串再出网
         petId: userStore.currentPet ? String(userStore.currentPet.id) : null,
       },
-      { signal: controller.signal, onEvent: (event) => handleEvent(event, assistant) },
+      { onEvent: (event) => handleEvent(event, assistant), onLink: handleLink },
+      { signal: controller.signal },
     )
   } catch (error) {
     assistant.streaming = false
@@ -185,6 +204,8 @@ async function send(text?: string) {
     }
   } finally {
     streaming.value = false
+    linkState.value = 'live'
+    retryAttempt.value = 0
     // 出错或断流时也要把桌宠从「工作中」放出来，否则它会一直忙到下次对话
     if (lastError.value !== '') publishWorkState('error')
     controller = null
@@ -218,6 +239,8 @@ function startNewChat() {
   sessionId.value = null
   bubbles.value = []
   lastError.value = ''
+  linkState.value = 'live'
+  retryAttempt.value = 0
   historyOpen.value = false
 }
 
@@ -376,6 +399,15 @@ onBeforeUnmount(() => {
           </div>
         </div>
       </template>
+
+      <div
+        v-if="linkState === 'reconnecting'"
+        class="flex items-center gap-2 rounded-2xl bg-secondary-container/60 px-4 py-3 text-sm text-on-secondary-container"
+        role="status"
+      >
+        <span class="material-symbols-outlined animate-spin text-base">progress_activity</span>
+        <p>{{ t('chat.reconnecting', { n: retryAttempt }) }}</p>
+      </div>
 
       <div v-if="lastError" class="rounded-2xl bg-error/10 px-4 py-3 text-sm text-error">
         <p>{{ lastError }}</p>

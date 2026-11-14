@@ -20,6 +20,7 @@ from ..memory import label_of
 from ..rag.models import DocumentStatus
 from ..runtime import AgentRunner, Caller, ChatCommand
 from ..runtime.eventlog import EventStore
+from ..runtime.follow import follow_events
 from ..storage.base import AgentRepository
 from ..tasks import TOPIC_DOC_INGEST, TOPICS
 from ..tasks.base import TaskQueueFull
@@ -206,8 +207,14 @@ async def replay_run(
     run_id: str,
     request: Request,
     after: int | None = Query(default=None, ge=0),
+    follow: bool = Query(default=False),
 ) -> StreamingResponse:
-    """断线续传：`Last-Event-ID` 或 `?after=N` 之后的增量事件。"""
+    """断线续传：`Last-Event-ID` 或 `?after=N` 之后的增量事件。
+
+    `follow=1` 时不止读一次，而是**等到本轮结束**：run 还在跑就继续挂，
+    直到读到 done/error、库里的 run 已终态、或跟随超时。默认 `follow=0`
+    保持 S1.5 的快照语义，老客户端行为不变。
+    """
     identity = await _identity(request)
     repo = _repo(request)
 
@@ -220,11 +227,22 @@ async def replay_run(
     last_header = request.headers.get("last-event-id") or ""
     after_seq = after if after is not None else (int(last_header) if last_header.isdigit() else 0)
 
+    settings: Settings = request.app.state.settings
     log: EventStore = request.app.state.eventlog
-    pending = await log.events(run_id, after_seq)
 
     async def replay() -> AsyncIterator[str]:
-        for event in pending:
+        if follow:
+            async for event in follow_events(
+                log,
+                repo,
+                run_id,
+                after_seq,
+                poll_s=settings.run_follow_poll_s,
+                idle_timeout_s=settings.run_follow_timeout_s,
+            ):
+                yield event.to_sse()
+            return
+        for event in await log.events(run_id, after_seq):
             yield event.to_sse()
 
     return StreamingResponse(replay(), media_type="text/event-stream", headers=SSE_HEADERS)

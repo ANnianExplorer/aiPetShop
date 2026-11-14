@@ -33,6 +33,7 @@ from ..rag import DocumentService
 from ..rag.embedder import build_embedder
 from ..runtime import AgentRunner
 from ..runtime.eventlog import EventStore, create_event_store
+from ..runtime.supervisor import RunSupervisor
 from ..storage import AgentRepository, create_repository
 from ..tasks import TOPICS, TaskQueue, create_task_queue
 from ..tasks.base import TaskQueueFull
@@ -164,6 +165,7 @@ def create_app(
         if tasks
         else None
     )
+    supervisor = RunSupervisor()
     runner = AgentRunner(
         settings=settings,
         repo=repository,
@@ -174,6 +176,7 @@ def create_app(
         memory=memory,
         tasks=tasks,
         profiles=profile_service,
+        supervisor=supervisor,
     )
     rate_limiter = limiter or create_rate_limiter(settings)
 
@@ -192,6 +195,8 @@ def create_app(
         try:
             yield
         finally:
+            # 先收后台运行：客户端可能早断线了，但 run 还得有个终态才能收场
+            await supervisor.aclose()
             if worker is not None:
                 await worker.stop()
             if tasks is not None:
@@ -224,6 +229,7 @@ def create_app(
     app.state.graph = graph
     app.state.eventlog = store
     app.state.runner = runner
+    app.state.supervisor = supervisor
     app.state.memory = memory
     app.state.limiter = rate_limiter
     app.state.identity = IdentityResolver(settings, http)

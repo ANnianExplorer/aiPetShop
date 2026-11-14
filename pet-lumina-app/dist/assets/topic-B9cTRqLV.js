@@ -1,0 +1,1 @@
+import{N as o}from"./index-DHrR1N87.js";const i={add:t=>o.post("/topic/add",t),edit:t=>o.post("/topic/edit",t),delete:t=>o.post("/topic/delete",{id:t}),getById:t=>o.get("/topic/get/vo",{params:{id:String(t)}}),listPage:t=>o.post("/topic/list/page/vo",t),toggleFollow:t=>o.post(`/topic/follow/${String(t)}`),listTopicPosts:t=>o.post("/topic/list/page/vo/posts",t)};export{i as t};

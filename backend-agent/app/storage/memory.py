@@ -214,6 +214,9 @@ class InMemoryRepository:
         if current is not RunStatus.RUNNING:
             raise ValueError(f"运行已处于终态 {current.value}，不能再次结束")
         record.update({"status": status, "usage": usage, "latency_ms": latency_ms, "error": error})
+        # `get_run` 返回的是这个 Run 对象本身，状态不同步的话它会永远停在 running
+        # （MySQL 版每次从行里重建，天然一致）。断线跟随靠状态收口，这里必须对齐。
+        record["run"].status = status
 
     async def audit_tool_call(
         self,

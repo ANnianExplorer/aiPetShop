@@ -58,6 +58,10 @@ class Settings(BaseSettings):
     event_log_ttl_s: float = Field(default=900.0, gt=0)
     # 事件流后端：memory 只能单副本续传；redis 用 Stream 支持多副本
     event_backend: Literal["memory", "redis"] = "memory"
+    # 跟随/续传单次最长挂多久（秒）：到了先返回，客户端再连一次；别让中间层替我们掐
+    run_follow_timeout_s: float = Field(default=90.0, gt=0)
+    # 跟随轮询间隔：0.05s → 首 token 最坏多等 50ms，够小
+    run_follow_poll_s: float = Field(default=0.05, gt=0, le=1.0)
 
     # ---- 配额 ----
     rate_limit_enabled: bool = True

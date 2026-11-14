@@ -319,6 +319,7 @@
     "retry": "Retry",
     "historyFailed": "Could not load history",
     "sendFailed": "Message not sent, please retry",
+    "reconnecting": "Connection dropped. Reconnecting (attempt {n})…",
     "loginExpired": "Session expired, please sign in again",
     "emptyTitle": "Hi, I'm Lumina",
     "emptyBody": "I know the vaccines, weight, deworming and daily logs. Ask me anything — every answer cites its source.",

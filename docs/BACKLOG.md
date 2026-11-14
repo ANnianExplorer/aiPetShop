@@ -1,8 +1,8 @@
 # 未完成事项清单（Backlog）
 
 - 状态：活文档（每次交付后更新；做完的条目移到对应 REPORT，并从本表删除）
-- 更新：2026-11-08
-- 基线：`main` @ `531bba7`，已完成到 **S1.19**（见 `docs/pet-agent-architecture.md` §12）
+- 更新：2026-11-14
+- 基线：`main` @ `6ad7bcb`，已完成到 **S1.23**（见 `docs/pet-agent-architecture.md` §12）
 
 ## 0. 怎么读这份文档
 
@@ -11,7 +11,7 @@
 3. 优先级按"卡不卡产品可用"分：P0 阻断、P1 该做、P2 值得做、P3 以后。
 4. 估算是"一个人、熟悉代码"的量级，不是承诺。
 
-统计：**P0 3 条（A1、A2、A3 已交付）· P1 8 条（B2/B3/B4/B5/B6/B7 已交付，剩 2 条）· P2 9 条（C2、C6 已交付，剩 7 条）· P3 9 条 · 原项目卫生债 0 条**，原计划 42 条，剩余 18 条（P1 剩 2 + P2 剩 7 + P3 9）。各批证据：E1/E3/E4/E5 见 `docs/reports/2026-11-08-s1.11-hygiene-debts.md`；E2/E6/E7 见 `docs/reports/2026-11-08-s1.12-e2-e6-e7.md`；E8/E13 见 `docs/reports/2026-11-08-s1.13-e8-e13.md`；E9/E10/E11/E12 见 `docs/reports/2026-11-08-s1.14-e9-e12.md`；A3 见 `docs/reports/2026-11-08-s1.15-doc-rag.md`；B3/B5/B7 见 `docs/reports/2026-11-08-s1.16-ops.md`；B6 见 `docs/reports/2026-11-08-s1.17-admin-console.md`；C2 见 `docs/reports/2026-11-08-s1.18-profile.md`；B2/B4/C6 见 `docs/reports/2026-11-08-s1.19-b4-b2-pet.md`。
+统计：**P0 3 条（A1、A2、A3 已交付）· P1 8 条（B2/B3/B4/B5/B6/B7/B8 已交付，剩 1 条）· P2 9 条（C2、C6 已交付，剩 7 条）· P3 9 条 · 原项目卫生债 0 条**，原计划 42 条，剩余 17 条（P1 剩 1 + P2 剩 7 + P3 9）。各批证据：E1/E3/E4/E5 见 `docs/reports/2026-11-08-s1.11-hygiene-debts.md`；E2/E6/E7 见 `docs/reports/2026-11-08-s1.12-e2-e6-e7.md`；E8/E13 见 `docs/reports/2026-11-08-s1.13-e8-e13.md`；E9/E10/E11/E12 见 `docs/reports/2026-11-08-s1.14-e9-e12.md`；A3 见 `docs/reports/2026-11-08-s1.15-doc-rag.md`；B3/B5/B7 见 `docs/reports/2026-11-08-s1.16-ops.md`；B6 见 `docs/reports/2026-11-08-s1.17-admin-console.md`；C2 见 `docs/reports/2026-11-08-s1.18-profile.md`；B2/B4/C6 见 `docs/reports/2026-11-08-s1.19-b4-b2-pet.md`；B8 见 `docs/reports/2026-11-14-s1.23-auto-reconnect.md`。
 
 ---
 
@@ -36,7 +36,7 @@
 | B5 | ✅ **可观测缺指标**（2026-11-08，S1.16） | 已交付 `/metrics`（6 个指标）；**trace 未做**（Langfuse 仍是可选项） | 剩余部分需选型 Langfuse / OpenTelemetry | 已达成：`pet_agent_runs_total{route,status}`、`tokens_total{direction}`、`tool_calls_total{tool,ok}`、`queue_depth{topic}`、HTTP 两项；**待办**：一次 run 在 trace 里能看到对应 span | 2 天 |
 | B6 | ✅ **管理端缺"队列页 / 记忆页 / 知识图谱"**（2026-11-08，S1.17） | 已交付三页：队列运维（现场 + 死信重放）、长期记忆（按用户查/删）、知识图谱（宠物—事实—事件三层力导向图）；后端补 `DELETE /agent/admin/memory` 与 `GET /agent/admin/graph` | 前端工作量 | 已达成：Edge 实点三页 + `test_admin.py` 两例（删记忆审计、三层图谱） | 已完成 |
 | B7 | ✅ **记忆不可删、不可导出**（2026-11-08，S1.16） | 已交付 `DELETE /agent/memory/me` 与 `GET /agent/memory/me/export`；管理端/App 尚无对应 UI（见 B6） | 隐私合规要求 | 已达成：删除后导出为空、下一轮不再注入（`test_memory_api.py` 5 例 + `scripts.ops_smoke`）；**待办**：前端入口 | 0.5 天 |
-| B8 | **前端没做自动重连** | `streamChat` 只有 `abort`；断网后靠用户点重试 | 已有 `replayRun` 与 `id:` 游标 | 断网 3s 后自动 `replayRun(afterSeq)` 续上，不重复追加已收到内容 | 1 天 |
+| B8 | ✅ **前端断线自动重连**（2026-11-14，S1.23） | 已交付：后端把 run 生命周期从 HTTP 连接里拆出来（`RunSupervisor` 托管执行 + `?follow=1` 挂到终态），前端 `resilientChat.ts` 按 `[3s,3s,6s]` 重连、`after` 恒为已收最大 id、界面显示「正在重连（第 N 次）」；顺带修掉内存仓储 `get_run` 状态永停 `running` 的缺陷 | 剩余：跨副本依赖 Redis 事件日志（已支持，见 B2）；无取消接口（另立需求） | 已达成：`test_reconnect.py` 5 例（关消费端不取消运行 / 游标续传不重不漏 / 跟随等到 done / 快照语义不变 / 幂等不二次执行）、`resilientChat.spec.ts` 8 例、全量 backend 202 passed + 1 skipped、App 136 tests + tsc 0 + build 0 | ✅ |
 
 ---
 

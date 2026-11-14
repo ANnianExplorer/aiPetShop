@@ -108,6 +108,9 @@ async def test_finish_run_once_only(repo: AgentRepository) -> None:
 
     stored = await repo.get_run(run.id)
     assert stored is not None and stored.session_id == sid
+    # 状态必须跟着落库走：断线跟随靠它判断"这轮是不是还没结束"，
+    # 内存版若返回创建时的旧对象，客户端会一直等下去。
+    assert stored.status is RunStatus.SUCCEEDED
 
 
 async def test_finish_unknown_run(repo: AgentRepository) -> None:

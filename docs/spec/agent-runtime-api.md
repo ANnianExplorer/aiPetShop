@@ -1,4 +1,4 @@
-# 规格：Agent Runtime HTTP/SSE 契约 v1.12
+# 规格：Agent Runtime HTTP/SSE 契约 v1.13
 
 - 状态：Frozen（实现已按此验收；破坏性变更需升 v2）
 - 日期：2026-11-08（v1.11 增宠物画像与 I33–I36；v1.10 管理端队列/记忆/图谱与 I30–I32；v1.9 记忆删除导出与 `/metrics`；v1.8 文档问答与 I23–I26；v1.7 App 会话列表与 I22；v1.6 队列运维接口；v1.5 记忆最终一致；v1.4 幂等与熔断；v1.3 管理端）
@@ -150,19 +150,21 @@ data: {"text":"9月1日打过疫苗，"}
 1. `route` 一定先于任何 `delta`；
 2. `tool` 一定落在它所属轮次之后、`done` 之前；
 3. 终止事件只有一个（`done` 或 `error`）；
-4. 客户端断开时服务端把 run 置 `cancelled`，不会留 `running` 僵尸。
+4. **客户端断开不取消运行**（v1.13 起，S1.23）：连接的关闭只结束"这一次观读"，run 由进程内的 supervisor 继续跑完并写好 `done`，事件仍按 `id` 落进日志；只有进程退出才会把它收成 `cancelled`。客户端据此可以用 `?after=N` 接回同一轮，而不必重发消息。
 
 ## 5. `GET /agent/runs/{run_id}/events`
 
-断线续传，只回放**内存缓冲**（`capacity=512`、`ttl=900s`）里的事件。
+断线续传，只回放**事件缓冲**（默认 `capacity=512`、`ttl=900s`；Redis 后端同理，见 ADR-0003）里的事件。
 
 | 参数 | 位置 | 说明 |
 | --- | --- | --- |
 | `after` | query | 返回 `id > after` 的事件 |
 | `Last-Event-ID` | header | `after` 缺省时使用；非数字按 0 处理 |
+| `follow` | query | `1` = 挂到本轮终止（v1.13）；缺省/`0` = 只读一次的快照，行为与 v1.12 一致 |
 
 - 运行不存在 **或不属于当前用户** → `404 not_found`（不区分两者，避免探测）；
-- 三种续传方式必须等价：全量 / `?after=N` / `Last-Event-ID: N`。
+- 三种续传方式必须等价：全量 / `?after=N` / `Last-Event-ID: N`；
+- `follow=1` 的结束条件只有三个：读到 `done`/`error`、库里 run 已非 `running` 且日志无新事件、超过 `run_follow_timeout_s`（默认 90s，客户端应重连）。轮询间隔 `run_follow_poll_s`（默认 0.05s）。
 
 ## 6. `GET /agent/sessions/{session_id}/messages`
 
@@ -405,6 +407,9 @@ meta        { factWatermark, builtAt }
 | I37 | 任务失败先进退避队列（不在主队列），到期才搬回；退避时间随次数指数增长并封顶 | `test_task_queue.py::test_retry_not_promoted_before_due`、`test_backoff_grows_and_caps` |
 | I38 | 死信自动重投默认关闭，且同一条消息最多重投 `max_redrives` 次（按 `redrives` 字段计） | `test_task_queue.py::test_redrive_dead_letters_respects_max_redrives` |
 | I39 | 多副本共享 MySQL/Redis 时：同一任务只被消费一次、事件跨副本可回放、幂等与限流跨副本一致 | `scripts.multi_replica_smoke`（8/8） |
+| I40 | 关闭 SSE 消费端**不取消**运行：run 仍跑到 `succeeded`，事件日志恰好一条 `done` 且在末尾 | `test_reconnect.py::test_closing_consumer_does_not_cancel_run` |
+| I41 | `?follow=1` 从任意 `after` 续传时事件 id 严格递增、不重不漏，末尾必是终止事件 | `test_reconnect.py::test_follow_returns_events_after_cursor`、`test_follow_waits_for_running_run` |
+| I42 | 不带 `follow` 的 `/events` 仍是快照语义；幂等回放路径原样转发、不接管成跟随 | `test_reconnect.py::test_snapshot_stays_snapshot_without_follow`、`test_idempotent_replay_still_forwards` |
 
 ## 8. 验收用例（可执行）
 
@@ -442,3 +447,4 @@ $env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:<本机口令>@127.0.0.1:3306/petl
 | v1.10 | 2026-11-08 | 增 6.8 管理端队列现场/死信重放/管理员删记忆/三层图谱、I30–I32；验收命令 183 passed（BACKLOG B6 / S1.17） |
 | v1.11 | 2026-11-08 | 增 6.9 宠物画像（四个接口 + data 结构 + 五条约定）、I33–I36；验收命令 203 passed（BACKLOG C2 / S1.18） |
 | v1.12 | 2026-11-08 | 增 6.10 任务退避重试（backoff/重投上限/默认关闭）与多副本语义（共享 vs 熔断单实例）；验收命令 208 passed、补 `multi_replica_smoke`（BACKLOG B4·B2 / S1.19） |
+| v1.13 | 2026-11-14 | 4.4 第 4 条改为「断开不取消运行」；§5 增 `follow` 参数（挂到终止）与三个结束条件、`run_follow_timeout_s`/`run_follow_poll_s`；增 I40–I42；验收命令 202 passed + 1 skipped（MySQL 变体未开 DSN）、前端 `resilientChat.spec.ts` 8 例（BACKLOG B8 / S1.23） |
