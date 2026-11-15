@@ -435,7 +435,7 @@ DSH 本身就是一个 harness（本仓库的会话就跑在它上面：skills /
 
 | 手段 | 命令 | 结果 |
 | --- | --- | --- |
-| 单测 | `.venv\Scripts\python -m pytest -q` | 222 项（不带 DSN 为 221 passed + 1 skipped） |
+| 单测 | `.venv\Scripts\python -m pytest -q` | 229 项（不带 DSN 为 228 passed + 1 skipped） |
 | 评测（阈值硬卡） | `.venv\Scripts\python -m evals.run` | routing 15/15、safety 6/6、memory 48/48 |
 | 真进程冒烟 | `python -m scripts.e2e_smoke`（配 `tests/stub_java.py` + `tests/stub_llm.py`） | 10/10：L2 真的调了 `search_logs`、citation 指向记录 7001、续传等价、越权 404 |
 

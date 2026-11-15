@@ -18,16 +18,11 @@ from ..domain.models import Citation, Route, Step, StepKind, StepStatus, ToolRes
 from ..domain.router import classify
 from ..llm.base import ChatModel
 from ..tools import BackendClient, ToolContext, ToolGateway
+
+# 提示词正文搬到了 `prompts.py`（版本登记表 + 冻结哈希）：这里只负责引用，
+# 改正文请按那份文件顶部的约定登记新版本，不要原地改。
+from .prompts import SYSTEM_PROMPT
 from .state import AgentState
-
-SYSTEM_PROMPT = """你是 PetLumina 的宠物管家「Lumina」。你的服务对象是当前登录用户和他的宠物。
-
-硬性规则：
-1. 涉及宠物健康数据（心率/睡眠/体重/饮食/排泄）时，必须先调用工具查真实数据；查不到就直说查不到，禁止编造数值。
-2. 任何医疗判断都要标注「仅供参考，不替代兽医诊断」；出现持续呕吐、抽搐、呼吸困难等急症，直接建议立刻就医。
-3. 回答用中文、口语化、简短（默认 3 句以内），除非用户要求展开。
-4. 引用工具结果时给出可核对的来源（记录标题 / 日期），不要模糊成「你说过」。
-5. 不知道就说不知道。宁可少说，不要错说。"""
 
 BackendFactory = Callable[[str], BackendClient]
 

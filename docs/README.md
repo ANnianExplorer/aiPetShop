@@ -76,6 +76,7 @@
 | [plans/s1.25-citation-jump-links.md](plans/s1.25-citation-jump-links.md) | S1.25 引用回跳：`locator` 改为 App 路由 + 补齐帖子引用来源（C4） | 已完成 |
 | [plans/s1.26-ci-docker-context.md](plans/s1.26-ci-docker-context.md) | S1.26 CI 修复：`docker build` 构建上下文写重 + 推标签重复触发（C8） | 已完成 |
 | [plans/s1.27-memory-evals.md](plans/s1.27-memory-evals.md) | S1.27 记忆抽取评测：memory 套件 2→48 条、阈值 0.9、按缺陷修抽取规则（C3） | 已完成 |
+| [plans/s1.28-prompt-version.md](plans/s1.28-prompt-version.md) | S1.28 提示词版本化：版本登记表 + 冻结哈希闸门 + `prompt_version` 进 meta/日志（D6） | 已完成 |
 
 ### REPORT
 
@@ -108,6 +109,7 @@
 | [reports/2026-11-14-s1.25-citation-jump-links.md](reports/2026-11-14-s1.25-citation-jump-links.md) | S1.25 引用回跳（C4） | `citation.locator` 变成 App 路由 + 新增 `search_posts` 工具；健康引用带周记录最大日期并高亮定位；backend 216 passed + 1 skipped、App 141 tests + tsc 0 + build 0、`e2e_smoke` 10/10（citation 已是 `/log/7001`） |
 | [reports/2026-11-14-s1.26-ci-docker-context.md](reports/2026-11-14-s1.26-ci-docker-context.md) | S1.26 CI 真正跑通（C8） | 从 S1.6 起 34 次运行全红，唯一挂的是 `docker build`（上下文 `backend-agent/backend-agent` 不存在）；改成 `.` 后运行 #35 两个 job 全绿（53s） |
 | [reports/2026-11-15-s1.27-memory-evals.md](reports/2026-11-15-s1.27-memory-evals.md) | S1.27 记忆抽取评测（C3） | memory 套件 2→48 条、阈值 1.0→0.9：加完用例先红 **35/47 = 74%**，量出 5 类真实缺陷（问句当名字 / 过敏值吞副词 / 偏好值带动词 / 裸「喜欢」误抽 / 否定句全漏），修规则后 **48/48 = 100%**；`pytest` 222 例 0 失败 1 跳过（MySQL 变体未开 DSN）、`ruff` 全绿 |
+| [reports/2026-11-15-s1.28-prompt-version.md](reports/2026-11-15-s1.28-prompt-version.md) | S1.28 提示词版本化（D6） | `SYSTEM_PROMPT` 搬进 `app/graph/prompts.py` 版本登记表（当前 `2026-11-15.1`，270 字）+ 手写冻结 sha256；变异实验证明「原地改正文」会让 2 条单测红、还原即绿；run 的 meta 与日志带 `prompt_version`；`pytest` 229 例 0 失败 1 跳过、`evals` 69 条全绿、`ruff` 全绿 |
 
 ## 3. 新增文档怎么起头
 

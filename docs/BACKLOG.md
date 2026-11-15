@@ -1,8 +1,8 @@
 # 未完成事项清单（Backlog）
 
 - 状态：活文档（每次交付后更新；做完的条目移到对应 REPORT，并从本表删除）
-- 更新：2026-11-14
-- 基线：`main` @ `6ad7bcb`，已完成到 **S1.23**（见 `docs/pet-agent-architecture.md` §12）
+- 更新：2026-11-15
+- 基线：`main` @ S1.27 提交 `475c225`（本文件随 S1.28 一并更新）
 
 ## 0. 怎么读这份文档
 
@@ -11,7 +11,7 @@
 3. 优先级按"卡不卡产品可用"分：P0 阻断、P1 该做、P2 值得做、P3 以后。
 4. 估算是"一个人、熟悉代码"的量级，不是承诺。
 
-统计：**P0 3 条（A1、A2、A3 已交付）· P1 8 条（B2/B3/B4/B5/B6/B7/B8 已交付，剩 1 条 B1）· P2 9 条（C2、C3、C4、C6、C8 已交付，剩 4 条 C1/C5/C7/C9）· P3 9 条（未动）· 原项目卫生债 0 条**，原计划 42 条，剩余 14 条（P1 1 + P2 4 + P3 9）。各批证据：E1/E3/E4/E5 见 `docs/reports/2026-11-08-s1.11-hygiene-debts.md`；E2/E6/E7 见 `docs/reports/2026-11-08-s1.12-e2-e6-e7.md`；E8/E13 见 `docs/reports/2026-11-08-s1.13-e8-e13.md`；E9/E10/E11/E12 见 `docs/reports/2026-11-08-s1.14-e9-e12.md`；A3 见 `docs/reports/2026-11-08-s1.15-doc-rag.md`；B5/B7 见 `docs/reports/2026-11-08-s1.16-ops.md`；B6 见 `docs/reports/2026-11-08-s1.17-admin-console.md`；C2 见 `docs/reports/2026-11-08-s1.18-profile.md`；B2/B4/C6 见 `docs/reports/2026-11-08-s1.19-b4-b2-pet.md`；B8 见 `docs/reports/2026-11-14-s1.23-auto-reconnect.md`；B3 收尾见 `docs/reports/2026-11-14-s1.24-stale-run-reaper.md`；C4 见 `docs/reports/2026-11-14-s1.25-citation-jump-links.md`；C8 见 `docs/reports/2026-11-14-s1.26-ci-docker-context.md`。
+统计：**P0 3 条（A1、A2、A3 已交付）· P1 8 条（B2/B3/B4/B5/B6/B7/B8 已交付，剩 1 条 B1）· P2 9 条（C2、C3、C4、C6、C8 已交付，剩 4 条 C1/C5/C7/C9）· P3 9 条（D6 已交付，剩 8 条）· 原项目卫生债 0 条**，原计划 42 条，剩余 13 条（P1 1 + P2 4 + P3 8）。各批证据：E1/E3/E4/E5 见 `docs/reports/2026-11-08-s1.11-hygiene-debts.md`；E2/E6/E7 见 `docs/reports/2026-11-08-s1.12-e2-e6-e7.md`；E8/E13 见 `docs/reports/2026-11-08-s1.13-e8-e13.md`；E9/E10/E11/E12 见 `docs/reports/2026-11-08-s1.14-e9-e12.md`；A3 见 `docs/reports/2026-11-08-s1.15-doc-rag.md`；B5/B7 见 `docs/reports/2026-11-08-s1.16-ops.md`；B6 见 `docs/reports/2026-11-08-s1.17-admin-console.md`；C2 见 `docs/reports/2026-11-08-s1.18-profile.md`；B2/B4/C6 见 `docs/reports/2026-11-08-s1.19-b4-b2-pet.md`；B8 见 `docs/reports/2026-11-14-s1.23-auto-reconnect.md`；B3 收尾见 `docs/reports/2026-11-14-s1.24-stale-run-reaper.md`；C4 见 `docs/reports/2026-11-14-s1.25-citation-jump-links.md`；C8 见 `docs/reports/2026-11-14-s1.26-ci-docker-context.md`；C3 见 `docs/reports/2026-11-15-s1.27-memory-evals.md`；D6 见 `docs/reports/2026-11-15-s1.28-prompt-version.md`。
 
 ---
 
@@ -64,8 +64,8 @@
 | D2 | 规划层 L3（Plan-Execute） | 现在只有 L1/L2；L3 需要子任务编排与中断恢复，等真实需求出现再做 |
 | D3 | 多租户 / 团队账号 | 现在一圈一人；多宠共享账号下的记忆归属需要重新设计 |
 | D4 | 数据看板：成本按模型分账 | 现在只按用户 token 汇总 |
-| D5 | 灰度与回滚 | 无 feature flag、无版本化 prompt |
-| D6 | Prompt 版本管理 | `SYSTEM_PROMPT` 硬编码在 `app/graph/nodes.py`，改动无版本记录 |
+| D5 | 灰度与回滚 | 无 feature flag、无按用户/渠道切流；**提示词版本化已由 D6 交付（2026-11-15）**，`PROMPT_VERSION` 可直接当分流键，但还没有按比例/按用户的路由层 |
+| D6 | ✅ **Prompt 版本管理**（2026-11-15，S1.28） | 已交付：`SYSTEM_PROMPT` 从 `app/graph/nodes.py` 搬到 `app/graph/prompts.py` 的版本登记表（`PROMPT_VERSIONS` 只增不改 + `FROZEN_SHA256` 手写冻结哈希；当前 `2026-11-15.1`，270 字，sha256 `a04df4e3…6806c9`），`nodes.SYSTEM_PROMPT` 名字不变；改正文不升版本 → 单测红（变异实验：改成「4 句以内」后 2 条红、还原即绿）；run 的 assistant `meta` 与 `run finished` 日志都带 `prompt_version`。剩余：管理端会话详情未透出 message `meta`（版本号只在库与日志里，界面看不到）；版本号靠人手写日期；拦不住「同时改正文+哈希且故意不升版本」。证据 `docs/reports/2026-11-15-s1.28-prompt-version.md`（`pytest` 229 例 0 失败 1 跳过、`evals` 69 条全绿、`ruff` 全绿） |
 | D7 | 备份与恢复演练 | MySQL/Redis 均无脚本化备份 |
 | D8 | 国际化覆盖 | `chat.*` 已三语；Agent 错误码文案仍是中文硬编码（服务端返回 message） |
 | D9 | 无障碍 | 对话页无 `aria-live`、无焦点管理 |

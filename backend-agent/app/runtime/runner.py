@@ -25,7 +25,7 @@ from ..core.metrics import RUNS, TOKENS, metrics
 from ..domain.events import Event, EventType
 from ..domain.models import Message, Role, Run, RunStatus, StepKind, Usage, dedupe_citations
 from ..domain.router import classify
-from ..graph import SYSTEM_PROMPT
+from ..graph import PROMPT_VERSION, SYSTEM_PROMPT
 from ..llm.base import ChatModel
 from ..memory import MemoryService
 from ..profile import ProfileService
@@ -346,6 +346,7 @@ class AgentRunner:
                         "intent": decision.intent.value,
                         "reason": decision.reason,
                         "model": self._model.name,
+                        "prompt_version": PROMPT_VERSION,
                         "memory_facts": len(memory_lines),
                     },
                 )
@@ -362,6 +363,7 @@ class AgentRunner:
                 "run finished",
                 session_id=session.id,
                 route=decision.route.value,
+                prompt_version=PROMPT_VERSION,
                 steps=len(steps),
                 citations=len(citations),
                 prompt_tokens=usage.prompt_tokens,
