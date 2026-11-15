@@ -1,4 +1,4 @@
-﻿# 规格：Agent Runtime HTTP/SSE 契约 v1.14
+# 规格：Agent Runtime HTTP/SSE 契约 v1.14
 
 - 状态：Frozen（实现已按此验收；破坏性变更需升 v2）
 - 日期：2026-11-08（v1.11 增宠物画像与 I33–I36；v1.10 管理端队列/记忆/图谱与 I30–I32；v1.9 记忆删除导出与 `/metrics`；v1.8 文档问答与 I23–I26；v1.7 App 会话列表与 I22；v1.6 队列运维接口；v1.5 记忆最终一致；v1.4 幂等与熔断；v1.3 管理端）
@@ -423,8 +423,8 @@ meta        { factWatermark, builtAt }
 cd backend-agent
 # 含真机仓储契约测试（需要 DSN，否则跳过 mysql 变体）
 $env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:<本机口令>@127.0.0.1:3306/petlumina"
-.\.venv\Scripts\python -m pytest              # 208 passed（含真机 MySQL 契约；不带 DSN 为 197 passed + 1 skipped）
-.\.venv\Scripts\python -m evals.run           # routing 15/15, safety 6/6, memory 2/2
+.\.venv\Scripts\python -m pytest              # 222 项（含真机 MySQL 契约；不带 DSN 为 221 passed + 1 skipped）
+.\.venv\Scripts\python -m evals.run           # routing 15/15, safety 6/6, memory 48/48
 .\.venv\Scripts\python -m scripts.e2e_smoke       # 10/10
 .\.venv\Scripts\python -m scripts.p1_smoke        # 9/9（配额/用量/记忆）
 .\.venv\Scripts\python -m scripts.admin_smoke     # 6/6（管理端权限与列表/详情/用量）
@@ -455,4 +455,4 @@ $env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:<本机口令>@127.0.0.1:3306/petl
 | v1.12 | 2026-11-08 | 增 6.10 任务退避重试（backoff/重投上限/默认关闭）与多副本语义（共享 vs 熔断单实例）；验收命令 208 passed、补 `multi_replica_smoke`（BACKLOG B4·B2 / S1.19） |
 | v1.13 | 2026-11-14 | 4.4 第 4 条改为「断开不取消运行」；§5 增 `follow` 参数（挂到终止）与三个结束条件、`run_follow_timeout_s`/`run_follow_poll_s`；增 I40–I42；验收命令 202 passed + 1 skipped（MySQL 变体未开 DSN）、前端 `resilientChat.spec.ts` 8 例（BACKLOG B8 / S1.23） |
 | v1.14 | 2026-11-14 | `citations[].locator` 明确为 App 内路由（`/pet-detail`、`/log`、`/post`、`/weekly-health-detail?petId=&date=`），新增只读工具 `search_posts` 提供帖子引用来源；增 I43；验收 216 passed + 1 skipped、App 141 tests、`e2e_smoke` 10/10（BACKLOG C4 / S1.25） |
-| v1.13 | 2026-11-14 | 4.4 第 4 条改为「断开不取消运行」；§5 增 `follow` 参数（挂到终止）与三个结束条件、`run_follow_timeout_s`/`run_follow_poll_s`；增 I40–I42；验收命令 202 passed + 1 skipped（MySQL 变体未开 DSN）、前端 `resilientChat.spec.ts` 8 例（BACKLOG B8 / S1.23） |
+| v1.15 | 2026-11-15 | memory 评测 2→48 条（`text`/`observe`/`turns` 三种用例形状），阈值 1.0→0.9，失败 note 区分 `wrong`/`extra`/`forbid_leaked`；抽取规则修 5 类缺陷；验收 221 passed + 1 skipped、`memory 48/48`（BACKLOG C3 / S1.27） |
