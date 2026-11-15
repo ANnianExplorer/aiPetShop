@@ -408,7 +408,7 @@ ai-PetShop/
 │   │   ├── core/                    # 错误模型 / ID 生成 / 日志 / 熔断 / 限流 / Redis 客户端
 │   │   └── domain/                  # 领域模型 / 事件 / 意图路由
 │   ├── tests/                       # 222 项契约级测试 + 本地桩（Java / LLM）
-│   ├── evals/                       # 68 条评测用例 + 三套阈值门禁
+│   ├── evals/                       # 69 条评测用例（routing 15 / safety 6 / memory 48）+ 三套阈值门禁
 │   ├── scripts/                     # 9 个真进程冒烟脚本（含多副本）
 │   ├── Dockerfile                   # 多阶段构建 + 非 root
 │   └── requirements.txt             # 精确锁定（意图见 requirements.in）
@@ -483,7 +483,7 @@ cd backend && mvn test                            # 后端单测 27 例（仪表
 - 引用回跳（S1.25）：`citation.locator` 改成 App 内路由（`/log/{id}`、`/post/{id}`、`/pet-detail/{id}`、`/weekly-health-detail?petId=…&date=…`），新增只读工具 `search_posts` 补上帖子引用；健康引用跳到对应日期并高亮定位
 - 记忆抽取评测（S1.27）：`evals` 的 memory 套件从 2 条做到 48 条（否定句 / 多宠物 / 粤川渝方言），阈值 0.9；先量出 5 类真实缺陷（问句被当名字、过敏值吞副词、食物偏好值带动词、裸「喜欢」误抽、否定句全漏），修规则后 48/48
 - 文档体系：9 条 ADR、2 份 SPEC、1 份 SDD、16 份 PLAN、27 份 REPORT（见 `docs/README.md`）
-- 验收：221 单测 + 1 skipped（未开 DSN）、68 条评测、9 个真进程冒烟（10/9/6/8/8/10/11/8 + `reconnect_smoke` 5/5）+ 真实模型冒烟 13/13（L1 P50 929 ms / P95 1064 ms）、App 141 tests + `vue-tsc` 0 + build 0、`ruff` 全绿
+- 验收：221 单测 + 1 skipped（未开 DSN）、69 条评测（routing 15 / safety 6 / memory 48）、9 个真进程冒烟（10/9/6/8/8/10/11/8 + `reconnect_smoke` 5/5）+ 真实模型冒烟 13/13（L1 P50 929 ms / P95 1064 ms）、App 141 tests + `vue-tsc` 0 + build 0、`ruff` 全绿
 
 ### v2.7 (2026-06-03)
 

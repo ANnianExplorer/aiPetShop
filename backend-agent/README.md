@@ -44,7 +44,7 @@ App / 管理端 ──SSE──>  api/          传输层：鉴权、请求校�
 | `app/tasks/` | `base`/`inprocess`/`redis`/`consumers`/`worker` | 旁路任务队列：记忆抽取与审计出请求路径；队列满退回同步 |
 | `app/rag/` | `models`/`chunker`/`embedder`/`ocr`/`media`/`parsers`/`service` | 文档问答：解析→切分→嵌入→检索；缺 `tesseract`/`ffmpeg` 时明确降级并给原因 |
 | `tests/` | 契约级单测 | 222 项（含真机契约），不依赖网络/密钥 |
-| `evals/` | 评测用例 + 阈值 runner | 68 条用例，不过阈值就退出码非 0 |
+| `evals/` | 评测用例 + 阈值 runner | 69 条用例（routing 15 / safety 6 / memory 48），不过阈值就退出码非 0 |
 
 ## 快速开始
 
