@@ -46,6 +46,7 @@ cd pet-lumina-app && npm run preview
 
 ## 临时文件与清理约定
 - 跑测试/起服务产生的日志**不要落在仓库里**：统一写到 `%TEMP%`（如 `$env:TEMP\petlumina-agent.log`）。
+- **例外（2026-11-15 实测）**：DSH 沙箱下 Python 子进程写 `%TEMP%` 会被拒（`PermissionError: [Errno 13]`），`tempfile.gettempdir()` 会**静默回退到当前目录**——所以 `pytest --junitxml=$env:TEMP\x.xml` 实际会写进 `backend-agent/`。凡是要 Python 自己落文件（junit xml、临时产物），改用仓库内 `.tmp-` 前缀路径并在跑完后删除；pwsh 的 `*>` 重定向写 `%TEMP%` 仍可用。
 - 开发过程中确实需要在仓库内留临时文件时，一律用 `.tmp-` 前缀（已 gitignore），任务结束前删除。
 - 不提交：`.vscode/`、`.venv/`、`node_modules/`、`__pycache__/`、`.pytest_cache/`、`.ruff_cache/`、`backend-agent/data/`、`backend/application-local.yml`。
 - 每轮交付前跑一次 `git status --porcelain`，除上述忽略项外应为空；有残留文件先清理再提交。

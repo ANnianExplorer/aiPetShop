@@ -38,6 +38,44 @@ def test_extract_one_value_per_key() -> None:
     assert len(facts) == 1
 
 
+# ---- S1.27 记忆评测暴露的 5 类真实缺陷：每条对应 evals/cases.jsonl 里的一条用例 ----
+
+
+def test_extract_skips_question_forms() -> None:
+    """疑问句里的「叫」后面跟的是疑问词，不是名字（mem-neg-01/02 的根因）。"""
+    assert extract("它叫啥") == []
+    assert extract("它叫什么名字？") == []
+    assert {c.key: c.value for c in extract("它叫豆豆")}["pet_name"] == "豆豆"
+
+
+def test_extract_allergy_strips_degree_adverbs() -> None:
+    """「对花生有点过敏」的事实值是「花生」，不能把「有点」存进档案。"""
+    facts = {c.key: c.value for c in extract("对花生有点过敏")}
+    assert facts["allergy"] == "花生"
+
+
+def test_extract_food_like_requires_eating_verb() -> None:
+    """裸「喜欢X」不能当食物偏好；「特别」里的「别」也不能被误判成否定。"""
+    assert "food_like" not in {c.key for c in extract("我喜欢小猫")}
+    assert {c.key: c.value for c in extract("它最爱吃冻干")}["food_like"] == "冻干"
+    assert {c.key: c.value for c in extract("它特别喜欢吃鸡胸肉")}["food_like"] == "鸡胸肉"
+
+
+def test_extract_drops_negated_facts() -> None:
+    """否定句一个事实都不能抽：不过敏、不叫、不喜欢、没对X过敏、不爱吃。"""
+    assert extract("它对鸡肉不过敏") == []
+    assert extract("它不叫咪咪") == []
+    assert extract("它不喜欢吃鱼") == []
+    assert extract("它以前没对花粉过敏") == []
+    assert extract("它不爱吃生肉") == []
+
+
+def test_extract_food_avoid_keeps_only_the_food() -> None:
+    """「别喂它吃洋葱」的忌口对象是洋葱，人称和动词不属于事实值。"""
+    facts = {c.key: c.value for c in extract("别喂它吃洋葱")}
+    assert facts["food_avoid"] == "洋葱"
+
+
 def test_decide_add_update_noop() -> None:
     assert decide(None, "牛奶").op is MemoryOp.ADD
     assert decide("牛奶", "牛奶").op is MemoryOp.NOOP

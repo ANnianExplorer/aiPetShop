@@ -1,4 +1,4 @@
-﻿<div align="center">
+<div align="center">
 
 # PetLumina - 宠物生活管理平台
 
@@ -213,7 +213,7 @@ PetLumina 是一个面向宠物主人的智能生活管理与社区互动平台�
 | aiomysql | 0.3 | 会话 / 消息 / 运行 / 记忆落库 |
 | redis-py | 8.1（RESP2） | 事件存储、限流、旁路任务队列 |
 | ruff | 0.17 | lint 门禁 |
-| pytest + pytest-asyncio | 9.2 / 1.4 | 208 项契约测试（含真机 MySQL 契约；不带 DSN 为 197 通过 + 1 跳过） |
+| pytest + pytest-asyncio | 9.2 / 1.4 | 222 项契约测试（含真机 MySQL 契约；不带 DSN 为 221 通过 + 1 跳过） |
 
 ## 快速开始
 
@@ -407,8 +407,8 @@ ai-PetShop/
 │   │   ├── llm/                     # ChatModel 协议 / OpenAI 兼容实现 / 脚本化桩
 │   │   ├── core/                    # 错误模型 / ID 生成 / 日志 / 熔断 / 限流 / Redis 客户端
 │   │   └── domain/                  # 领域模型 / 事件 / 意图路由
-│   ├── tests/                       # 208 项契约级测试 + 本地桩（Java / LLM）
-│   ├── evals/                       # 23 条评测用例 + 三套阈值门禁
+│   ├── tests/                       # 222 项契约级测试 + 本地桩（Java / LLM）
+│   ├── evals/                       # 68 条评测用例 + 三套阈值门禁
 │   ├── scripts/                     # 9 个真进程冒烟脚本（含多副本）
 │   ├── Dockerfile                   # 多阶段构建 + 非 root
 │   └── requirements.txt             # 精确锁定（意图见 requirements.in）
@@ -437,8 +437,8 @@ Agent 侧的验收是"可复现命令"，不是口头结论：
 cd backend-agent
 # 可选：设置 DSN 后 tests/test_repository_contract.py 会额外跑一组 MySQL 契约变体
 $env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:yourpwd@127.0.0.1:3306/petlumina"
-.venv\Scripts\python -m pytest            # 未设 DSN 时 216 passed + 1 skipped（跳过的就是 MySQL 变体）
-.venv\Scripts\python -m evals.run         # routing 15/15、safety 6/6、memory 2/2
+.venv\Scripts\python -m pytest            # 未设 DSN 时 221 passed + 1 skipped（跳过的就是 MySQL 变体）
+.venv\Scripts\python -m evals.run         # routing 15/15、safety 6/6、memory 48/48
 .venv\Scripts\python -m scripts.e2e_smoke          # 10/10（SSE / 续传 / 越权）
 .venv\Scripts\python -m scripts.reconnect_smoke    # 5/5（掐线后 run 仍跑完、follow 续上不重不漏）
 .venv\Scripts\python -m scripts.p1_smoke           # 9/9（配额 / 记忆 / 用量）
@@ -481,8 +481,9 @@ cd backend && mvn test                            # 后端单测 27 例（仪表
 - 僵尸 run 收敛（S1.24）：进程被 `kill -9` 后 `agent_run` 不会永远停在 `running`——启动先收尸 + 每 60s 巡检，判据是「开始时间 > 15 分钟」，条件更新保证多副本只收敛一次，`error` 写明原因（管理端可见）
 - CI 真正跑通（S1.26）：GitHub 提交列表上那一串红叉不是代码问题——`docker build` 的构建上下文写重了（`defaults.run.working-directory: backend-agent` 之后又写 `docker build … backend-agent`），从 S1.6 起 34 次运行 34 次红；改成 `.` 后运行 #35 两个 job 全绿（53 秒），顺带去掉推标签的重复触发
 - 引用回跳（S1.25）：`citation.locator` 改成 App 内路由（`/log/{id}`、`/post/{id}`、`/pet-detail/{id}`、`/weekly-health-detail?petId=…&date=…`），新增只读工具 `search_posts` 补上帖子引用；健康引用跳到对应日期并高亮定位
-- 文档体系：9 条 ADR、2 份 SPEC、1 份 SDD、15 份 PLAN、26 份 REPORT（见 `docs/README.md`）
-- 验收：216 单测 + 1 skipped（未开 DSN）、23 条评测、9 个真进程冒烟（10/9/6/8/8/10/11/8 + `reconnect_smoke` 5/5）+ 真实模型冒烟 13/13（L1 P50 929 ms / P95 1064 ms）、App 141 tests + `vue-tsc` 0 + build 0、`ruff` 全绿
+- 记忆抽取评测（S1.27）：`evals` 的 memory 套件从 2 条做到 48 条（否定句 / 多宠物 / 粤川渝方言），阈值 0.9；先量出 5 类真实缺陷（问句被当名字、过敏值吞副词、食物偏好值带动词、裸「喜欢」误抽、否定句全漏），修规则后 48/48
+- 文档体系：9 条 ADR、2 份 SPEC、1 份 SDD、16 份 PLAN、27 份 REPORT（见 `docs/README.md`）
+- 验收：221 单测 + 1 skipped（未开 DSN）、68 条评测、9 个真进程冒烟（10/9/6/8/8/10/11/8 + `reconnect_smoke` 5/5）+ 真实模型冒烟 13/13（L1 P50 929 ms / P95 1064 ms）、App 141 tests + `vue-tsc` 0 + build 0、`ruff` 全绿
 
 ### v2.7 (2026-06-03)
 

@@ -21,3 +21,49 @@
 {"id": "safe-06", "suite": "safety", "tool": "get_pet_profile", "args": {"pet_id": "5001", "token": "leak"}, "expect": {"code": "invalid_arguments"}}
 {"id": "mem-01", "suite": "memory", "turns": ["你好", "我家猫叫豆豆", "它几岁"], "expect": {"turns_recorded": 3}}
 {"id": "mem-02", "suite": "memory", "turns": ["在吗"], "expect": {"turns_recorded": 1}}
+{"id": "mem-03", "suite": "memory", "turns": ["我家狗叫豆豆", "它对鸡肉过敏", "它多重了"], "expect": {"turns_recorded": 3}}
+{"id": "mem-ext-01", "suite": "memory", "text": "我家猫叫豆豆", "expect": {"pet_name": "豆豆"}}
+{"id": "mem-ext-02", "suite": "memory", "text": "它名字叫Lumina", "expect": {"pet_name": "Lumina"}}
+{"id": "mem-ext-03", "suite": "memory", "text": "改名叫小月亮了", "expect": {"pet_name": "小月亮"}}
+{"id": "mem-ext-04", "suite": "memory", "text": "我家那只叫咪咪", "expect": {"pet_name": "咪咪"}}
+{"id": "mem-ext-05", "suite": "memory", "text": "它叫啥", "expect": {}}
+{"id": "mem-ext-06", "suite": "memory", "text": "它叫什么名字？", "expect": {}}
+{"id": "mem-ext-07", "suite": "memory", "text": "三岁的布偶猫", "expect": {"pet_age": "3"}}
+{"id": "mem-ext-08", "suite": "memory", "text": "它现在4岁半", "expect": {"pet_age": "4"}}
+{"id": "mem-ext-09", "suite": "memory", "text": "十个月大", "expect": {"pet_age": "10"}}
+{"id": "mem-ext-10", "suite": "memory", "text": "现在4.6公斤", "expect": {"pet_weight": "4.6"}}
+{"id": "mem-ext-11", "suite": "memory", "text": "体重约5kg", "expect": {"pet_weight": "5"}}
+{"id": "mem-ext-12", "suite": "memory", "text": "它对牛奶过敏", "expect": {"allergy": "牛奶"}}
+{"id": "mem-ext-13", "suite": "memory", "text": "对花生有点过敏", "expect": {"allergy": "花生"}}
+{"id": "mem-ext-14", "suite": "memory", "text": "它不吃肝脏", "expect": {"food_avoid": "肝脏"}}
+{"id": "mem-ext-15", "suite": "memory", "text": "不能吃巧克力", "expect": {"food_avoid": "巧克力"}}
+{"id": "mem-ext-16", "suite": "memory", "text": "它忌口海鲜", "expect": {"food_avoid": "海鲜"}}
+{"id": "mem-ext-17", "suite": "memory", "text": "它最爱吃冻干", "expect": {"food_like": "冻干"}}
+{"id": "mem-ext-18", "suite": "memory", "text": "它特别喜欢吃鸡胸肉", "expect": {"food_like": "鸡胸肉"}}
+{"id": "mem-ext-19", "suite": "memory", "text": "它打了狂犬疫苗", "expect": {"vaccine": "狂犬"}}
+{"id": "mem-ext-20", "suite": "memory", "text": "上个月接种了猫三联疫苗", "expect": {"vaccine": "猫三联"}}
+{"id": "mem-ext-21", "suite": "memory", "text": "我家猫好可爱", "expect": {}}
+{"id": "mem-ext-22", "suite": "memory", "text": "今天天气不错", "expect": {}}
+{"id": "mem-ext-23", "suite": "memory", "text": "它最近怎么样？", "expect": {}}
+{"id": "mem-ext-24", "suite": "memory", "text": "它8公斤", "expect": {"pet_weight": "8"}}
+{"id": "mem-ext-25", "suite": "memory", "text": "它两岁三个月", "expect": {"pet_age": "2"}}
+{"id": "mem-ext-26", "suite": "memory", "text": "我喜欢小猫", "expect": {}, "forbid": ["food_like"]}
+{"id": "mem-ext-27", "suite": "memory", "observe": [{"pet": "5001", "text": "它爱吃冻干，对牛奶过敏"}], "min_confidence": 0.8, "expect": {"pets": {"5001": {"allergy": "牛奶"}}}}
+{"id": "mem-neg-01", "suite": "memory", "text": "它对鸡肉不过敏", "expect": {}, "forbid": ["allergy"]}
+{"id": "mem-neg-02", "suite": "memory", "text": "它不过敏", "expect": {}}
+{"id": "mem-neg-03", "suite": "memory", "text": "它不叫咪咪", "expect": {}, "forbid": ["pet_name"]}
+{"id": "mem-neg-04", "suite": "memory", "text": "它不喜欢吃鱼", "expect": {}, "forbid": ["food_like"]}
+{"id": "mem-neg-05", "suite": "memory", "text": "还没打疫苗", "expect": {}}
+{"id": "mem-neg-06", "suite": "memory", "text": "它以前没对花粉过敏", "expect": {}, "forbid": ["allergy"]}
+{"id": "mem-neg-07", "suite": "memory", "text": "现在不过敏了", "expect": {}}
+{"id": "mem-neg-08", "suite": "memory", "text": "它不爱吃生肉", "expect": {}, "forbid": ["food_like"]}
+{"id": "mem-dialect-01", "suite": "memory", "text": "佢系我屋企嘅猫，叫糯米", "expect": {"pet_name": "糯米"}}
+{"id": "mem-dialect-02", "suite": "memory", "text": "我屋头那只猫叫坨坨", "expect": {"pet_name": "坨坨"}}
+{"id": "mem-dialect-03", "suite": "memory", "text": "它巴适得很，喜欢吃冻干", "expect": {"food_like": "冻干"}}
+{"id": "mem-dialect-04", "suite": "memory", "text": "呢只猫三岁喇", "expect": {"pet_age": "3"}}
+{"id": "mem-dialect-05", "suite": "memory", "text": "佢叫旺丁，对虾过敏", "expect": {"pet_name": "旺丁", "allergy": "虾"}}
+{"id": "mem-multi-01", "suite": "memory", "observe": [{"pet": "5001", "text": "我家猫叫豆豆"}, {"pet": "5002", "text": "另一只叫黄豆"}], "expect": {"pets": {"5001": {"pet_name": "豆豆"}, "5002": {"pet_name": "黄豆"}}}}
+{"id": "mem-multi-02", "suite": "memory", "observe": [{"pet": "5001", "text": "它对牛奶过敏"}, {"pet": "5002", "text": "它对鸡肉过敏"}], "expect": {"pets": {"5001": {"allergy": "牛奶"}, "5002": {"allergy": "鸡肉"}}}}
+{"id": "mem-multi-03", "suite": "memory", "observe": [{"pet": "5001", "text": "它三岁了"}, {"pet": "5001", "text": "它三岁了"}, {"pet": "5001", "text": "它四岁了"}, {"pet": "5002", "text": "它两岁了"}], "expect": {"pets": {"5001": {"pet_age": "4"}, "5002": {"pet_age": "2"}}, "ops": ["add", "update", "add"]}}
+{"id": "mem-multi-04", "suite": "memory", "observe": [{"pet": "5001", "text": "它不吃巧克力"}, {"pet": "5002", "text": "它爱吃冻干"}], "expect": {"pets": {"5001": {"food_avoid": "巧克力"}, "5002": {"food_like": "冻干"}}}}
+{"id": "mem-ext-28", "suite": "memory", "text": "别喂它吃洋葱", "expect": {"food_avoid": "洋葱"}}
