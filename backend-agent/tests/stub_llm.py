@@ -7,13 +7,25 @@
 
 流式响应末尾追加 usage 帧（对齐 `stream_options.include_usage` 的线上格式）。
 
+节奏可调（容量基线 `scripts/load_baseline.py` 用得上，默认值与改动前完全一致）：
+
+| 环境变量 | 默认 | 含义 |
+|---|---|---|
+| `STUB_LLM_FIRST_TOKEN_MS` | 0 | 第一帧之前等多久，仿真真实模型的首 token 延迟 |
+| `STUB_LLM_CHUNK_GAP_MS` | 10 | 帧间隔 |
+| `STUB_LLM_CHUNK_CHARS` | 4 | 每帧几个字 |
+
+**帧间隔必须是 `await asyncio.sleep()`**：这里在 async 生成器里跑，用 `time.sleep()` 会阻塞
+整个事件循环，N 个并发请求会被串成一条线——压测量到的就不再是服务的天花板。
+
     python -m uvicorn tests.stub_llm:app --port 8098
 """
 
 from __future__ import annotations
 
+import asyncio
 import json
-import time
+import os
 from collections.abc import AsyncIterator
 from typing import Any
 
@@ -24,6 +36,10 @@ app = FastAPI()
 
 CHAT_REPLY = "我在呢。想先看看哪只宠物的记录？"
 ANSWER = "9月1日打过疫苗，记录里写的是猫三联。"
+
+_FIRST_TOKEN_MS = float(os.environ.get("STUB_LLM_FIRST_TOKEN_MS") or 0)
+_CHUNK_GAP_MS = float(os.environ.get("STUB_LLM_CHUNK_GAP_MS") or 10)
+_CHUNK_CHARS = max(1, int(os.environ.get("STUB_LLM_CHUNK_CHARS") or 4))
 
 
 def _tool_names(body: dict[str, Any]) -> set[str]:
@@ -131,15 +147,22 @@ async def completions(request: Request):
             yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
         else:
             text = reply["content"] or ""
-            for i in range(0, len(text), 4):
+            if _FIRST_TOKEN_MS > 0:
+                # 真实模型是先想后吐字：这段延迟让基线的首 token 数字有意义
+                await asyncio.sleep(_FIRST_TOKEN_MS / 1000)
+            for i in range(0, len(text), _CHUNK_CHARS):
                 payload = {
                     "id": "stub",
                     "choices": [
-                        {"index": 0, "delta": {"content": text[i : i + 4]}, "finish_reason": None}
+                        {
+                            "index": 0,
+                            "delta": {"content": text[i : i + _CHUNK_CHARS]},
+                            "finish_reason": None,
+                        }
                     ],
                 }
                 yield f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
-                time.sleep(0.01)
+                await asyncio.sleep(_CHUNK_GAP_MS / 1000)
 
         # 末尾 usage 帧，模拟 OpenAI 的 stream_options.include_usage
         yield f"data: {json.dumps({'id': 'stub', 'choices': [], 'usage': usage})}\n\n"

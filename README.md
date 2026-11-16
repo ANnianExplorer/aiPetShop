@@ -213,7 +213,7 @@ PetLumina 是一个面向宠物主人的智能生活管理与社区互动平台�
 | aiomysql | 0.3 | 会话 / 消息 / 运行 / 记忆落库 |
 | redis-py | 8.1（RESP2） | 事件存储、限流、旁路任务队列 |
 | ruff | 0.17 | lint 门禁 |
-| pytest + pytest-asyncio | 9.2 / 1.4 | 229 项契约测试（含真机 MySQL 契约；不带 DSN 为 228 通过 + 1 跳过） |
+| pytest + pytest-asyncio | 9.2 / 1.4 | 245 项契约测试（含真机 MySQL 契约；不带 DSN 为 244 通过 + 1 跳过） |
 
 ## 快速开始
 
@@ -407,7 +407,7 @@ ai-PetShop/
 │   │   ├── llm/                     # ChatModel 协议 / OpenAI 兼容实现 / 脚本化桩
 │   │   ├── core/                    # 错误模型 / ID 生成 / 日志 / 熔断 / 限流 / Redis 客户端
 │   │   └── domain/                  # 领域模型 / 事件 / 意图路由
-│   ├── tests/                       # 229 项契约级测试 + 本地桩（Java / LLM）
+│   ├── tests/                       # 245 项契约级测试 + 本地桩（Java / LLM）
 │   ├── evals/                       # 69 条评测用例（routing 15 / safety 6 / memory 48）+ 三套阈值门禁
 │   ├── scripts/                     # 9 个真进程冒烟脚本（含多副本）
 │   ├── Dockerfile                   # 多阶段构建 + 非 root
@@ -437,7 +437,7 @@ Agent 侧的验收是"可复现命令"，不是口头结论：
 cd backend-agent
 # 可选：设置 DSN 后 tests/test_repository_contract.py 会额外跑一组 MySQL 契约变体
 $env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:yourpwd@127.0.0.1:3306/petlumina"
-.venv\Scripts\python -m pytest            # 未设 DSN 时 228 passed + 1 skipped（跳过的就是 MySQL 变体）
+.venv\Scripts\python -m pytest            # 未设 DSN 时 244 passed + 1 skipped（跳过的就是 MySQL 变体）
 .venv\Scripts\python -m evals.run         # routing 15/15、safety 6/6、memory 48/48
 .venv\Scripts\python -m scripts.e2e_smoke          # 10/10（SSE / 续传 / 越权）
 .venv\Scripts\python -m scripts.reconnect_smoke    # 5/5（掐线后 run 仍跑完、follow 续上不重不漏）

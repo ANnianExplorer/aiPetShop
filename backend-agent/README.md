@@ -43,7 +43,7 @@ App / 管理端 ──SSE──>  api/          传输层：鉴权、请求校�
 | `app/memory/` | `extract`/`ops`/`service` | 事实抽取（规则）、ADD/UPDATE/NOOP 算子、写入与召回 |
 | `app/tasks/` | `base`/`inprocess`/`redis`/`consumers`/`worker` | 旁路任务队列：记忆抽取与审计出请求路径；队列满退回同步 |
 | `app/rag/` | `models`/`chunker`/`embedder`/`ocr`/`media`/`parsers`/`service` | 文档问答：解析→切分→嵌入→检索；缺 `tesseract`/`ffmpeg` 时明确降级并给原因 |
-| `tests/` | 契约级单测 | 229 项（含真机契约），不依赖网络/密钥 |
+| `tests/` | 契约级单测 | 245 项（含真机契约），不依赖网络/密钥 |
 | `evals/` | 评测用例 + 阈值 runner | 69 条用例（routing 15 / safety 6 / memory 48），不过阈值就退出码非 0 |
 
 ## 快速开始
@@ -61,7 +61,7 @@ copy .env.example .env          # 填 PET_AGENT_LLM_API_KEY
 ```bash
 curl http://localhost:8099/healthz    # 进程活着
 curl http://localhost:8099/readyz     # 能接流量（存储+模型都 ok 才是 200）
-.venv\Scripts\python -m pytest        # 229 项：不带 DSN 为 228 passed + 1 skipped（跳过的是 MySQL 契约变体）
+.venv\Scripts\python -m pytest        # 245 项：不带 DSN 为 244 passed + 1 skipped（跳过的是 MySQL 契约变体）
 .venv\Scripts\python -m evals.run     # routing/safety/memory 三套件，硬阈值
 .venv\Scripts\ruff.exe check .        # 静态检查
 ```
@@ -190,7 +190,7 @@ event: error   data: {code, message, retryable}
 ## 测试与评测
 
 - `ruff check .` → 静态检查（配置在 `pyproject.toml`，CI 第一道门）。
-- `pytest` → 229 项（设 `PET_AGENT_TEST_MYSQL_DSN` 时含真机 MySQL 契约；不带 DSN 为 228 通过 + 1 跳过）：路由、网关六道防线、存储契约（内存/MySQL 同一套断言）、图（L1/L2/hop 上限/坏参数）、提示词版本（冻结哈希、安全措辞、run meta 与日志带 `prompt_version`）、API（SSE 事件序列、续传三种方式等价、越权、失败收敛、429 与配额头、记忆注入与用量聚合）、配额（分钟/日窗口、用户隔离、Redis fail-open、`Retry-After`）、事件存储（两实现同契约：序号、游标、裁剪、坏数据跳过）、记忆（抽取规则、ADD/UPDATE/NOOP、隔离、低置信度过滤、导出与删除）、会话列表（本人隔离、最后活跃排序、分页 total）、文档 RAG（切分/嵌入确定性/多编码解析/PDF 分页/OCR 缺失降级/去重与软删复活/检索隔离/删除后不可检索）、可观测（request_id/日志字段/readyz 降级/指标模板与不含用户内容）、管理端（403/401、列表筛选、详情含 steps、审计不含正文、伪造 header 无效、删记忆审计、三层图谱、他人画像与审计）、画像（确定性构建、斤换 kg、低置信度忽略、疫苗过期进 careGaps、版本递增与裁剪、事实更新后 stale）、幂等（同 key 只执行一次、并发唯一键、非法 key 422）、熔断（三态迁移、half_open 单探测、401 不误熔断、readyz 联动）、队列（启动补偿、死信重放、可见性超时巡检）。
+- `pytest` → 245 项（设 `PET_AGENT_TEST_MYSQL_DSN` 时含真机 MySQL 契约；不带 DSN 为 244 通过 + 1 跳过）：路由、网关六道防线、存储契约（内存/MySQL 同一套断言）、图（L1/L2/hop 上限/坏参数）、提示词版本（冻结哈希、安全措辞、run meta 与日志带 `prompt_version`）、压测量尺（分位数/判定阈值/Prometheus 文本解析/档位汇总）、API（SSE 事件序列、续传三种方式等价、越权、失败收敛、429 与配额头、记忆注入与用量聚合）、配额（分钟/日窗口、用户隔离、Redis fail-open、`Retry-After`）、事件存储（两实现同契约：序号、游标、裁剪、坏数据跳过）、记忆（抽取规则、ADD/UPDATE/NOOP、隔离、低置信度过滤、导出与删除）、会话列表（本人隔离、最后活跃排序、分页 total）、文档 RAG（切分/嵌入确定性/多编码解析/PDF 分页/OCR 缺失降级/去重与软删复活/检索隔离/删除后不可检索）、可观测（request_id/日志字段/readyz 降级/指标模板与不含用户内容）、管理端（403/401、列表筛选、详情含 steps、审计不含正文、伪造 header 无效、删记忆审计、三层图谱、他人画像与审计）、画像（确定性构建、斤换 kg、低置信度忽略、疫苗过期进 careGaps、版本递增与裁剪、事实更新后 stale）、幂等（同 key 只执行一次、并发唯一键、非法 key 422）、熔断（三态迁移、half_open 单探测、401 不误熔断、readyz 联动）、队列（启动补偿、死信重放、可见性超时巡检）。
 - `python -m evals.run` → 三套件、阈值硬卡：`routing ≥ 95%`、`safety = 100%`、`memory ≥ 90%`（现 48/48）。
   用例在 `evals/cases.jsonl`，加一行就是加一条回归；`memory` 支持 `text`（抽取全等）/`observe`（服务层）/`turns`（落库完整性）三种形状；报告落 `evals/reports/latest.json`。
   用例在 `evals/cases.jsonl`，加一行就是加一条回归；报告落 `evals/reports/latest.json`。
@@ -219,6 +219,18 @@ P1 专项（配额/用量/记忆，用独立账号 `token-7007`，限流放最�
 
 检查：记忆初始为空 → 说一句「它叫 Lumina，对牛奶过敏」→ 接口里能查到 `allergy=牛奶`（含标签与置信度）→
 重复同一句话不产生第二条 → 用量按账号聚合 → 打满配额后 `429 + Retry-After`。
+
+容量基线（自带桩 + 被测进程，阻塞式跑完再出表，不需要先起 8097/8098/8099）：
+
+```bash
+.venv\Scripts\python -m scripts.load_baseline                       # 默认 1,5,10,20 并发 × 40 请求
+.venv\Scripts\python -m scripts.load_baseline --levels 30,40 --requests 60
+```
+
+量的是：SSE 首个 `delta` 的首 token 分位数、错误率、全程耗时、进程树峰值工作集，并用 `/metrics` 对账
+（`/agent/chat` 计数与 `runs` 成功数应等于「计时请求 + 1 次热身」）。档位之间会重启 app 进程，
+桩的首 token 延迟可用 `--first-token-ms` 调（默认 900ms，用来把服务侧开销从端到端里减出来）。
+最新一次实测数字见 `docs/reports/2026-11-16-s1.29-capacity-baseline.md`。
 
 管理端专项（普通用户 403 / 造一条会话 / 管理员列表与详情 / 全局用量 / 无 token 401）：
 

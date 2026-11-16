@@ -423,7 +423,7 @@ meta        { factWatermark, builtAt }
 cd backend-agent
 # 含真机仓储契约测试（需要 DSN，否则跳过 mysql 变体）
 $env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:<本机口令>@127.0.0.1:3306/petlumina"
-.\.venv\Scripts\python -m pytest              # 229 项（含真机 MySQL 契约；不带 DSN 为 228 passed + 1 skipped）
+.\.venv\Scripts\python -m pytest              # 245 项（含真机 MySQL 契约；不带 DSN 为 244 passed + 1 skipped）
 .\.venv\Scripts\python -m evals.run           # routing 15/15, safety 6/6, memory 48/48
 .\.venv\Scripts\python -m scripts.e2e_smoke       # 10/10
 .\.venv\Scripts\python -m scripts.p1_smoke        # 9/9（配额/用量/记忆）
