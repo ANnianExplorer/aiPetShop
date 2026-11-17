@@ -6,14 +6,19 @@
 
 from __future__ import annotations
 
+import argparse
+
 import pytest
 
 from scripts.load_baseline import (
+    LevelResult,
     Sample,
     counter_delta,
     judge,
+    parse_args,
     parse_metrics,
     percentile,
+    render_conclusion,
     stats,
     summarize_level,
 )
@@ -168,3 +173,48 @@ class TestSummarizeLevel:
         assert result.http_chat == 4.0
         assert result.runs_ok == 4.0
         assert result.runs_failed == 0.0
+
+
+def _result(level: int, verdict: str) -> LevelResult:
+    return LevelResult(
+        level=level,
+        total=60,
+        ok=60 if verdict == "达标" else 59,
+        first_token={"p50": 1000.0, "p95": 1200.0, "p99": 1300.0},
+        total_ms={"p50": 1100.0, "p95": 1300.0, "p99": 1400.0},
+        peak_startup_mb=90.0,
+        peak_after_mb=104.0,
+        runs_ok=60.0,
+        runs_failed=0.0,
+        http_chat=61.0,
+        verdict=verdict,
+    )
+
+
+class TestParseArgs:
+    def test_rejects_request_count_below_max_level(self):
+        with pytest.raises(SystemExit) as exc:
+            parse_args(["--levels", "80,100", "--requests", "60"])
+        assert exc.value.code == 2
+
+    def test_accepts_level_equal_to_request_count(self):
+        args = parse_args(["--levels", "30,40,60", "--requests", "60"])
+        assert args.levels == [30, 40, 60]
+        assert args.requests == 60
+
+
+class TestRenderConclusion:
+    def test_non_monotonic_result_is_flagged_as_noise(self):
+        text = render_conclusion(
+            [_result(30, "达标"), _result(40, "超上限"), _result(60, "达标")],
+            argparse.Namespace(first_token_ms=900.0),
+        )
+        assert "非单调" in text
+        assert "40 并发超上限" in text
+
+    def test_monotonic_result_names_previous_passing_level(self):
+        text = render_conclusion(
+            [_result(30, "达标"), _result(40, "超上限")],
+            argparse.Namespace(first_token_ms=900.0),
+        )
+        assert "上一档 30 并发达标" in text

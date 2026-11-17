@@ -564,15 +564,25 @@ def render_markdown(results: Sequence[LevelResult], args: argparse.Namespace) ->
 def render_conclusion(results: Sequence[LevelResult], args: argparse.Namespace) -> str:
     if not results:
         return "## 结论\n\n没有跑出任何一档数据。"
-    passing = [r for r in results if r.verdict == "达标"]
     over = [r for r in results if r.verdict != "达标"]
     top = max(results, key=lambda r: r.level)
     lines = ["## 结论", ""]
     if over:
-        lines.append(
-            f"- 上限：**{over[0].level} 并发开始超上限**（{over[0].verdict}）；"
-            f"上一档 {passing[-1].level if passing else '无'} 并发达标。"
-        )
+        first_over = over[0].level
+        lower = [r for r in results if r.level < first_over and r.verdict == "达标"]
+        higher = [r for r in results if r.level > first_over and r.verdict == "达标"]
+        if higher:
+            # 高档位又达标说明不是单调拐点：多半是机器抖动/噪声，不能当成上限写进报告。
+            lines.append(
+                f"- 上限：**{first_over} 并发超上限**（{over[0].verdict}），但更高档 "
+                f"{max(r.level for r in higher)} 又达标——结果非单调，疑似抖动，需复测该档。"
+            )
+        else:
+            previous = max((r.level for r in lower), default=None)
+            lines.append(
+                f"- 上限：**{first_over} 并发开始超上限**（{over[0].verdict}）；"
+                f"上一档 {previous if previous is not None else '无'} 并发达标。"
+            )
     else:
         lines.append(f"- 上限：扫到的最高档 {top.level} 并发仍达标，单实例上限未被触到。")
     overhead = top.first_token["p50"] - args.first_token_ms
@@ -710,6 +720,11 @@ def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
         parser.error("--levels 至少要有一个档位")
     if args.requests < 1:
         parser.error("--requests 必须 >= 1")
+    if max(args.levels) > args.requests:
+        parser.error(
+            f"--requests ({args.requests}) 必须 >= 最大档位 ({max(args.levels)})："
+            "请求总数小于并发档位时，该档实际并发会被任务数封顶，测出来的不是目标并发。"
+        )
     return args
 
 

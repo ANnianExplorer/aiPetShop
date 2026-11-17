@@ -213,7 +213,7 @@ PetLumina 是一个面向宠物主人的智能生活管理与社区互动平台�
 | aiomysql | 0.3 | 会话 / 消息 / 运行 / 记忆落库 |
 | redis-py | 8.1（RESP2） | 事件存储、限流、旁路任务队列 |
 | ruff | 0.17 | lint 门禁 |
-| pytest + pytest-asyncio | 9.2 / 1.4 | 245 项契约测试（含真机 MySQL 契约；不带 DSN 为 244 通过 + 1 跳过） |
+| pytest + pytest-asyncio | 9.2 / 1.4 | 249 项契约测试（含真机 MySQL 契约；不带 DSN 为 248 通过 + 1 跳过） |
 
 ## 快速开始
 
@@ -437,7 +437,7 @@ Agent 侧的验收是"可复现命令"，不是口头结论：
 cd backend-agent
 # 可选：设置 DSN 后 tests/test_repository_contract.py 会额外跑一组 MySQL 契约变体
 $env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:yourpwd@127.0.0.1:3306/petlumina"
-.venv\Scripts\python -m pytest            # 未设 DSN 时 244 passed + 1 skipped（跳过的就是 MySQL 变体）
+.venv\Scripts\python -m pytest            # 未设 DSN 时 248 passed + 1 skipped（跳过的就是 MySQL 变体）
 .venv\Scripts\python -m evals.run         # routing 15/15、safety 6/6、memory 48/48
 .venv\Scripts\python -m scripts.e2e_smoke          # 10/10（SSE / 续传 / 越权）
 .venv\Scripts\python -m scripts.reconnect_smoke    # 5/5（掐线后 run 仍跑完、follow 续上不重不漏）
@@ -484,8 +484,9 @@ cd backend && mvn test                            # 后端单测 27 例（仪表
 - 记忆抽取评测（S1.27）：`evals` 的 memory 套件从 2 条做到 48 条（否定句 / 多宠物 / 粤川渝方言），阈值 0.9；先量出 5 类真实缺陷（问句被当名字、过敏值吞副词、食物偏好值带动词、裸「喜欢」误抽、否定句全漏），修规则后 48/48
 - 提示词版本化（S1.28）：`SYSTEM_PROMPT` 从 `nodes.py` 的字面量搬到 `app/graph/prompts.py` 的版本登记表（当前 `2026-11-15.1`，270 字）+ 手写冻结 sha256——原地改正文会让单测红；每轮 run 的 assistant `meta` 与 `run finished` 日志都带 `prompt_version`，回答风格变了能对上是哪一版
 - 记忆入口（S1.30）：App 个人中心 →「我的记忆」（`/my-memory`），把「通用 + 每只宠物」的事实并发拉取后合并展示，支持范围筛选、单条删除（二次确认）与聚合导出 JSON——B7 的后端能力终于有了用户入口
-- 文档体系：9 条 ADR、2 份 SPEC、1 份 SDD、19 份 PLAN、30 份 REPORT（见 `docs/README.md`）
-- 验收：244 passed + 1 skipped（未开 DSN）、69 条评测（routing 15 / safety 6 / memory 48）、9 个真进程冒烟（10/9/6/8/8/10/11/8 + `reconnect_smoke` 5/5）+ 真实模型冒烟 13/13（L1 P50 929 ms / P95 1064 ms）、App 155 tests + `vue-tsc` 0 + build 0、`ruff` 全绿
+- 容量上限（S1.31）：单实例 30–150 并发分级压测（每档 300 请求），140 并发首 token P95 2994ms 达标、150 并发两次 3100/3202ms 超限（错误率 0%）；顺带修掉 `--requests < 最大档位` 时并发被封顶的压测协议缺陷
+- 文档体系：9 条 ADR、2 份 SPEC、1 份 SDD、20 份 PLAN、31 份 REPORT（见 `docs/README.md`）
+- 验收：248 passed + 1 skipped（未开 DSN）、69 条评测（routing 15 / safety 6 / memory 48）、9 个真进程冒烟（10/9/6/8/8/10/11/8 + `reconnect_smoke` 5/5）+ 真实模型冒烟 13/13（L1 P50 929 ms / P95 1064 ms）、App 155 tests + `vue-tsc` 0 + build 0、`ruff` 全绿
 
 ### v2.7 (2026-06-03)
 
