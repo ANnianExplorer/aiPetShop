@@ -102,6 +102,29 @@ export interface AgentDocument {
   error?: string | null
 }
 
+/** 长期记忆事实（GET /agent/memory/me；`update_time` 可能为空，表示只有写入时间） */
+export interface AgentMemoryFact {
+  id: string
+  key: string
+  label: string
+  value: string
+  confidence: number
+  update_time: string | null
+}
+
+/**
+ * 单个范围的记忆导出（GET /agent/memory/me/export）。
+ *
+ * 注意：`pet_id` 为空表示「不带宠物维度」的事实，**不是**该用户全部事实；
+ * App 端会按范围各拉一次再合并，见 `utils/memoryScope.ts`。
+ */
+export interface AgentMemoryExport {
+  version: number
+  exported_at: string
+  pet_id: string | null
+  facts: AgentMemoryFact[]
+}
+
 /** 聊天面板里的一条气泡（比后端 Message 多了流式状态） */
 export interface ChatBubble {
   id: string

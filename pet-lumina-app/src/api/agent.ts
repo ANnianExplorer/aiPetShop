@@ -10,6 +10,8 @@
 import { SseDecoder, type SseMessage } from './sse'
 import type {
   AgentDocument,
+  AgentMemoryExport,
+  AgentMemoryFact,
   AgentMessage,
   AgentSessionPage,
   DoneEvent,
@@ -195,6 +197,56 @@ export async function uploadDocument(file: File, petId: string | null = null): P
   })
   await assertOk(response)
   return (await response.json()) as AgentDocument
+}
+
+// ---- 长期记忆（B7：用户可查看 / 删除 / 导出） ----
+//
+// 契约（docs/spec/agent-runtime-api.md 6.1）：
+// `pet_id` 为空表示「不带宠物维度」的事实，不是「全部事实」；
+// 想看全部必须对「通用 + 每只宠物」各拉一次，合并规则见 utils/memoryScope.ts。
+
+function memoryQuery(petId: string | null, extra: Record<string, string> = {}): string {
+  const query = new URLSearchParams(extra)
+  if (petId) query.set('pet_id', petId)
+  return query.toString()
+}
+
+/** 某范围的记忆事实；limit 契约上限 50。 */
+export async function fetchMemoryFacts(
+  petId: string | null = null,
+  limit = 50,
+): Promise<AgentMemoryFact[]> {
+  const query = memoryQuery(petId, { limit: String(limit) })
+  const response = await fetch(`${agentBaseUrl()}/agent/memory/me?${query}`, {
+    headers: { Accept: 'application/json', ...authHeaders() },
+  })
+  await assertOk(response)
+  const payload = (await response.json()) as { facts?: AgentMemoryFact[] }
+  return payload.facts ?? []
+}
+
+/** 删除一条记忆；key 不存在时后端 404（code=not_found），由调用方展示错误。 */
+export async function deleteMemoryFact(
+  key: string,
+  petId: string | null = null,
+): Promise<void> {
+  const query = memoryQuery(petId, { key })
+  const response = await fetch(`${agentBaseUrl()}/agent/memory/me?${query}`, {
+    method: 'DELETE',
+    headers: { Accept: 'application/json', ...authHeaders() },
+  })
+  await assertOk(response)
+}
+
+/** 某范围的全量导出（后端内部 limit=200，不受列表 50 条限制）。 */
+export async function exportMemory(petId: string | null = null): Promise<AgentMemoryExport> {
+  const query = memoryQuery(petId)
+  const suffix = query ? `?${query}` : ''
+  const response = await fetch(`${agentBaseUrl()}/agent/memory/me/export${suffix}`, {
+    headers: { Accept: 'application/json', ...authHeaders() },
+  })
+  await assertOk(response)
+  return (await response.json()) as AgentMemoryExport
 }
 
 // ---- 事件载荷收窄：保持 UI 层不写宽泛断言 ----

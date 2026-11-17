@@ -78,6 +78,7 @@
 | [plans/s1.27-memory-evals.md](plans/s1.27-memory-evals.md) | S1.27 记忆抽取评测：memory 套件 2→48 条、阈值 0.9、按缺陷修抽取规则（C3） | 已完成 |
 | [plans/s1.28-prompt-version.md](plans/s1.28-prompt-version.md) | S1.28 提示词版本化：版本登记表 + 冻结哈希闸门 + `prompt_version` 进 meta/日志（D6） | 已完成 |
 | [plans/s1.29-capacity-baseline.md](plans/s1.29-capacity-baseline.md) | S1.29 单实例容量基线：SSE 压测脚本 + 1/5/10/20 并发实测首 token/错误率/内存（C7） | 已完成 |
+| [plans/s1.30-app-memory-entry.md](plans/s1.30-app-memory-entry.md) | S1.30 App「我的记忆」：按范围拉取合并 / 单条删除 / 聚合导出（B7 收尾） | 已完成 |
 
 ### REPORT
 
@@ -112,6 +113,7 @@
 | [reports/2026-11-15-s1.27-memory-evals.md](reports/2026-11-15-s1.27-memory-evals.md) | S1.27 记忆抽取评测（C3） | memory 套件 2→48 条、阈值 1.0→0.9：加完用例先红 **35/47 = 74%**，量出 5 类真实缺陷（问句当名字 / 过敏值吞副词 / 偏好值带动词 / 裸「喜欢」误抽 / 否定句全漏），修规则后 **48/48 = 100%**；`pytest` 222 例 0 失败 1 跳过（MySQL 变体未开 DSN）、`ruff` 全绿 |
 | [reports/2026-11-15-s1.28-prompt-version.md](reports/2026-11-15-s1.28-prompt-version.md) | S1.28 提示词版本化（D6） | `SYSTEM_PROMPT` 搬进 `app/graph/prompts.py` 版本登记表（当前 `2026-11-15.1`，270 字）+ 手写冻结 sha256；变异实验证明「原地改正文」会让 2 条单测红、还原即绿；run 的 meta 与日志带 `prompt_version`；`pytest` 229 例 0 失败 1 跳过、`evals` 69 条全绿、`ruff` 全绿 |
 | [reports/2026-11-16-s1.29-capacity-baseline.md](reports/2026-11-16-s1.29-capacity-baseline.md) | S1.29 单实例容量基线（C7） | 新增 `scripts/load_baseline.py`（无新依赖、逐档重启、SSE 首 delta 计时）；20 并发 × 40 请求 **40/40 成功**、首 token P50 1151 / P95 1201ms（桩 900ms → 服务侧开销 301ms）、峰值工作集 97MB；**上限未触到**（20 并发是下界）；`pytest` 244 通过 + 1 跳过（不带 DSN）/ 256 通过（带真机 DSN）、`e2e_smoke` 10/10、`ruff` 全绿；抓到桩 `time.sleep` 阻塞事件循环与 venv 瘦启动器量错内存两个真问题 |
+| [reports/2026-11-17-s1.30-app-memory.md](reports/2026-11-17-s1.30-app-memory.md) | S1.30 App「我的记忆」入口（B7 收尾） | 个人中心新增 `/my-memory`：通用+每宠并发拉取合并、范围筛选、二次确认删除、聚合导出 JSON；App 14 条新测试 → 全量 **155 tests**、`vue-tsc` 0、build 0、后端 `pytest` 244 passed + 1 skipped（未开 DSN）；**未做真机浏览器点击**（无浏览器环境），真机验收归入 C9 |
 
 ## 3. 新增文档怎么起头
 

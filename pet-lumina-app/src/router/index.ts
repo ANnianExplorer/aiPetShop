@@ -158,6 +158,11 @@ const router = createRouter({
           component: () => import('@/views/profile/EditProfile.vue')
         },
         {
+          path: '/my-memory',
+          name: 'myMemory',
+          component: () => import('@/views/profile/MyMemory.vue')
+        },
+        {
           path: '/account-security',
           name: 'accountSecurity',
           component: () => import('@/views/profile/AccountSecurity.vue')

@@ -452,7 +452,7 @@ $env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:yourpwd@127.0.0.1:3306/petlumina"
 前端：
 
 ```bash
-cd pet-lumina-app && npm run build && npm test    # vue-tsc + vitest（141 例：SSE / 聊天流 / 断线重连 / 引用回跳 / 分类 / 提醒日期 / 桌宠引擎（编排·物理·渲染·外壳）/ 图像生成管线）
+cd pet-lumina-app && npm run build && npm test    # vue-tsc + vitest（155 例：SSE / 聊天流 / 断线重连 / 引用回跳 / 我的记忆 / 分类 / 提醒日期 / 桌宠引擎（编排·物理·渲染·外壳）/ 图像生成管线）
 cd pet-lumina-web && npm run typecheck && npm run build   # 管理端 vue-tsc -b（真检查，不是空转）
 
 cd backend && mvn test                            # 后端单测 27 例（仪表盘/排序/验证码/用户管理/发帖话题）
@@ -460,7 +460,7 @@ cd backend && mvn test                            # 后端单测 27 例（仪表
 
 文档入口：[`docs/README.md`](./docs/README.md)（四类文档职责 + 索引），
 面向决策的背景见 [`docs/pet-agent-architecture.md`](./docs/pet-agent-architecture.md)，
-**还差什么**见 [`docs/BACKLOG.md`](./docs/BACKLOG.md)（原 42 条，剩 14 条；卫生债 E1–E13 已清零）。
+**还差什么**见 [`docs/BACKLOG.md`](./docs/BACKLOG.md)（原 42 条，剩 12 条；卫生债 E1–E13 已清零）。
 
 ## 更新日志
 
@@ -483,8 +483,9 @@ cd backend && mvn test                            # 后端单测 27 例（仪表
 - 引用回跳（S1.25）：`citation.locator` 改成 App 内路由（`/log/{id}`、`/post/{id}`、`/pet-detail/{id}`、`/weekly-health-detail?petId=…&date=…`），新增只读工具 `search_posts` 补上帖子引用；健康引用跳到对应日期并高亮定位
 - 记忆抽取评测（S1.27）：`evals` 的 memory 套件从 2 条做到 48 条（否定句 / 多宠物 / 粤川渝方言），阈值 0.9；先量出 5 类真实缺陷（问句被当名字、过敏值吞副词、食物偏好值带动词、裸「喜欢」误抽、否定句全漏），修规则后 48/48
 - 提示词版本化（S1.28）：`SYSTEM_PROMPT` 从 `nodes.py` 的字面量搬到 `app/graph/prompts.py` 的版本登记表（当前 `2026-11-15.1`，270 字）+ 手写冻结 sha256——原地改正文会让单测红；每轮 run 的 assistant `meta` 与 `run finished` 日志都带 `prompt_version`，回答风格变了能对上是哪一版
-- 文档体系：9 条 ADR、2 份 SPEC、1 份 SDD、17 份 PLAN、28 份 REPORT（见 `docs/README.md`）
-- 验收：228 单测 + 1 skipped（未开 DSN）、69 条评测（routing 15 / safety 6 / memory 48）、9 个真进程冒烟（10/9/6/8/8/10/11/8 + `reconnect_smoke` 5/5）+ 真实模型冒烟 13/13（L1 P50 929 ms / P95 1064 ms）、App 141 tests + `vue-tsc` 0 + build 0、`ruff` 全绿
+- 记忆入口（S1.30）：App 个人中心 →「我的记忆」（`/my-memory`），把「通用 + 每只宠物」的事实并发拉取后合并展示，支持范围筛选、单条删除（二次确认）与聚合导出 JSON——B7 的后端能力终于有了用户入口
+- 文档体系：9 条 ADR、2 份 SPEC、1 份 SDD、19 份 PLAN、30 份 REPORT（见 `docs/README.md`）
+- 验收：244 passed + 1 skipped（未开 DSN）、69 条评测（routing 15 / safety 6 / memory 48）、9 个真进程冒烟（10/9/6/8/8/10/11/8 + `reconnect_smoke` 5/5）+ 真实模型冒烟 13/13（L1 P50 929 ms / P95 1064 ms）、App 155 tests + `vue-tsc` 0 + build 0、`ruff` 全绿
 
 ### v2.7 (2026-06-03)
 
