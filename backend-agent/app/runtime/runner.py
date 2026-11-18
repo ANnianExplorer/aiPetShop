@@ -99,6 +99,15 @@ class AgentRunner:
         self._profiles = profiles
         self._supervisor = supervisor or RunSupervisor()
 
+    def reconfigure(self, *, model: ChatModel | None, graph: Any) -> None:
+        """管理端切换模型后热替换。
+
+        已经在跑的 run 持有旧 graph/model 的引用，继续跑完；新 run 从下一次
+        `_drive` 开始读新字段。旧 model 由调用方延迟关闭，避免打断在途流。
+        """
+        self._model = model
+        self._graph = graph
+
     async def stream(self, cmd: ChatCommand, caller: Caller) -> AsyncIterator[Event]:
         """对外的唯一入口：先同步拿到首事件，再把执行交给后台任务。
 
@@ -170,6 +179,11 @@ class AgentRunner:
             )
             return
 
+        # 固定本次运行使用的模型/图：配置热切换只影响之后的新 run，
+        # 在途 run 不会出现「旧图跑一半、新模型收尾」的混搭。
+        model = self._model
+        graph = self._graph
+
         started = time.perf_counter()
         user_id_var.set(caller.user_id)
         decision = classify(cmd.message)
@@ -213,7 +227,7 @@ class AgentRunner:
                     user_message_id=user_message.id,
                     route=decision.route,
                     intent=decision.intent,
-                    model=self._model.name,
+                    model=model.name,
                     idempotency_key=cmd.client_message_id,
                 )
             )
@@ -279,7 +293,7 @@ class AgentRunner:
 
             try:
                 result = await asyncio.wait_for(
-                    self._graph.ainvoke(
+                    graph.ainvoke(
                         state, config={"configurable": {"thread_id": run_id}}
                     ),
                     timeout=self._settings.run_deadline_s,
@@ -316,7 +330,7 @@ class AgentRunner:
 
             parts: list[str] = []
             stream_usage = Usage()
-            async for chunk in self._model.stream(answer_messages):
+            async for chunk in model.stream(answer_messages):
                 if chunk.text:
                     parts.append(chunk.text)
                     yield await self._record(run_id, Event(EventType.DELTA, {"text": chunk.text}))
@@ -345,7 +359,7 @@ class AgentRunner:
                         "route": decision.route.value,
                         "intent": decision.intent.value,
                         "reason": decision.reason,
-                        "model": self._model.name,
+                        "model": model.name,
                         "prompt_version": PROMPT_VERSION,
                         "memory_facts": len(memory_lines),
                     },

@@ -28,6 +28,7 @@ from ..core.ratelimit import RateLimiter, create_rate_limiter
 from ..graph import build_graph
 from ..llm import ChatModel, build_model
 from ..memory import MemoryService
+from ..model_config import ConfigCipher, ModelConfigService, create_model_config_store
 from ..profile import ProfileService
 from ..rag import DocumentService
 from ..rag.embedder import build_embedder
@@ -141,7 +142,17 @@ def create_app(
         )
 
     model_owned = False
-    if model is None and settings.model_configured:
+    model_config_service: ModelConfigService | None = None
+    if model is None and settings.model_config_enabled:
+        model_store = create_model_config_store(settings)
+        model_config_service = ModelConfigService(
+            settings,
+            model_store,
+            ConfigCipher(settings.config_secret, settings.model_config_key_file),
+            lambda cfg: build_model(cfg, breaker=llm_breaker),
+        )
+        # 真正的模型要等 lifespan/bootstrap 读取 DB/文件后再建；显式注入 model 的测试不走这里
+    elif model is None and settings.model_configured:
         model = build_model(settings, breaker=llm_breaker)
         model_owned = True
 
@@ -181,8 +192,34 @@ def create_app(
     )
     rate_limiter = limiter or create_rate_limiter(settings)
 
+    def apply_runtime_model(new_model: ChatModel | None, source: str) -> None:
+        """配置服务切换模型后的唯一接线点：重建 graph，再让 runner 看到新引用。"""
+        nonlocal model, graph
+        model = new_model
+        graph = (
+            build_graph(new_model, gateway, settings, backend_factory, docs=document_service)
+            if new_model is not None
+            else None
+        )
+        runner.reconfigure(model=new_model, graph=graph)
+        app.state.graph = graph
+        app.state.model_name = new_model.name if new_model is not None else None
+        app.state.model_source = source
+        app.state.model_error = model_config_service.last_error if model_config_service else None
+
+    if model_config_service is not None:
+        model_config_service.set_on_change(apply_runtime_model)
+
     @asynccontextmanager
     async def lifespan(_: FastAPI) -> AsyncIterator[None]:
+        # 先从 DB/文件配置或 env 兜底建立运行时模型；失败不拖垮进程，
+        # 管理员仍可通过 /agent/admin/model-config 修好配置后热应用。
+        if model_config_service is not None:
+            try:
+                await model_config_service.bootstrap()
+            except Exception as exc:
+                log_event(task_log, logging.WARNING, "model config bootstrap failed",
+                          error=type(exc).__name__)
         # 先扫一遍上一轮进程消失留下的僵尸 run，再接收新请求：
         # 它们停在 running 会让管理端误以为「还在跑」，前端重连也永远等不到 done。
         with contextlib.suppress(Exception):
@@ -226,7 +263,9 @@ def create_app(
             await repository.aclose()
             await store.aclose()
             await rate_limiter.aclose()
-            if model is not None and model_owned:
+            if model_config_service is not None:
+                await model_config_service.aclose()
+            elif model is not None and model_owned:
                 await model.aclose()
             if http_owned:
                 await http.aclose()
@@ -261,6 +300,14 @@ def create_app(
     app.state.task_worker = worker
     app.state.docs = document_service
     app.state.profiles = profile_service
+    app.state.model_config = model_config_service
+    app.state.model_name = model.name if model is not None else None
+    app.state.model_source = (
+        "injected" if model is not None and not model_owned
+        else "env" if model_owned
+        else "none"
+    )
+    app.state.model_error = model_config_service.last_error if model_config_service else None
 
     @app.exception_handler(AgentError)
     async def _agent_error(_: Request, exc: AgentError) -> JSONResponse:

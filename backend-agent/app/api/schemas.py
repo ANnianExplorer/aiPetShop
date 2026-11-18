@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class ChatRequest(BaseModel):
@@ -58,9 +58,51 @@ class HealthOut(BaseModel):
     repo: str
     model: str | None
     model_configured: bool
+    model_source: str = "none"
     tools: list[str]
     graph_ready: bool
     auth_mode: str
+
+
+class ModelConfigIn(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    provider: str = Field(min_length=1, max_length=32)
+    base_url: str = Field(min_length=1, max_length=255)
+    model: str = Field(min_length=1, max_length=128)
+    api_key: str = Field(default="", max_length=512, repr=False)
+    enabled: bool = True
+
+    @field_validator("base_url")
+    @classmethod
+    def _check_base_url(cls, value: str) -> str:
+        normalized = value.strip().rstrip("/")
+        if not normalized.startswith(("http://", "https://")):
+            raise ValueError("base_url 必须以 http:// 或 https:// 开头")
+        return normalized
+
+
+class ModelConfigOut(BaseModel):
+    provider: str
+    base_url: str
+    model: str
+    enabled: bool
+    source: str
+    has_api_key: bool
+    api_key_masked: str
+    updated_by: str | None = None
+    update_time: str | None = None
+    fallback: str
+    runtime_model: str | None = None
+    runtime_source: str
+    error: str | None = None
+
+
+class ModelConfigTestOut(BaseModel):
+    ok: bool
+    latency_ms: int
+    model: str
+    provider: str
 
 
 class UsageOut(BaseModel):

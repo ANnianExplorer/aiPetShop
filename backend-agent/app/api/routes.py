@@ -17,6 +17,7 @@ from ..core.logging import log_event
 from ..core.metrics import QUEUE_DEPTH, metrics
 from ..core.ratelimit import RateLimiter
 from ..memory import label_of
+from ..model_config import ModelConfigService
 from ..rag.models import DocumentStatus
 from ..runtime import AgentRunner, Caller, ChatCommand
 from ..runtime.eventlog import EventStore
@@ -47,6 +48,9 @@ from .schemas import (
     MemoryOut,
     MessageOut,
     MessagesOut,
+    ModelConfigIn,
+    ModelConfigOut,
+    ModelConfigTestOut,
     ProfileListOut,
     ProfileOut,
     ReplayDeadLetterOut,
@@ -104,15 +108,27 @@ def _repo(request: Request) -> AgentRepository:
     return request.app.state.repo
 
 
+def _runtime_model_ready(request: Request) -> bool:
+    """运行时模型是否可用：DB 配置算数，env 模型要求环境里确实有 key。"""
+    if getattr(request.app.state, "model_name", None) is None:
+        return False
+    if getattr(request.app.state, "model_source", "none") == "db":
+        return True
+    settings: Settings = request.app.state.settings
+    return settings.model_configured
+
+
 @router.get("/healthz", response_model=HealthOut)
 async def healthz(request: Request) -> HealthOut:
     settings: Settings = request.app.state.settings
     gateway = request.app.state.gateway
+    model_name = getattr(request.app.state, "model_name", None)
     return HealthOut(
         status="ok",
         repo=settings.repo_backend,
-        model=settings.llm_model if settings.model_configured else None,
-        model_configured=settings.model_configured,
+        model=model_name,
+        model_configured=_runtime_model_ready(request),
+        model_source=getattr(request.app.state, "model_source", "none"),
         tools=list(gateway.names_for("app")),
         graph_ready=request.app.state.graph is not None,
         auth_mode=settings.auth_mode,
@@ -125,7 +141,6 @@ async def readyz(request: Request) -> JSONResponse:
 
     存储不可用或模型未配置都返回 503，让编排系统不要把流量打进来。
     """
-    settings: Settings = request.app.state.settings
     checks: dict[str, str] = {}
     ready = True
 
@@ -136,7 +151,7 @@ async def readyz(request: Request) -> JSONResponse:
         checks["repo"] = type(exc).__name__
         ready = False
 
-    if settings.model_configured:
+    if _runtime_model_ready(request):
         checks["model"] = "ok"
     else:
         checks["model"] = "not_configured"
@@ -476,6 +491,66 @@ async def session_messages(
 
 # ---------------------------------------------------------------- 管理端（只读）
 admin_log = logging.getLogger("agent.admin")
+
+
+def _model_config(request: Request) -> ModelConfigService:
+    service = getattr(request.app.state, "model_config", None)
+    if service is None:
+        raise InvalidRequest("模型配置服务未启用（进程使用注入模型或关闭了管理端配置）")
+    return service
+
+
+@router.get("/agent/admin/model-config", response_model=ModelConfigOut)
+async def admin_get_model_config(request: Request) -> ModelConfigOut:
+    admin = await _admin_identity(request)
+    view = await _model_config(request).describe()
+    log_event(admin_log, logging.INFO, "admin.access", admin_id=admin.user_id,
+              scope="model_config.read")
+    return ModelConfigOut(**view)
+
+
+@router.put("/agent/admin/model-config", response_model=ModelConfigOut)
+async def admin_save_model_config(
+    payload: ModelConfigIn, request: Request
+) -> ModelConfigOut:
+    """保存并立即生效；api_key 留空表示沿用已保存的 Key。"""
+    admin = await _admin_identity(request)
+    view = await _model_config(request).save(
+        provider=payload.provider,
+        base_url=payload.base_url,
+        model=payload.model,
+        api_key=payload.api_key,
+        enabled=payload.enabled,
+        updated_by=admin.user_id,
+    )
+    log_event(
+        admin_log,
+        logging.INFO,
+        "admin.model_config.update",
+        admin_id=admin.user_id,
+        provider=payload.provider,
+        model=payload.model,
+        enabled=payload.enabled,
+        source=view.get("source"),
+    )
+    return ModelConfigOut(**view)
+
+
+@router.post("/agent/admin/model-config/test", response_model=ModelConfigTestOut)
+async def admin_test_model_config(
+    payload: ModelConfigIn, request: Request
+) -> ModelConfigTestOut:
+    """用当前表单或已保存的 Key 发一次最小请求，不落库、不切换运行时。"""
+    admin = await _admin_identity(request)
+    result = await _model_config(request).test_connection(
+        provider=payload.provider,
+        base_url=payload.base_url,
+        model=payload.model,
+        api_key=payload.api_key,
+    )
+    log_event(admin_log, logging.INFO, "admin.model_config.test", admin_id=admin.user_id,
+              provider=payload.provider, model=payload.model, latency_ms=result["latency_ms"])
+    return ModelConfigTestOut(**result)
 
 
 @router.get("/agent/admin/sessions", response_model=AdminSessionList)

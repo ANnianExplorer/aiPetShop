@@ -35,6 +35,14 @@ class Settings(BaseSettings):
     llm_timeout_s: float = Field(default=30.0, gt=0)
     llm_max_retries: int = Field(default=2, ge=0, le=5)
 
+    # ---- 管理端模型配置 ----
+    # 开启后可用管理端配置覆盖上面的 LLM_*；未配置/禁用时仍回退环境变量
+    model_config_enabled: bool = True
+    # 主密钥；为空时自动生成 model_config_key_file，生产建议用 KMS/Vault 注入
+    config_secret: str = Field(default="", repr=False)
+    model_config_key_file: str = "data/model-config.key"
+    model_config_file: str = "data/model-config.json"
+
     # ---- 业务后端（Java /api/v1）----
     backend_base_url: str = "http://localhost:8080/api/v1"
     backend_timeout_s: float = Field(default=8.0, gt=0)
@@ -124,8 +132,9 @@ class Settings(BaseSettings):
         if self.repo_backend == "mysql" and not self.mysql_dsn:
             raise ValueError("PET_AGENT_REPO_BACKEND=mysql 时必须提供 PET_AGENT_MYSQL_DSN")
         if self.env == "prod":
-            if not self.llm_api_key:
-                raise ValueError("生产环境必须配置 PET_AGENT_LLM_API_KEY")
+            # 允许把 key 只放在管理端配置里；进程可以先启动，/readyz 会等待管理员配置
+            if not self.llm_api_key and not self.model_config_enabled:
+                raise ValueError("生产环境必须配置 PET_AGENT_LLM_API_KEY 或开启管理端模型配置")
             if self.auth_mode == "header":
                 raise ValueError("生产环境禁止 auth_mode=header：不能信任客户端自称的用户 ID")
         return self

@@ -48,6 +48,37 @@ agent.interceptors.response.use(
   },
 )
 
+export interface AdminModelConfig {
+  provider: string
+  base_url: string
+  model: string
+  enabled: boolean
+  source: 'db' | 'env' | 'none'
+  has_api_key: boolean
+  api_key_masked: string
+  updated_by: string | null
+  update_time: string | null
+  fallback: 'env' | 'none'
+  runtime_model: string | null
+  runtime_source: 'db' | 'env' | 'none'
+  error: string | null
+}
+
+export interface AdminModelConfigPayload {
+  provider: string
+  base_url: string
+  model: string
+  api_key: string
+  enabled: boolean
+}
+
+export interface AdminModelConfigTestResult {
+  ok: boolean
+  latency_ms: number
+  model: string
+  provider: string
+}
+
 export interface AdminSessionItem {
   id: string
   user_id: string
@@ -166,6 +197,22 @@ export interface AdminGraph {
   pet_id: string | null
   nodes: GraphNode[]
   edges: GraphEdge[]
+}
+
+export function getAdminModelConfig(): Promise<AdminModelConfig> {
+  return agent.get('/agent/admin/model-config')
+}
+
+export function saveAdminModelConfig(
+  payload: AdminModelConfigPayload,
+): Promise<AdminModelConfig> {
+  return agent.put('/agent/admin/model-config', payload)
+}
+
+export function testAdminModelConfig(
+  payload: AdminModelConfigPayload,
+): Promise<AdminModelConfigTestResult> {
+  return agent.post('/agent/admin/model-config/test', payload)
 }
 
 export function listAdminSessions(params: {

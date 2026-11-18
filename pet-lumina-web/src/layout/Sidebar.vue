@@ -23,6 +23,7 @@ const menuItems = [
   { path: '/agent/graph', icon: 'hub', label: '知识图谱' },
   { path: '/agent/profile', icon: 'pets', label: '宠物画像' },
   { path: '/agent/queue', icon: 'queue', label: '队列运维' },
+  { path: '/agent/model', icon: 'tune', label: '模型配置' },
 ]
 
 const bottomMenuItems = [

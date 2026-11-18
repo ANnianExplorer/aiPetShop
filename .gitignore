@@ -24,6 +24,7 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .venv/
+pytest-of-*/
 
 # Agent 运行时落盘目录（上传文档等）
 backend-agent/data/

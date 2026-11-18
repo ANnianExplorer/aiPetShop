@@ -134,6 +134,12 @@ const routes = [
         meta: { title: '队列运维' },
       },
       {
+        path: 'agent/model',
+        name: 'agentModelConfig',
+        component: () => import('@/views/agent/ModelConfig.vue'),
+        meta: { title: '模型配置' },
+      },
+      {
         path: 'agent/memory',
         name: 'agentMemory',
         component: () => import('@/views/agent/Memory.vue'),
