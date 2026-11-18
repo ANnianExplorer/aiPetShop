@@ -407,7 +407,7 @@ ai-PetShop/
 │   │   ├── llm/                     # ChatModel 协议 / OpenAI 兼容实现 / 脚本化桩
 │   │   ├── core/                    # 错误模型 / ID 生成 / 日志 / 熔断 / 限流 / Redis 客户端
 │   │   └── domain/                  # 领域模型 / 事件 / 意图路由
-│   ├── tests/                       # 245 项契约级测试 + 本地桩（Java / LLM）
+│   ├── tests/                       # 249 项契约级测试 + 本地桩（Java / LLM）
 │   ├── evals/                       # 69 条评测用例（routing 15 / safety 6 / memory 48）+ 三套阈值门禁
 │   ├── scripts/                     # 9 个真进程冒烟脚本（含多副本）
 │   ├── Dockerfile                   # 多阶段构建 + 非 root
@@ -454,6 +454,7 @@ $env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:yourpwd@127.0.0.1:3306/petlumina"
 ```bash
 cd pet-lumina-app && npm run build && npm test    # vue-tsc + vitest（155 例：SSE / 聊天流 / 断线重连 / 引用回跳 / 我的记忆 / 分类 / 提醒日期 / 桌宠引擎（编排·物理·渲染·外壳）/ 图像生成管线）
 cd pet-lumina-web && npm run typecheck && npm run build   # 管理端 vue-tsc -b（真检查，不是空转）
+cd pet-lumina-app && powershell -NoProfile -ExecutionPolicy Bypass -File scripts/e2e-stack.ps1   # Playwright + 系统 Edge，三条 e2e
 
 cd backend && mvn test                            # 后端单测 27 例（仪表盘/排序/验证码/用户管理/发帖话题）
 ```
@@ -485,8 +486,9 @@ cd backend && mvn test                            # 后端单测 27 例（仪表
 - 提示词版本化（S1.28）：`SYSTEM_PROMPT` 从 `nodes.py` 的字面量搬到 `app/graph/prompts.py` 的版本登记表（当前 `2026-11-15.1`，270 字）+ 手写冻结 sha256——原地改正文会让单测红；每轮 run 的 assistant `meta` 与 `run finished` 日志都带 `prompt_version`，回答风格变了能对上是哪一版
 - 记忆入口（S1.30）：App 个人中心 →「我的记忆」（`/my-memory`），把「通用 + 每只宠物」的事实并发拉取后合并展示，支持范围筛选、单条删除（二次确认）与聚合导出 JSON——B7 的后端能力终于有了用户入口
 - 容量上限（S1.31）：单实例 30–150 并发分级压测（每档 300 请求），140 并发首 token P95 2994ms 达标、150 并发两次 3100/3202ms 超限（错误率 0%）；顺带修掉 `--requests < 最大档位` 时并发被封顶的压测协议缺陷
-- 文档体系：9 条 ADR、2 份 SPEC、1 份 SDD、20 份 PLAN、31 份 REPORT（见 `docs/README.md`）
-- 验收：248 passed + 1 skipped（未开 DSN）、69 条评测（routing 15 / safety 6 / memory 48）、9 个真进程冒烟（10/9/6/8/8/10/11/8 + `reconnect_smoke` 5/5）+ 真实模型冒烟 13/13（L1 P50 929 ms / P95 1064 ms）、App 155 tests + `vue-tsc` 0 + build 0、`ruff` 全绿
+- 浏览器 e2e（S1.32）：Playwright + 系统 Edge + 固定桩，`scripts/e2e-stack.ps1` 一条命令起停五个进程；三条真实链路（App 登录→对话→引用回跳、管理员会话详情、429 提示+重试）3/3 通过，22.2s
+- 文档体系：9 条 ADR、2 份 SPEC、1 份 SDD、21 份 PLAN、32 份 REPORT（见 `docs/README.md`）
+- 验收：248 passed + 1 skipped（未开 DSN）、69 条评测（routing 15 / safety 6 / memory 48）、9 个真进程冒烟（10/9/6/8/8/10/11/8 + `reconnect_smoke` 5/5）+ 真实模型冒烟 13/13（L1 P50 929 ms / P95 1064 ms）、App 155 tests + `vue-tsc` 0 + build 0、浏览器 e2e 3/3、`ruff` 全绿
 
 ### v2.7 (2026-06-03)
 

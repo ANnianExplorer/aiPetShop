@@ -366,7 +366,7 @@ onBeforeUnmount(() => {
           </div>
         </div>
 
-        <div v-else class="flex justify-start">
+        <div v-else class="flex justify-start" data-testid="chat-assistant">
           <div class="max-w-[85%] space-y-2">
             <div class="glass-card rounded-3xl rounded-bl-lg px-4 py-3">
               <p v-if="bubble.content" class="whitespace-pre-wrap text-sm leading-relaxed text-on-surface">
@@ -391,6 +391,7 @@ onBeforeUnmount(() => {
                 <button
                   v-for="citation in bubble.citations"
                   :key="`${citation.kind}-${citation.id}`"
+                  data-testid="chat-citation"
                   class="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-1 text-[11px] text-primary active:scale-95"
                   @click="openCitation(citation)"
                 >
@@ -412,9 +413,9 @@ onBeforeUnmount(() => {
         <p>{{ t('chat.reconnecting', { n: retryAttempt }) }}</p>
       </div>
 
-      <div v-if="lastError" class="rounded-2xl bg-error/10 px-4 py-3 text-sm text-error">
+      <div v-if="lastError" data-testid="chat-error" class="rounded-2xl bg-error/10 px-4 py-3 text-sm text-error">
         <p>{{ lastError }}</p>
-        <button class="mt-2 font-label-bold text-primary" @click="retry">{{ t('chat.retry') }}</button>
+        <button data-testid="chat-retry" class="mt-2 font-label-bold text-primary" @click="retry">{{ t('chat.retry') }}</button>
       </div>
     </main>
 
@@ -439,12 +440,14 @@ onBeforeUnmount(() => {
         <textarea
           ref="input"
           v-model="draft"
+          data-testid="chat-input"
           rows="1"
           :placeholder="t('chat.placeholder')"
           class="max-h-32 flex-1 resize-none rounded-2xl bg-surface-container-low px-4 py-3 text-sm text-on-surface outline-none placeholder:text-on-surface-variant/60"
           @keydown="onKeydown"
         />
         <button
+          data-testid="chat-send"
           class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full transition-transform active:scale-90"
           :class="canSend ? 'bg-primary text-on-primary' : 'bg-surface-container-high text-on-surface-variant/50'"
           :disabled="!canSend"

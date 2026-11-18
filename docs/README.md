@@ -80,6 +80,7 @@
 | [plans/s1.29-capacity-baseline.md](plans/s1.29-capacity-baseline.md) | S1.29 单实例容量基线：SSE 压测脚本 + 1/5/10/20 并发实测首 token/错误率/内存（C7） | 已完成 |
 | [plans/s1.30-app-memory-entry.md](plans/s1.30-app-memory-entry.md) | S1.30 App「我的记忆」：按范围拉取合并 / 单条删除 / 聚合导出（B7 收尾） | 已完成 |
 | [plans/s1.31-capacity-ceiling.md](plans/s1.31-capacity-ceiling.md) | S1.31 单实例容量上限：修正 requests&lt;level 的并发封顶缺陷，扫 30–150 并发（C7） | 已完成 |
+| [plans/s1.32-browser-e2e.md](plans/s1.32-browser-e2e.md) | S1.32 浏览器 e2e：Playwright + 系统 Edge + 固定桩，三条真实链路一键跑（C9） | 已完成 |
 
 ### REPORT
 
@@ -116,6 +117,7 @@
 | [reports/2026-11-16-s1.29-capacity-baseline.md](reports/2026-11-16-s1.29-capacity-baseline.md) | S1.29 单实例容量基线（C7） | 新增 `scripts/load_baseline.py`（无新依赖、逐档重启、SSE 首 delta 计时）；20 并发 × 40 请求 **40/40 成功**、首 token P50 1151 / P95 1201ms（桩 900ms → 服务侧开销 301ms）、峰值工作集 97MB；**上限未触到**（20 并发是下界）；`pytest` 244 通过 + 1 跳过（不带 DSN）/ 256 通过（带真机 DSN）、`e2e_smoke` 10/10、`ruff` 全绿；抓到桩 `time.sleep` 阻塞事件循环与 venv 瘦启动器量错内存两个真问题 |
 | [reports/2026-11-17-s1.30-app-memory.md](reports/2026-11-17-s1.30-app-memory.md) | S1.30 App「我的记忆」入口（B7 收尾） | 个人中心新增 `/my-memory`：通用+每宠并发拉取合并、范围筛选、二次确认删除、聚合导出 JSON；App 14 条新测试 → 全量 **155 tests**、`vue-tsc` 0、build 0、后端 `pytest` 244 passed + 1 skipped（未开 DSN）；**未做真机浏览器点击**（无浏览器环境），真机验收归入 C9 |
 | [reports/2026-11-17-s1.31-capacity-ceiling.md](reports/2026-11-17-s1.31-capacity-ceiling.md) | S1.31 单实例容量上限（C7 收尾） | 每档 300 请求扫 30–150 并发：140 并发首 token P95 2994ms 达标、150 两次 3100/3202ms 超限（错误率 0%）；修复 `--requests` < 最大档位导致并发被封顶的协议缺陷（新增 4 条单测），`pytest` **248 passed + 1 skipped** |
+| [reports/2026-11-18-s1.32-browser-e2e.md](reports/2026-11-18-s1.32-browser-e2e.md) | S1.32 浏览器 e2e（C9） | Playwright + 系统 Edge + 固定桩，一条命令起停五进程；三条真实链路 **3 passed (22.2s)**：App 登录→对话→引用回跳、管理员会话详情、429 提示+重试；App 155 tests + `vue-tsc` 0 + build 0，后端 `pytest` 249 例（248 通过 + 1 跳过，未开 DSN） |
 
 ## 3. 新增文档怎么起头
 

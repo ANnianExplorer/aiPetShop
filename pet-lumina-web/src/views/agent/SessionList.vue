@@ -112,7 +112,7 @@ onMounted(() => {
         <span class="ml-auto text-xs text-on-surface-variant">共 {{ total }} 个会话</span>
       </div>
 
-      <el-table :data="rows" v-loading="loading" row-key="id" @row-click="openDetail">
+      <el-table :data="rows" v-loading="loading" row-key="id" data-testid="admin-session-table" @row-click="openDetail">
         <el-table-column prop="id" label="会话 ID" width="220" show-overflow-tooltip />
         <el-table-column prop="user_id" label="用户 ID" width="120" />
         <el-table-column prop="title" label="标题" min-width="200" show-overflow-tooltip />
@@ -121,7 +121,7 @@ onMounted(() => {
         <el-table-column prop="create_time" label="创建时间" width="200" />
         <el-table-column label="操作" width="100">
           <template #default="{ row }">
-            <el-button link type="primary" @click.stop="openDetail(row)">查看</el-button>
+            <el-button link type="primary" data-testid="admin-session-open" @click.stop="openDetail(row)">查看</el-button>
           </template>
         </el-table-column>
         <template #empty>

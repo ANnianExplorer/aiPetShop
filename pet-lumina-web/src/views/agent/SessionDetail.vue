@@ -62,7 +62,7 @@ onMounted(load)
 </script>
 
 <template>
-  <div class="space-y-6">
+  <div class="space-y-6" data-testid="admin-session-detail">
     <div class="flex items-center gap-4">
       <el-button circle @click="router.back()">
         <span class="material-symbols-outlined">arrow_back</span>
@@ -108,6 +108,7 @@ onMounted(load)
               <div
                 v-for="message in detail.messages"
                 :key="message.id"
+                data-testid="admin-message"
                 class="rounded-2xl p-4"
                 :class="message.role === 'user' ? 'bg-primary-container/15' : 'bg-white/60'"
               >

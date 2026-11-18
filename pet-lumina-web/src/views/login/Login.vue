@@ -53,6 +53,7 @@ const handleLogin = async () => {
                 v-model="phone"
                 type="tel"
                 placeholder="请输入手机号"
+                data-testid="admin-login-phone"
                 class="w-full pl-12 pr-4 py-4 rounded-2xl bg-white/15 backdrop-blur-[10px] border border-white/30 text-on-surface placeholder-slate-400 focus:border-primary-container focus:ring-2 focus:ring-primary-container/30 outline-none transition-all"
               />
             </div>
@@ -67,6 +68,7 @@ const handleLogin = async () => {
                 type="password"
                 autocomplete="current-password"
                 placeholder="请输入密码"
+                data-testid="admin-login-password"
                 @keyup.enter="handleLogin"
                 class="w-full pl-12 pr-12 py-4 rounded-2xl bg-white/15 backdrop-blur-[10px] border border-white/30 text-on-surface placeholder-slate-400 focus:border-primary-container focus:ring-2 focus:ring-primary-container/30 outline-none transition-all"
               />
@@ -80,6 +82,7 @@ const handleLogin = async () => {
           <button
             type="submit"
             :disabled="loading"
+            data-testid="admin-login-submit"
             class="w-full py-4 rounded-2xl bg-primary-container text-white font-[Plus_Jakarta_Sans] font-bold text-sm shadow-[0_10px_25px_-5px_rgba(109,175,146,0.4)] hover:shadow-[0_15px_30px_-5px_rgba(109,175,146,0.6)] hover:scale-[1.02] active:scale-95 transition-all duration-300 disabled:opacity-50 disabled:cursor-not-allowed"
           >
             <span v-if="loading" class="material-symbols-outlined animate-spin text-lg mr-2">refresh</span>

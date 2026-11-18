@@ -77,6 +77,7 @@ const goToResetPassword = () => {
             <input
               v-model="phone"
               type="text"
+              data-testid="login-phone"
               class="glass-input w-full h-12 pl-12 pr-md rounded-xl font-body-md text-body-md placeholder-outline"
               :placeholder="t('auth.phonePlaceholder')"
             />
@@ -90,6 +91,7 @@ const goToResetPassword = () => {
             <input
               v-model="password"
               :type="showPassword ? 'text' : 'password'"
+              data-testid="login-password"
               class="glass-input w-full h-12 pl-12 pr-12 rounded-xl font-body-md text-body-md placeholder-outline"
               :placeholder="t('auth.passwordPlaceholder')"
             />
@@ -117,6 +119,7 @@ const goToResetPassword = () => {
           <button
             type="submit"
             :disabled="loading"
+            data-testid="login-submit"
             class="w-full h-12 bg-primary text-on-primary font-title-sm text-title-sm rounded-full shadow-lg shadow-primary/25 btn-jelly disabled:opacity-60"
           >
             {{ loading ? t('auth.loggingIn') : t('auth.loginNow') }}
