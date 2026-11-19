@@ -231,6 +231,34 @@ async def test_memory_consumer_writes_fact() -> None:
     assert {fact.key for fact in facts} == {"pet_name", "allergy"}
 
 
+async def test_memory_consumer_writes_episode_with_source_message() -> None:
+    repo = InMemoryRepository()
+    memory = MemoryService(repo)
+    handlers = build_handlers(memory, repo)
+    message = TaskMessage(
+        id="1794027476119000002",
+        topic=TOPIC_MEMORY_OBSERVE,
+        key="1001:r2",
+        payload={
+            "user_id": "1001",
+            "pet_id": None,
+            "text": "上周给豆豆洗澡了",
+            "session_id": "77",
+            "message_id": "9001",
+            "run_id": "r2",
+        },
+    )
+
+    await handlers[TOPIC_MEMORY_OBSERVE](message)
+    await handlers[TOPIC_MEMORY_OBSERVE](message)  # 队列重复投递
+
+    episodes = await repo.list_memory_episodes("1001", None)
+    assert len(episodes) == 1
+    assert episodes[0].kind == "bath"
+    assert episodes[0].session_id == "77"
+    assert episodes[0].source_message_id == "9001"
+
+
 async def test_audit_consumer_is_idempotent_on_duplicate_delivery() -> None:
     repo = InMemoryRepository()
     memory = MemoryService(repo)

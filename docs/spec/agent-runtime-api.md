@@ -1,7 +1,7 @@
-# 规格：Agent Runtime HTTP/SSE 契约 v1.14
+# 规格：Agent Runtime HTTP/SSE 契约 v1.17
 
 - 状态：Frozen（实现已按此验收；破坏性变更需升 v2）
-- 日期：2026-11-08（v1.11 增宠物画像与 I33–I36；v1.10 管理端队列/记忆/图谱与 I30–I32；v1.9 记忆删除导出与 `/metrics`；v1.8 文档问答与 I23–I26；v1.7 App 会话列表与 I22；v1.6 队列运维接口；v1.5 记忆最终一致；v1.4 幂等与熔断；v1.3 管理端）
+- 日期：2026-11-19（v1.17 增情景往事与导出 v2；v1.16 提示词版本化；v1.15 记忆评测；v1.14 引用回跳；v1.13 断线续传；v1.12 退避重试；v1.11 宠物画像与 I33–I36；v1.10 管理端队列/记忆/图谱与 I30–I32；v1.9 记忆删除导出与 `/metrics`；v1.8 文档问答与 I23–I26；v1.7 App 会话列表与 I22；v1.6 队列运维接口；v1.5 记忆最终一致；v1.4 幂等与熔断；v1.3 管理端）
 - 实现：`backend-agent/app/api/`
 - 关联：[SDD](../sdd/pet-agent-sdd.md) · [ADR-0003](../adr/0003-sse-event-contract.md)
 
@@ -208,6 +208,34 @@ data: {"text":"9月1日打过疫苗，"}
 
 > **一致性**：`PET_AGENT_TASK_BACKEND=memory|redis` 时，记忆写入走旁路任务队列，本接口是**最终一致**（通常亚秒级，崩溃重试时更久）。`off` 时写入在响应前完成。客户端不要"写完立刻断言可见"，验收脚本要轮询（见 `scripts/p1_smoke.py` 的 `wait_for_facts`）。
 
+### 6.1.1 情景往事（v1.17 / BACKLOG C1）
+
+用户说过的「已经发生的事」单独存成情景，用于回答「上次洗澡是什么时候」这类问题。与 6.1 的事实记忆互补：事实是「它是什么样」，情景是「发生过什么」。
+
+| 方法 | 路径 | 说明 |
+| --- | --- | --- |
+| GET | `/agent/memory/me/episodes?pet_id=&limit=` | 本人（可限定宠物）的往事，按 `occurred_at DESC, create_time DESC`；`limit` 1–50，默认 20 |
+| DELETE | `/agent/memory/me/episodes/{episode_id}?pet_id=` | 删除本人一条往事；不存在/不属于本人 → `404 not_found` |
+
+200（列表）：
+
+```json
+{ "pet_id": null, "episodes": [
+  { "id": "1794025553768000003", "kind": "bath", "label": "洗澡",
+    "summary": "上周给豆豆洗澡了", "occurred_at": "2026-11-12 00:00:00",
+    "source_message_id": "1794025553768000001", "session_id": "1794025553768000000",
+    "create_time": "2026-11-19 22:05:00" }
+] }
+```
+
+约定：
+
+1. **一条用户消息最多一个情景**；`source_message_id` 是写入它的那条用户消息，`(user_id, source_message_id)` 唯一，队列重复投递不会写两行。
+2. **只记已发生的事**：问句、否定句、习惯句不记；没有时间词时必须有「了/过/刚/已经」等完成标记。相对时间（上周/上个月/N 天前）按自然日近似，`occurred_at` 只精确到日。
+3. **召回是确定性规则**：事件类型命中 + 中文字符重叠 + 90 天新鲜度，阈值 0.50（类型必须命中），最多注入 3 条；没有向量库，语义改写召回不了。
+4. **注入位置是 system prompt**：在事实块之后追加「与这次问题相关的往事」，每行带日期、类型、原话与来源消息 id；召回失败降级为不注入。
+5. **导出升 v2**：`GET /agent/memory/me/export` 返回 `{version:2, ..., facts:[...], episodes:[...]}`；v1 消费方可忽略新字段。
+
 ## 6.2 `GET /agent/usage/me`
 
 | 参数 | 默认 | 约束 |
@@ -281,7 +309,7 @@ App 的历史入口。只返回 **token 解析出的本人**会话，不接受 `
 | 方法 | 路径 | 说明 |
 | --- | --- | --- |
 | DELETE | `/agent/memory/me?key=&pet_id=` | 删除本人一条事实（物理删除）；不存在返回 `404 not_found` |
-| GET | `/agent/memory/me/export?pet_id=` | 导出本人全部事实：`{version:1, exported_at, pet_id, facts:[...]}` |
+| GET | `/agent/memory/me/export?pet_id=` | 导出本人全部事实与往事：`{version:2, exported_at, pet_id, facts:[...], episodes:[...]}` |
 | GET | `/metrics` | Prometheus 文本（`text/plain; version=0.0.4`），**不加鉴权**，不含任何用户内容 |
 
 约定：
@@ -416,6 +444,8 @@ meta        { factWatermark, builtAt }
 | I41 | `?follow=1` 从任意 `after` 续传时事件 id 严格递增、不重不漏，末尾必是终止事件 | `test_reconnect.py::test_follow_returns_events_after_cursor`、`test_follow_waits_for_running_run` |
 | I42 | 不带 `follow` 的 `/events` 仍是快照语义；幂等回放路径原样转发、不接管成跟随 | `test_reconnect.py::test_snapshot_stays_snapshot_without_follow`、`test_idempotent_replay_still_forwards` |
 | I43 | `citations[].locator` 是 App 内路由（`/` 开头），前端据此跳转；`doc` 例外（文档内定位串） | `test_citations.py::test_every_locator_is_an_app_route`、`citationRoute.spec.ts` |
+| I44 | 情景按 `(user_id, source_message_id)` 幂等；同一消息重复投递只一行，不同用户/宠物互不可见 | `test_memory_episodes.py::test_record_episode_is_idempotent_by_source_message`、`test_repository_contract.py::test_memory_episode_dedupes_by_source_message` |
+| I45 | 回忆往事必须带发生日期与来源消息 id，且只注入类型命中的情景；问句/否定/习惯不写入 | `test_api.py::test_conversation_recalls_episode_with_source_message_id`、`test_memory_episodes.py::test_episode_lines_recall_matching_event_only` |
 
 ## 8. 验收用例（可执行）
 
@@ -423,7 +453,7 @@ meta        { factWatermark, builtAt }
 cd backend-agent
 # 含真机仓储契约测试（需要 DSN，否则跳过 mysql 变体）
 $env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:<本机口令>@127.0.0.1:3306/petlumina"
-.\.venv\Scripts\python -m pytest              # 245 项（含真机 MySQL 契约；不带 DSN 为 244 passed + 1 skipped）
+.\.venv\Scripts\python -m pytest              # 283 passed + 1 skipped（未开 DSN；开 DSN 另跑 MySQL 契约变体）
 .\.venv\Scripts\python -m evals.run           # routing 15/15, safety 6/6, memory 48/48
 .\.venv\Scripts\python -m scripts.e2e_smoke       # 10/10
 .\.venv\Scripts\python -m scripts.p1_smoke        # 9/9（配额/用量/记忆）
@@ -457,3 +487,4 @@ $env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:<本机口令>@127.0.0.1:3306/petl
 | v1.14 | 2026-11-14 | `citations[].locator` 明确为 App 内路由（`/pet-detail`、`/log`、`/post`、`/weekly-health-detail?petId=&date=`），新增只读工具 `search_posts` 提供帖子引用来源；增 I43；验收 216 passed + 1 skipped、App 141 tests、`e2e_smoke` 10/10（BACKLOG C4 / S1.25） |
 | v1.15 | 2026-11-15 | memory 评测 2→48 条（`text`/`observe`/`turns` 三种用例形状），阈值 1.0→0.9，失败 note 区分 `wrong`/`extra`/`forbid_leaked`；抽取规则修 5 类缺陷；验收 221 passed + 1 skipped、`memory 48/48`（BACKLOG C3 / S1.27） |
 | v1.16 | 2026-11-15 | **无接口变更**（本轮不动任何 HTTP/SSE 形状）：系统提示词改为版本登记表 + 冻结哈希，`prompt_version` 只进 `agent_message.meta` 与 `run finished` 日志；验收 228 passed + 1 skipped、`evals` 69 条全绿（BACKLOG D6 / S1.28） |
+| v1.17 | 2026-11-19 | 增 6.1.1 情景往事（`GET/DELETE /agent/memory/me/episodes`）、导出升 v2 并含 `episodes`、I44–I45；验收 283 passed + 1 skipped（未开 DSN）（BACKLOG C1 / S1.34） |

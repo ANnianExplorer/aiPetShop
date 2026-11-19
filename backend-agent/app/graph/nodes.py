@@ -66,6 +66,12 @@ def make_nodes(
             system += "\n\n这只宠物的画像摘要（长期风险与待办，回答相关问题时优先考虑）：\n" + "\n".join(
                 f"- {line}" for line in profile_lines
             )
+        episode_lines = list(state.get("episode_lines") or [])
+        if episode_lines:
+            # 往事带日期和原消息 id：模型可以回答「上周」这类相对时间，也方便用户核对
+            system += "\n\n与这次问题相关的往事（按发生时间，来源消息 id 供核对）：\n" + "\n".join(
+                episode_lines
+            )
         messages: list[dict[str, Any]] = [{"role": "system", "content": system}]
         messages.extend(state.get("history") or [])
         messages.append({"role": "user", "content": state["question"]})

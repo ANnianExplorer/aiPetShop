@@ -216,6 +216,9 @@ class AgentRunner:
 
             history = await self._repo.history(session.id, self._settings.history_limit)
             memory_lines = await self._recall(caller.user_id, cmd.pet_id)
+            episode_lines = await self._episode_recall(
+                caller.user_id, cmd.pet_id, cmd.message
+            )
             user_message = await self._repo.add_message(
                 Message(id="", session_id=session.id, role=Role.USER, content=cmd.message)
             )
@@ -261,6 +264,7 @@ class AgentRunner:
                 channel=cmd.channel,
                 msg_chars=len(cmd.message),
                 memory_facts=len(memory_lines),
+                memory_episodes=len(episode_lines),
             )
 
             yield await self._record(
@@ -286,6 +290,7 @@ class AgentRunner:
                 "run_id": run_id,
                 "history": history,
                 "memory_lines": memory_lines,
+                "episode_lines": episode_lines,
                 "profile_lines": await self._profile_context(caller.user_id, cmd.pet_id),
                 "citations": [],
                 "hops": 0,
@@ -362,6 +367,7 @@ class AgentRunner:
                         "model": model.name,
                         "prompt_version": PROMPT_VERSION,
                         "memory_facts": len(memory_lines),
+                        "memory_episodes": len(episode_lines),
                     },
                 )
             )
@@ -386,7 +392,14 @@ class AgentRunner:
                 latency_ms=latency_ms,
             )
 
-            await self._observe(caller.user_id, cmd.pet_id, cmd.message, run_id=run_id)
+            await self._observe(
+                caller.user_id,
+                cmd.pet_id,
+                cmd.message,
+                session_id=session.id,
+                message_id=user_message.id,
+                run_id=run_id,
+            )
 
             yield await self._record(
                 run_id,
@@ -494,8 +507,31 @@ class AgentRunner:
             log_event(memory_log, logging.WARNING, "memory recall failed", error=type(exc).__name__)
             return []
 
+    async def _episode_recall(
+        self, user_id: str, pet_id: str | None, question: str
+    ) -> list[str]:
+        if self._memory is None:
+            return []
+        try:
+            return await self._memory.episode_lines(user_id, pet_id, question)
+        except Exception as exc:  # 情景召回不可用不影响对话
+            log_event(
+                memory_log,
+                logging.WARNING,
+                "episode recall failed",
+                error=type(exc).__name__,
+            )
+            return []
+
     async def _observe(
-        self, user_id: str, pet_id: str | None, text: str, *, run_id: str | None = None
+        self,
+        user_id: str,
+        pet_id: str | None,
+        text: str,
+        *,
+        session_id: str | None = None,
+        message_id: str | None = None,
+        run_id: str | None = None,
     ) -> None:
         """记忆写入走旁路队列：不占响应时间；队列不可用时退回同步，绝不丢。"""
         if self._memory is None:
@@ -505,13 +541,29 @@ class AgentRunner:
                 await self._tasks.publish(
                     "agent.memory.observe",
                     key=f"{user_id}:{run_id or ''}",
-                    payload={"user_id": user_id, "pet_id": pet_id, "text": text},
+                    payload={
+                        "user_id": user_id,
+                        "pet_id": pet_id,
+                        "text": text,
+                        "session_id": session_id,
+                        "message_id": message_id,
+                        "run_id": run_id,
+                    },
                 )
                 return
             except TaskQueueFull:
                 log_event(memory_log, logging.WARNING, "task queue full, memory inline")
         with contextlib.suppress(Exception):
             await self._memory.observe(user_id, pet_id, text)
+        with contextlib.suppress(Exception):
+            await self._memory.record_episode(
+                user_id,
+                pet_id,
+                text,
+                session_id=session_id,
+                message_id=message_id,
+                run_id=run_id,
+            )
 
     async def _profile_context(self, user_id: str, pet_id: str | None) -> list[str]:
         """画像只贡献「风险 / 待办」两行；没有画像或读失败都不影响对话。"""

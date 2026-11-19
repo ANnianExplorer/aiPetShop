@@ -170,3 +170,101 @@ async def test_memory_fact_is_scoped_by_pet_and_user(repo: AgentRepository) -> N
     assert [f.value for f in await repo.list_memory_facts("1002", "5001")] == ["C"]
     assert await repo.get_memory_fact("1001", "5001", "allergy") is not None
     assert await repo.get_memory_fact("1001", "5001", "missing") is None
+
+
+# ---------------------------------------------------------------- 情景记忆（两套实现同一套断言）
+
+async def test_memory_episode_dedupes_by_source_message(repo: AgentRepository) -> None:
+    from app.domain.models import MemoryEpisode
+
+    first = await repo.add_memory_episode(
+        MemoryEpisode(
+            id="",
+            user_id="1001",
+            pet_id="5001",
+            session_id="11",
+            source_message_id="9001",
+            kind="bath",
+            summary="上周给豆豆洗澡了",
+            occurred_at="2026-11-12 00:00:00",
+            detail={"time_word": "上周"},
+        )
+    )
+    second = await repo.add_memory_episode(
+        MemoryEpisode(
+            id="",
+            user_id="1001",
+            pet_id="5001",
+            source_message_id="9001",
+            kind="bath",
+            summary="上周给豆豆洗澡了",
+            occurred_at="2026-11-12 00:00:00",
+        )
+    )
+    assert first.id and second.id == first.id
+    assert first.detail.get("time_word") == "上周"
+    assert len(await repo.list_memory_episodes("1001", "5001")) == 1
+
+
+async def test_memory_episode_is_scoped_and_deletable(repo: AgentRepository) -> None:
+    from app.domain.models import MemoryEpisode
+
+    mine = await repo.add_memory_episode(
+        MemoryEpisode(
+            id="",
+            user_id="1001",
+            pet_id="5001",
+            source_message_id="9001",
+            kind="bath",
+            summary="洗澡",
+            occurred_at="2026-11-12 00:00:00",
+        )
+    )
+    await repo.add_memory_episode(
+        MemoryEpisode(
+            id="",
+            user_id="1001",
+            pet_id="5002",
+            source_message_id="9002",
+            kind="bath",
+            summary="别的宠物",
+            occurred_at="2026-11-13 00:00:00",
+        )
+    )
+    await repo.add_memory_episode(
+        MemoryEpisode(
+            id="",
+            user_id="1002",
+            pet_id="5001",
+            source_message_id="9003",
+            kind="bath",
+            summary="别的用户",
+            occurred_at="2026-11-14 00:00:00",
+        )
+    )
+
+    listed = await repo.list_memory_episodes("1001", "5001")
+    assert [episode.summary for episode in listed] == ["洗澡"]
+    assert await repo.delete_memory_episode("1002", "5001", mine.id) is False
+    assert await repo.delete_memory_episode("1001", "5002", mine.id) is False
+    assert await repo.delete_memory_episode("1001", "5001", mine.id) is True
+    assert await repo.delete_memory_episode("1001", "5001", mine.id) is False
+    assert await repo.list_memory_episodes("1001", "5001") == []
+
+
+async def test_memory_episode_without_source_is_not_deduped(repo: AgentRepository) -> None:
+    from app.domain.models import MemoryEpisode
+
+    for summary in ("第一次", "第二次"):
+        await repo.add_memory_episode(
+            MemoryEpisode(
+                id="",
+                user_id="1001",
+                pet_id=None,
+                source_message_id=None,
+                kind="vet",
+                summary=summary,
+                occurred_at="2026-11-12 00:00:00",
+            )
+        )
+    assert len(await repo.list_memory_episodes("1001", None)) == 2

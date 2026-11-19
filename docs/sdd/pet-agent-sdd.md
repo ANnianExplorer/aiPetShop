@@ -102,7 +102,7 @@ sequenceDiagram
 | `agent_step` | `id`, `run_id`, `seq`, `kind`, `name`, `status`, `latency_ms`, `error` | `(run_id, seq)` 连续 |
 | `tool_call_log` | `id`, `run_id`, `tool_name`, `args_digest`, `ok`, `error_code`, `latency_ms` | 只存 sha256 前 16 位摘要，不存原文 |
 | `memory_fact` | `id`, `user_id`, `pet_id`, `fact_key`, `fact_value`, `confidence`, `source` | 唯一键 `(user_id, pet_id, fact_key)`；`pet_id=0` 表示无宠物维度 |
-| `memory_episode` | `id`, `user_id`, `pet_id`, `session_id`, `summary`, `detail`, `occurred_at`, `embedding_id` | 表内不存向量，只存向量库 ID |
+| `memory_episode` | `id`, `user_id`, `pet_id`, `session_id`, `kind`, `source_message_id`, `summary`, `detail`, `occurred_at` | 一条用户消息最多一个情景；唯一键 `(user_id, source_message_id)` 保证重复投递幂等；不存向量 |
 
 ID：19 位雪花（毫秒 13 + 节点 2 + 序号 4），对外一律字符串，对齐 Java 的 `Long → String` 序列化。
 
@@ -200,9 +200,10 @@ cd ..\pet-lumina-app; npm run dev
 | 事件总线 | `app/runtime/eventlog.py` | `EventStore` 协议两实现：内存（capacity 截断 + ttl 清理）与 Redis Stream（`INCR` 序号 → `XADD maxlen` → `EXPIRE`，读 `XRANGE`，坏 payload 跳过）；`after`/`Last-Event-ID` 语义两实现完全一致 |
 | 记忆写入 | `app/memory/extract.py` + `ops.py` | 规则抽取（名字/年龄/体重/过敏/忌口/爱吃/疫苗）+ 置信度阈值；`ADD/UPDATE/NOOP` 三态，重复同一句话不产生第二条 |
 | 记忆召回 | `app/memory/service.py` | 召回低置信度过滤后拼成 `标签：值` 进 system 提示；**不伪造 user 消息**；召回/写入异常一律吞掉，降级为无记忆 |
+| 情景写入/召回 | `app/memory/episodes.py` + `service.py` | 规则抽取「已发生的事」（事件类型 + 相对时间 + 来源消息 id）；召回按事件类型命中 + 字符重叠 + 新鲜度打分，阈值 0.50，最多 3 条注入 system；问句/否定/习惯不写 |
 | 用量 | `storage.usage_summary` | 只统计 `succeeded`，按 `agent_session.user_id` 归属，`AVG(latency_ms)` |
 
-记忆不进向量的边界：`memory_episode` 只存摘要与向量 ID，检索走外部向量库（S2）；事实记忆用精确键查询，不用语义检索——记错比记不住更贵。
+记忆不进向量的边界：`memory_episode` 只存摘要与来源消息 id，检索用本地确定性规则（事件类型 + 字符重叠 + 新鲜度）；向量库语义检索仍留给 S2，事实记忆继续用精确键查询——记错比记不住更贵。
 
 ### 8.4 管理端只读接入（S1.7）
 
@@ -369,7 +370,7 @@ cd ..\pet-lumina-app; npm run dev
 ## 11. 非目标（S1.5 明确不做）
 
 - 多 Agent 协作 / 子图编排（当前单 Agent 足够覆盖 L1+L2）；
-- 长期记忆表（`memory_fact` / `memory_episode`）与画像抽取 —— S2；
+- 长期记忆的向量检索与语义召回 —— S2（事实记忆已由 S1.6、情景记忆已由 S1.34 交付规则版）；
 - 文档/图片/视频 RAG —— S3；
 - 写操作真执行（现在只回 `proposal`）—— 需产品确认审批链路；
 - 管理端工作台、Langfuse 追踪、桌宠 —— 后续里程碑。

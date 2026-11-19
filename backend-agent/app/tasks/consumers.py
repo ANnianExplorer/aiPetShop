@@ -1,7 +1,8 @@
 """旁路任务的消费者实现。
 
 四个 topic、四条幂等规则：
-- `agent.memory.observe`：记忆写入本身按 `(user, pet, key)` upsert，重复消费无害；
+- `agent.memory.observe`：事实按 `(user, pet, key)` upsert、情景按 `(user, source_message_id)` 去重，
+  重复消费无害；
 - `agent.audit.tool`：消息 id 直接当 `tool_call_log.id`，重复消费撞主键被忽略；
 - `agent.doc.ingest`：文档状态机幂等（ready 的文档重复消费直接跳过）；
 - `agent.profile.refresh`：重算得到的是「事实的当前快照」，重复消费只会多一个版本。
@@ -44,9 +45,21 @@ def build_handlers(
             raise ValueError("memory.observe 缺少 user_id/text")
         pet_id = payload.get("pet_id")
         slot = str(pet_id) if pet_id else None
+        session_id = payload.get("session_id")
+        message_id = payload.get("message_id")
+        run_id = payload.get("run_id")
         facts = await memory.observe(user_id, slot, text)
+        episode = await memory.record_episode(
+            user_id,
+            slot,
+            text,
+            session_id=str(session_id) if session_id else None,
+            message_id=str(message_id) if message_id else None,
+            run_id=str(run_id) if run_id else None,
+        )
         log_event(task_log, logging.INFO, "task memory observed",
-                  key=message.key, facts=len(facts))
+                  key=message.key, facts=len(facts),
+                  episode_id=episode.id if episode else None)
         # 画像必须在事实写完之后重算：放在同一个消费者里，因果顺序天然成立；
         # 去抖交给 ProfileService（默认 5 分钟内不重复写版本）。
         if profiles is not None and profiles.should_refresh(user_id, slot):

@@ -82,6 +82,7 @@
 | [plans/s1.31-capacity-ceiling.md](plans/s1.31-capacity-ceiling.md) | S1.31 单实例容量上限：修正 requests&lt;level 的并发封顶缺陷，扫 30–150 并发（C7） | 已完成 |
 | [plans/s1.32-browser-e2e.md](plans/s1.32-browser-e2e.md) | S1.32 浏览器 e2e：Playwright + 系统 Edge + 固定桩，三条真实链路一键跑（C9） | 已完成 |
 | [plans/s1.33-admin-model-config.md](plans/s1.33-admin-model-config.md) | S1.33 管理员统一模型配置：加密存储 + 测试连接 + 热切换 + 管理端页（C10） | 已完成 |
+| [plans/s1.34-memory-episodes.md](plans/s1.34-memory-episodes.md) | S1.34 情景记忆：规则抽取 + 按来源消息幂等 + 确定性召回 + API/导出 v2（C1 第一刀） | 已完成 |
 
 ### REPORT
 
@@ -120,6 +121,7 @@
 | [reports/2026-11-17-s1.31-capacity-ceiling.md](reports/2026-11-17-s1.31-capacity-ceiling.md) | S1.31 单实例容量上限（C7 收尾） | 每档 300 请求扫 30–150 并发：140 并发首 token P95 2994ms 达标、150 两次 3100/3202ms 超限（错误率 0%）；修复 `--requests` < 最大档位导致并发被封顶的协议缺陷（新增 4 条单测），`pytest` **248 passed + 1 skipped** |
 | [reports/2026-11-18-s1.32-browser-e2e.md](reports/2026-11-18-s1.32-browser-e2e.md) | S1.32 浏览器 e2e（C9） | Playwright + 系统 Edge + 固定桩，一条命令起停五进程；三条真实链路 **3 passed (22.2s)**：App 登录→对话→引用回跳、管理员会话详情、429 提示+重试；App 155 tests + `vue-tsc` 0 + build 0，后端 `pytest` 249 例（248 通过 + 1 跳过，未开 DSN） |
 | [reports/2026-11-18-s1.33-admin-model-config.md](reports/2026-11-18-s1.33-admin-model-config.md) | S1.33 管理员统一模型配置（C10） | 管理端可测试/保存/热切换；Key 加密且只回显末 4 位；`pytest` **258 例（257 通过 + 1 跳过）**、新增 9 例模型配置测试、`ruff` 全绿；管理端 `vue-tsc` 0 + build 0（2303 modules，18.21s）；MySQL DDL/页面点击未执行 |
+| [reports/2026-11-19-s1.34-memory-episodes.md](reports/2026-11-19-s1.34-memory-episodes.md) | S1.34 情景记忆（C1 第一刀） | 写入 `memory_episode` 并带来源消息 id、按 `(user, source_message_id)` 幂等、确定性召回注入 system、列表/删除/导出 v2；`pytest` **283 passed + 1 skipped**（未开 DSN）、`ruff` 全绿；MySQL 变体与浏览器点击未执行 |
 
 ## 3. 新增文档怎么起头
 

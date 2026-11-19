@@ -16,7 +16,7 @@ from ..core.errors import Forbidden, InvalidRequest, NotFound, RateLimited, Unau
 from ..core.logging import log_event
 from ..core.metrics import QUEUE_DEPTH, metrics
 from ..core.ratelimit import RateLimiter
-from ..memory import label_of
+from ..memory import label_of, label_of_kind
 from ..model_config import ModelConfigService
 from ..rag.models import DocumentStatus
 from ..runtime import AgentRunner, Caller, ChatCommand
@@ -43,6 +43,8 @@ from .schemas import (
     GraphEdgeOut,
     GraphNodeOut,
     HealthOut,
+    MemoryEpisodeOut,
+    MemoryEpisodesOut,
     MemoryExportOut,
     MemoryFactOut,
     MemoryOut,
@@ -322,16 +324,70 @@ async def delete_memory(
     return {"deleted": True, "key": key}
 
 
+def _episode_out(episode) -> MemoryEpisodeOut:
+    return MemoryEpisodeOut(
+        id=episode.id,
+        kind=episode.kind,
+        label=label_of_kind(episode.kind),
+        summary=episode.summary,
+        occurred_at=episode.occurred_at,
+        source_message_id=episode.source_message_id,
+        session_id=episode.session_id,
+        create_time=episode.create_time,
+    )
+
+
+@router.get("/agent/memory/me/episodes", response_model=MemoryEpisodesOut)
+async def memory_episodes(
+    request: Request,
+    pet_id: str | None = Query(default=None, max_length=32),
+    limit: int = Query(default=20, ge=1, le=50),
+) -> MemoryEpisodesOut:
+    """我（某只宠物）的情景往事：按发生时间倒序，带原消息 id 供核对。"""
+    identity = await _identity(request)
+    episodes = await _repo(request).list_memory_episodes(
+        identity.user_id, pet_id, limit
+    )
+    return MemoryEpisodesOut(
+        pet_id=pet_id,
+        episodes=[_episode_out(episode) for episode in episodes],
+    )
+
+
+@router.delete("/agent/memory/me/episodes/{episode_id}")
+async def delete_memory_episode(
+    request: Request,
+    episode_id: str,
+    pet_id: str | None = Query(default=None, max_length=32),
+) -> dict[str, bool | str]:
+    """删除我的一条情景往事；不存在或不属于我，都返回 404。"""
+    identity = await _identity(request)
+    removed = await _repo(request).delete_memory_episode(
+        identity.user_id, pet_id, episode_id
+    )
+    if not removed:
+        raise NotFound(f"没有这条往事：{episode_id}")
+    log_event(
+        memory_log,
+        logging.INFO,
+        "memory episode deleted",
+        user_id=identity.user_id,
+        episode_id=episode_id,
+    )
+    return {"deleted": True, "id": episode_id}
+
+
 @router.get("/agent/memory/me/export", response_model=MemoryExportOut)
 async def export_memory(
     request: Request,
     pet_id: str | None = Query(default=None, max_length=32),
 ) -> MemoryExportOut:
-    """导出我的全部长期事实：给用户留底，也便于迁移。"""
+    """导出我的全部长期事实与往事：给用户留底，也便于迁移。"""
     identity = await _identity(request)
     facts = await _repo(request).list_memory_facts(identity.user_id, pet_id, 200)
+    episodes = await _repo(request).list_memory_episodes(identity.user_id, pet_id, 200)
     return MemoryExportOut(
-        version=1,
+        version=2,
         exported_at=datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
         pet_id=pet_id,
         facts=[
@@ -345,6 +401,7 @@ async def export_memory(
             )
             for f in facts
         ],
+        episodes=[_episode_out(episode) for episode in episodes],
     )
 
 

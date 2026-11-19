@@ -12,6 +12,7 @@ from __future__ import annotations
 from typing import Any, Protocol
 
 from ..domain.models import (
+    MemoryEpisode,
     MemoryFact,
     Message,
     ProfileSnapshot,
@@ -116,6 +117,23 @@ class AgentRepository(Protocol):
         物理删除：这是用户行使删除权，不是管理端审计场景；
         `pet_id=None` 与 `pet_id=0` 视为同一槽位（与 `uk_user_pet_key` 一致）。
         """
+        ...
+
+    # ---- 情景记忆 ----
+    async def add_memory_episode(self, episode: MemoryEpisode) -> MemoryEpisode:
+        """写入一条情景；同一 `(user_id, source_message_id)` 重复写入返回已有行。"""
+        ...
+
+    async def list_memory_episodes(
+        self, user_id: str, pet_id: str | None, limit: int = 50
+    ) -> list[MemoryEpisode]:
+        """按发生时间倒序返回该 `(user, pet)` 的情景。"""
+        ...
+
+    async def delete_memory_episode(
+        self, user_id: str, pet_id: str | None, episode_id: str
+    ) -> bool:
+        """删除一条情景，返回是否真的删到了（False → 接口层 404）。"""
         ...
 
     # ---- 用量 ----

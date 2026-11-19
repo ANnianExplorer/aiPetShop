@@ -1,8 +1,8 @@
 # 未完成事项清单（Backlog）
 
 - 状态：活文档（每次交付后更新；做完的条目移到对应 REPORT，并从本表删除）
-- 更新：2026-11-15
-- 基线：`main` @ S1.27 提交 `475c225`（本文件随 S1.28 一并更新）
+- 更新：2026-11-19
+- 基线：`main` @ S1.34 提交（2026-11-19，见 `docs/reports/2026-11-19-s1.34-memory-episodes.md`）
 
 ## 0. 怎么读这份文档
 
@@ -11,7 +11,7 @@
 3. 优先级按"卡不卡产品可用"分：P0 阻断、P1 该做、P2 值得做、P3 以后。
 4. 估算是"一个人、熟悉代码"的量级，不是承诺。
 
-统计：**P0 3 条（A1、A2、A3 已交付）· P1 8 条（B2/B3/B4/B5/B6/B7/B8 已交付，剩 1 条 B1）· P2 10 条（C2、C3、C4、C6、C7、C8、C9、C10 已交付，剩 2 条 C1/C5）· P3 9 条（D6 已交付，剩 8 条）· 原项目卫生债 0 条**，原计划 42 条 + 新增 C10，剩余 11 条（P1 1 + P2 2 + P3 8）。各批证据：E1/E3/E4/E5 见 `docs/reports/2026-11-08-s1.11-hygiene-debts.md`；E2/E6/E7 见 `docs/reports/2026-11-08-s1.12-e2-e6-e7.md`；E8/E13 见 `docs/reports/2026-11-08-s1.13-e8-e13.md`；E9/E10/E11/E12 见 `docs/reports/2026-11-08-s1.14-e9-e12.md`；A3 见 `docs/reports/2026-11-08-s1.15-doc-rag.md`；B5/B7 见 `docs/reports/2026-11-08-s1.16-ops.md`；B6 见 `docs/reports/2026-11-08-s1.17-admin-console.md`；C2 见 `docs/reports/2026-11-08-s1.18-profile.md`；B2/B4/C6 见 `docs/reports/2026-11-08-s1.19-b4-b2-pet.md`；B8 见 `docs/reports/2026-11-14-s1.23-auto-reconnect.md`；B3 收尾见 `docs/reports/2026-11-14-s1.24-stale-run-reaper.md`；C4 见 `docs/reports/2026-11-14-s1.25-citation-jump-links.md`；C8 见 `docs/reports/2026-11-14-s1.26-ci-docker-context.md`；C3 见 `docs/reports/2026-11-15-s1.27-memory-evals.md`；D6 见 `docs/reports/2026-11-15-s1.28-prompt-version.md`；C7 见 `docs/reports/2026-11-16-s1.29-capacity-baseline.md`；C7 上限见 `docs/reports/2026-11-17-s1.31-capacity-ceiling.md`；B7 App 入口见 `docs/reports/2026-11-17-s1.30-app-memory.md`；C9 见 `docs/reports/2026-11-18-s1.32-browser-e2e.md`；C10 见 `docs/reports/2026-11-18-s1.33-admin-model-config.md`。
+统计：**P0 3 条（A1、A2、A3 已交付）· P1 8 条（B2/B3/B4/B5/B6/B7/B8 已交付，剩 1 条 B1）· P2 10 条（C1、C2、C3、C4、C6、C7、C8、C9、C10 已交付，剩 1 条 C5）· P3 9 条（D6 已交付，剩 8 条）· 原项目卫生债 0 条**，原计划 42 条 + 新增 C10，剩余 10 条（P1 1 + P2 1 + P3 8）。各批证据：E1/E3/E4/E5 见 `docs/reports/2026-11-08-s1.11-hygiene-debts.md`；E2/E6/E7 见 `docs/reports/2026-11-08-s1.12-e2-e6-e7.md`；E8/E13 见 `docs/reports/2026-11-08-s1.13-e8-e13.md`；E9/E10/E11/E12 见 `docs/reports/2026-11-08-s1.14-e9-e12.md`；A3 见 `docs/reports/2026-11-08-s1.15-doc-rag.md`；B5/B7 见 `docs/reports/2026-11-08-s1.16-ops.md`；B6 见 `docs/reports/2026-11-08-s1.17-admin-console.md`；C2 见 `docs/reports/2026-11-08-s1.18-profile.md`；B2/B4/C6 见 `docs/reports/2026-11-08-s1.19-b4-b2-pet.md`；B8 见 `docs/reports/2026-11-14-s1.23-auto-reconnect.md`；B3 收尾见 `docs/reports/2026-11-14-s1.24-stale-run-reaper.md`；C4 见 `docs/reports/2026-11-14-s1.25-citation-jump-links.md`；C8 见 `docs/reports/2026-11-14-s1.26-ci-docker-context.md`；C3 见 `docs/reports/2026-11-15-s1.27-memory-evals.md`；D6 见 `docs/reports/2026-11-15-s1.28-prompt-version.md`；C7 见 `docs/reports/2026-11-16-s1.29-capacity-baseline.md`；C7 上限见 `docs/reports/2026-11-17-s1.31-capacity-ceiling.md`；B7 App 入口见 `docs/reports/2026-11-17-s1.30-app-memory.md`；C9 见 `docs/reports/2026-11-18-s1.32-browser-e2e.md`；C10 见 `docs/reports/2026-11-18-s1.33-admin-model-config.md`；C1 见 `docs/reports/2026-11-19-s1.34-memory-episodes.md`。
 
 ---
 
@@ -44,7 +44,7 @@
 
 | # | 缺口 | 现状 | 依赖 / 卡点 | 验收标准 | 估算 |
 |---|---|---|---|---|---|
-| C1 | **情景记忆 `memory_episode`** | 表建了，从未写入；无向量 | 依赖向量库选型（pgvector） | 一次"上周洗澡"的对话能被召回为情景片段，并带原消息 id | 3 天 |
+| C1 | ✅ **情景记忆 `memory_episode`**（2026-11-19，S1.34） | 已交付第一刀：对话规则抽取 10 类事件（洗澡/驱虫/疫苗/体检/就医/绝育/美容/剪指甲/呕吐/腹泻）+ 相对时间归一到日、问句/否定/习惯不写；`source_message_id` 指回原消息，`(user_id, source_message_id)` 唯一保证队列重复投递幂等；召回用事件类型命中 + 字符重叠 + 90 天新鲜度（阈值 0.50，最多 3 条）注入 system；新增 `GET/DELETE /agent/memory/me/episodes`，导出升 v2 含 `episodes`。**未做**：向量语义召回、结构化日志/健康行回填、同一条消息多事件 | 向量库选型（pgvector）只剩语义召回这一层；结构化回填依赖日志/健康写路径接入 | 已达成：两轮对话「上周给豆豆洗澡了」→「上次洗澡是什么时候」能召回情景并带日期与来源消息 id（`test_api.py` 集成用例）；`pytest` 283 passed + 1 skipped、`ruff` 全绿；证据 `docs/reports/2026-11-19-s1.34-memory-episodes.md` | 已完成（首刀 0.5 天） |
 | C2 | ✅ **用户画像 `profile_snapshot`**（2026-11-08，S1.18） | 已交付：版本化快照 + 确定性 builder + 记忆消费后重算 + 四接口 + 管理端画像页 | `routine`/行为趋势、人工修正、版本 diff、画像导出仍未做 | 已达成：`test_profile.py` 20 例、真机 `v2 facts=3`、Edge 实点画像页；**待办**：从日志聚合作息 | 已完成 |
 | C3 | ✅ **记忆抽取质量评测**（2026-11-15，S1.27） | 已交付：`memory` 套件 2→48 条（`mem-ext-*` 28 / `mem-neg-*` 8 / `mem-dialect-*` 5 / `mem-multi-*` 4 / `turns` 3），`run_memory` 拆成 `extract`（事实集合全等 + `forbid`）/ `observe`（真跑 `MemoryService`，校验 `pets` 与 `ops`）/ `turns` 三种形状，阈值 1.0→0.9；先红后绿量出 5 类真实缺陷并修 `app/memory/extract.py`（问句当名字、过敏值吞副词、偏好值带动词、裸「喜欢」误抽、否定句全漏） | 剩余：真机日志抽样回填用例、阈值提到 0.95、同义值改成候选列表；方言只有粤/川渝/东北各 1–2 条且是手写标注 | 已达成：`memory 48/48 = 100%`、`routing 15/15`、`safety 6/6`、`pytest` 222 例（221 通过 + 1 跳过，MySQL 变体未开 DSN）、`ruff` 全绿；统计口径见 `docs/reports/2026-11-15-s1.27-memory-evals.md` | 已完成 |
 | C4 | ✅ **引用回跳 locator 化**（2026-11-14，S1.25） | 已交付：`citation.locator` 改为 App 内路由（`/log/{id}`、`/post/{id}`、`/pet-detail/{id}`、`/weekly-health-detail?petId=…&date=…`）；新增只读工具 `search_posts` 补上帖子引用来源；前端 `citationRoute()` 不再按 kind 硬编码，老会话按 kind 兜底 | 未做：真机人工点一次（本机 Java 8080 未起） | 已达成：健康引用带周记录最大日期并高亮定位、帖子引用跳 `/post/{id}`；`test_citations.py` 7 例 + `e2e_smoke` 10/10 里 citation 已是 `/log/7001` | |
@@ -112,3 +112,4 @@ E1–E13 全部完成，本表不再列条目。证据分布：
 9. ~~**B6 管理端三页**~~ ✅ 已完成（2026-11-08）：队列运维（现场 + 死信重放）、长期记忆（查/删）、知识图谱（宠物—事实—事件）；Edge 实点三页，`pytest` 183 passed。见 `docs/reports/2026-11-08-s1.17-admin-console.md`。
 10. ~~**C2 用户画像**~~ ✅ 已完成（2026-11-08）：`profile_snapshot` 版本化快照 + 确定性 builder + 记忆消费后重算 + 四接口 + 管理端画像页；`pytest` 203 passed、真机 `v2 facts=3`、Edge 实点。见 `docs/reports/2026-11-08-s1.18-profile.md`。
 11. ~~**B4 死信自动重试 / B2 多副本 / C6 桌宠**~~ ✅ 已完成（2026-11-08，S1.19）：退避 `5s→600s` 封顶 + `redrives` 有界重投（默认关）；双副本 `multi_replica_smoke` 8/8；桌宠档 A（纯函数状态机 + H5 组件）。`pytest` 208 passed、App 50 tests。见 `docs/reports/2026-11-08-s1.19-b4-b2-pet.md`。下一批建议 **B3 僵死 run 收敛**、**C1 `memory_episode` 情景记忆** 或 **B1 RocketMQ**。
+12. ~~**C1 情景记忆（第一刀）**~~ ✅ 已完成（2026-11-19，S1.34）：写入 `memory_episode` 并带来源消息 id、按来源消息幂等、确定性召回注入 system、列表/删除/导出 v2；`pytest` 283 passed + 1 skipped、`ruff` 全绿。见 `docs/reports/2026-11-19-s1.34-memory-episodes.md`。**剩余**：向量语义召回（S2）、结构化日志/健康行回填。下一批建议 **B1 RocketMQ**（需先有 broker）或 **C5 语音链路**。

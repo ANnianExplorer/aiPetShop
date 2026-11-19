@@ -22,6 +22,7 @@ from ..domain.models import (
     Citation,
     DayUsage,
     Intent,
+    MemoryEpisode,
     MemoryFact,
     Message,
     ProfileSnapshot,
@@ -470,6 +471,89 @@ class MySqlRepository:
             )
             rows = await cur.fetchall()
         return [_row_to_fact(row) for row in rows]
+
+    # ------------------------------------------------------------ 情景记忆
+    async def add_memory_episode(self, episode: MemoryEpisode) -> MemoryEpisode:
+        pool = await self._ensure_pool()
+        episode_id = int(episode.id) if episode.id else int(new_id())
+        async with pool.acquire() as conn, conn.cursor() as cur:
+            if episode.source_message_id:
+                # 先查一次，覆盖任务队列「至少一次」的重复消费；并发穿透由唯一键兜底。
+                await cur.execute(
+                    "SELECT id,user_id,pet_id,session_id,source_message_id,kind,summary,"
+                    "detail,occurred_at,create_time FROM memory_episode"
+                    " WHERE user_id=%s AND source_message_id=%s AND is_delete=0",
+                    (int(episode.user_id), int(episode.source_message_id)),
+                )
+                row = await cur.fetchone()
+                if row is not None:
+                    return _row_to_episode(row)
+            try:
+                await cur.execute(
+                    "INSERT INTO memory_episode (id,user_id,pet_id,session_id,"
+                    "source_message_id,kind,summary,detail,occurred_at)"
+                    " VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                    (
+                        episode_id,
+                        int(episode.user_id),
+                        _pet_slot(episode.pet_id),
+                        int(episode.session_id) if episode.session_id else None,
+                        int(episode.source_message_id) if episode.source_message_id else None,
+                        episode.kind[:32],
+                        episode.summary[:512],
+                        json.dumps(episode.detail or {}, ensure_ascii=False),
+                        episode.occurred_at,
+                    ),
+                )
+            except pymysql.err.IntegrityError as exc:
+                if not _is_duplicate(exc) or not episode.source_message_id:
+                    raise
+                await cur.execute(
+                    "SELECT id,user_id,pet_id,session_id,source_message_id,kind,summary,"
+                    "detail,occurred_at,create_time FROM memory_episode"
+                    " WHERE user_id=%s AND source_message_id=%s AND is_delete=0",
+                    (int(episode.user_id), int(episode.source_message_id)),
+                )
+                row = await cur.fetchone()
+                if row is not None:
+                    return _row_to_episode(row)
+                raise
+            await cur.execute(
+                "SELECT id,user_id,pet_id,session_id,source_message_id,kind,summary,"
+                "detail,occurred_at,create_time FROM memory_episode WHERE id=%s",
+                (episode_id,),
+            )
+            row = await cur.fetchone()
+        return _row_to_episode(row) if row else episode
+
+    async def list_memory_episodes(
+        self, user_id: str, pet_id: str | None, limit: int = 50
+    ) -> list[MemoryEpisode]:
+        if limit <= 0:
+            return []
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn, conn.cursor() as cur:
+            await cur.execute(
+                "SELECT id,user_id,pet_id,session_id,source_message_id,kind,summary,"
+                "detail,occurred_at,create_time FROM memory_episode"
+                " WHERE user_id=%s AND pet_id=%s AND is_delete=0"
+                " ORDER BY occurred_at DESC, create_time DESC, id DESC LIMIT %s",
+                (int(user_id), _pet_slot(pet_id), int(limit)),
+            )
+            rows = await cur.fetchall()
+        return [_row_to_episode(row) for row in rows]
+
+    async def delete_memory_episode(
+        self, user_id: str, pet_id: str | None, episode_id: str
+    ) -> bool:
+        pool = await self._ensure_pool()
+        async with pool.acquire() as conn, conn.cursor() as cur:
+            # 物理删除：与事实记忆一致，用户行使删除权不需要影子行。
+            await cur.execute(
+                "DELETE FROM memory_episode WHERE id=%s AND user_id=%s AND pet_id=%s",
+                (int(episode_id), int(user_id), _pet_slot(pet_id)),
+            )
+            return cur.rowcount > 0
 
     # ------------------------------------------------------------ 画像快照
     async def next_profile_version(self, user_id: str, pet_id: str | None) -> int:
@@ -987,6 +1071,30 @@ def _row_to_fact(row: Any) -> MemoryFact:
         source=source or "conversation",
         create_time=str(created) if created else None,
         update_time=str(updated) if updated else None,
+    )
+
+
+def _row_to_episode(row: Any) -> MemoryEpisode:
+    (rid, uid, pid, sid, source_id, kind, summary, detail, occurred, created) = row
+    parsed: dict[str, Any] = {}
+    if detail:
+        try:
+            value = json.loads(detail) if isinstance(detail, (str, bytes)) else detail
+        except (TypeError, ValueError):
+            value = None
+        if isinstance(value, dict):
+            parsed = value
+    return MemoryEpisode(
+        id=str(rid),
+        user_id=str(uid),
+        pet_id=str(pid) if pid else None,
+        session_id=str(sid) if sid else None,
+        source_message_id=str(source_id) if source_id else None,
+        kind=kind or "",
+        summary=summary,
+        detail=parsed,
+        occurred_at=str(occurred) if occurred else "",
+        create_time=str(created) if created else None,
     )
 
 

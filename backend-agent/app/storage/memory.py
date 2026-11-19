@@ -10,6 +10,7 @@ from ..core.errors import Forbidden, NotFound
 from ..core.ids import new_id
 from ..domain.models import (
     DayUsage,
+    MemoryEpisode,
     MemoryFact,
     Message,
     ProfileSnapshot,
@@ -38,6 +39,8 @@ class InMemoryRepository:
         self._tool_calls: list[dict[str, Any]] = []
         self._audit_ids: set[str] = set()
         self._facts: dict[tuple[str, str, str], MemoryFact] = {}
+        # 情景记忆：id -> episode；幂等索引模拟 (user_id, source_message_id) 唯一键
+        self._episodes: dict[str, MemoryEpisode] = {}
         # 幂等键索引：(session_id, key) -> run_id，模拟库上的唯一键
         self._idem: dict[tuple[str, str], str] = {}
         # 文档问答：文档表 + 按 (user, sha) 去重索引 + 切片表
@@ -317,6 +320,50 @@ class InMemoryRepository:
         ]
         items.sort(key=lambda f: (f.confidence, f.update_time or ""), reverse=True)
         return items[:limit]
+
+    # ------------------------------------------------------------ 情景记忆
+    async def add_memory_episode(self, episode: MemoryEpisode) -> MemoryEpisode:
+        if episode.source_message_id:
+            for existing in self._episodes.values():
+                if (
+                    existing.user_id == episode.user_id
+                    and existing.source_message_id == episode.source_message_id
+                ):
+                    return existing
+        if not episode.id:
+            episode.id = new_id()
+        episode.create_time = episode.create_time or _now()
+        self._episodes[episode.id] = episode
+        return episode
+
+    async def list_memory_episodes(
+        self, user_id: str, pet_id: str | None, limit: int = 50
+    ) -> list[MemoryEpisode]:
+        if limit <= 0:
+            return []
+        slot = pet_id or ""
+        items = [
+            episode
+            for episode in self._episodes.values()
+            if episode.user_id == user_id and (episode.pet_id or "") == slot
+        ]
+        items.sort(
+            key=lambda e: (e.occurred_at or "", e.create_time or "", e.id), reverse=True
+        )
+        return items[:limit]
+
+    async def delete_memory_episode(
+        self, user_id: str, pet_id: str | None, episode_id: str
+    ) -> bool:
+        episode = self._episodes.get(episode_id)
+        if (
+            episode is None
+            or episode.user_id != user_id
+            or (episode.pet_id or "") != (pet_id or "")
+        ):
+            return False
+        self._episodes.pop(episode_id, None)
+        return True
 
     # ------------------------------------------------------------ 用量
     async def usage_summary(self, user_id: str, since: str | None = None) -> UsageSummary:

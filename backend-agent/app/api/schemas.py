@@ -123,6 +123,24 @@ class MemoryFactOut(BaseModel):
     update_time: str | None = None
 
 
+class MemoryEpisodeOut(BaseModel):
+    """一条情景往事：`source_message_id` 是写入它的那条用户消息，便于核对。"""
+
+    id: str
+    kind: str
+    label: str
+    summary: str
+    occurred_at: str
+    source_message_id: str | None = None
+    session_id: str | None = None
+    create_time: str | None = None
+
+
+class MemoryEpisodesOut(BaseModel):
+    pet_id: str | None
+    episodes: list[MemoryEpisodeOut]
+
+
 class MemoryOut(BaseModel):
     pet_id: str | None
     facts: list[MemoryFactOut]
@@ -131,10 +149,11 @@ class MemoryOut(BaseModel):
 class MemoryExportOut(BaseModel):
     """用户数据导出：版本号是为了将来字段变更时，导入方能识别格式。"""
 
-    version: int = 1
+    version: int = 2
     exported_at: str
     pet_id: str | None = None
     facts: list[MemoryFactOut]
+    episodes: list[MemoryEpisodeOut] = Field(default_factory=list)
 
 
 class ProfileOut(BaseModel):

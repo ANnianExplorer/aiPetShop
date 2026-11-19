@@ -284,6 +284,27 @@ async def test_conversation_learns_fact_for_next_turn() -> None:
     assert {f.key: f.value for f in facts} == {"pet_name": "Lumina", "allergy": "\u725b\u5976"}
     assert "\u8fc7\u654f\uff1a\u725b\u5976" in model.stream_calls[-1][0]["content"]
 
+async def test_conversation_recalls_episode_with_source_message_id() -> None:
+    repo = InMemoryRepository()
+    model = ScriptedModel()
+    async with await build_client(model, repo=repo) as client:
+        first = await chat(client, "\u4e0a\u5468\u7ed9\u8c46\u8c46\u6d17\u6fa1\u4e86")
+        session_id = first[0]["data"]["session_id"]
+
+        episodes = await repo.list_memory_episodes("1001", None, 10)
+        assert len(episodes) == 1
+        messages = await repo.list_messages(session_id)
+        user_message = next(m for m in messages if m.role.value == "user")
+        assert episodes[0].source_message_id == user_message.id
+
+        await chat(client, "\u4e0a\u6b21\u6d17\u6fa1\u662f\u4ec0\u4e48\u65f6\u5019", session_id=session_id)
+
+    system = model.stream_calls[-1][0]["content"]
+    assert "\u76f8\u5173\u7684\u5f80\u4e8b" in system
+    assert "\uff08\u6d17\u6fa1\uff09\uff1a\u4e0a\u5468\u7ed9\u8c46\u8c46\u6d17\u6fa1\u4e86" in system
+    assert f"\u6765\u6e90\u6d88\u606f {episodes[0].source_message_id}" in system
+
+
 async def test_memory_endpoint_lists_learned_facts() -> None:
     repo = InMemoryRepository()
     model = ScriptedModel()

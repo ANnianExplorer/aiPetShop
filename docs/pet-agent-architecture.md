@@ -104,9 +104,9 @@ route ─┬─> direct ──────────────────�
 | --- | --- | --- | --- | --- |
 | 短期 | 最近 N 轮原文 + 滚动摘要 | Redis（会话级） | 会话结束 + 摘要转长期 | 每轮追加，超阈值触发摘要 |
 | 长期-事实 | 「用户说它不吃三文鱼」「对鸡肉过敏」这类稳定断言 | `memory_fact` + 向量 | 长期，可被新证据推翻（带 confidence） | 对话后异步抽取（异步，不阻塞回答） |
-| 长期-情景 | 「6/3 晚上呕吐一次」这类带时间的事件 | `memory_episode`（关联 log/health 行 id） | 长期，可衰减 | 结构化数据入库时自动写入，比 LLM 抽取更可靠 |
+| 长期-情景 | 「6/3 晚上呕吐一次」这类带时间的事件 | `memory_episode`（关联来源消息 id） | 长期，可衰减 | 当前从对话规则抽取；结构化日志/健康行回填未做 |
 
-**关键取舍**：能被结构化表表达的事件（喂食、体重、就医）**不要**用 LLM 抽取，直接写 `memory_episode` 并外键指回原表——这是本项目最大的优势，绝大多数宠物 App 没有这份数据。
+**关键取舍**：能被结构化表表达的事件（喂食、体重、就医）**不要**用 LLM 抽取，应直接写 `memory_episode` 并指回原表——这是本项目最大的优势，绝大多数宠物 App 没有这份数据。当前 S1.34 只做了对话抽取这一条路，结构化回填仍待接入。
 
 **画像（User/Pet Profile）不是一段 prompt**，而是一份**带证据、带版本的结构化文档**：
 
@@ -229,8 +229,8 @@ agent_step(id, run_id, seq, type ENUM('think','tool','observe','reflect'),
 -- 记忆
 memory_fact(id, user_id, pet_id, subject, predicate, object, confidence,
             evidence JSON, valid_from, valid_to, is_delete, create_time)
-memory_episode(id, user_id, pet_id, happened_at, kind, summary,
-               source_table, source_id, embedding_id)
+memory_episode(id, user_id, pet_id, session_id, kind, source_message_id, summary,
+               detail, occurred_at, is_delete, create_time)
 -- 画像（版本化）
 profile_snapshot(id, user_id, pet_id, version, payload JSON, created_by, create_time)
 -- 文档与检索
@@ -448,7 +448,7 @@ DSH 本身就是一个 harness（本仓库的会话就跑在它上面：skills /
 | 轮次 | 内容 | 证据 |
 | --- | --- | --- |
 | P0 | 单行 JSON 日志 + `x-request-id`、`/readyz`、依赖锁定、多阶段 Dockerfile、CI（ruff → pytest → evals → docker build） | `docs/reports/2026-11-07-s1.6-p0.md`：59 passed、evals 100%、e2e 10/10 |
-| P1 | 每用户配额（429 + `Retry-After`）、单 run token 预算、事件总线 Redis Stream 选项、长期记忆（`memory_fact`/`memory_episode` + 抽取算子 + 召回注入）、用量聚合接口 | `docs/reports/2026-11-08-s1.6-p1.md`：92 passed、P1 冒烟 9/9、浏览器端到端 |
+| P1 | 每用户配额（429 + `Retry-After`）、单 run token 预算、事件总线 Redis Stream 选项、长期记忆（`memory_fact` + 抽取算子 + 召回注入；`memory_episode` 见 S1.34）、用量聚合接口 | `docs/reports/2026-11-08-s1.6-p1.md`：92 passed、P1 冒烟 9/9、浏览器端到端 |
 | S1.7 | 管理端「会话工作台」：`role` 来自 Java `/auth/current`、4 个 `/agent/admin/*` 只读接口、`admin.access` 审计、两个页面（列表 + 详情：对话流/运行轨迹/长期记忆） | `docs/reports/2026-11-08-s1.7-admin.md`：101 passed、管理端冒烟 6/6、Edge 端到端 |
 | S1.8 P2 | 真机联调（MySQL 8.0.29 + Redis 5.0.14）、Redis 客户端固定 RESP2、用户维度幂等键（重试回放不重跑）、LLM/后端双熔断 + `/readyz` 联动 | `docs/reports/2026-11-08-s1.8-p2.md`：122 passed、四个冒烟 10/9/6/8、真机 `/readyz` 四项 check |
 | S1.9-a | 旁路任务队列 `TaskQueue`（内存/Redis 两实现、`BRPOPLPUSH` 在途恢复、死信与重试）：记忆抽取与工具审计移出请求路径，队列满退回同步 | `docs/reports/2026-11-08-s1.9-task-queue.md`：134 passed、四个冒烟 10/9/6/8、真机 Redis 队列 `LLEN=0` + `task memory observed` 日志 |

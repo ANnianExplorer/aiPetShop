@@ -107,6 +107,26 @@ class MemoryFact:
     update_time: str | None = None
 
 
+@dataclass
+class MemoryEpisode:
+    """情景记忆：一条「发生过的事」，带发生日期与来源消息 id。
+
+    `occurred_at` 是事件发生时间（不是入库时间），当前只精确到日；
+    `source_message_id` 既用于追溯原话，也用于旁路任务重复消费时的幂等。
+    """
+
+    id: str
+    user_id: str
+    summary: str
+    occurred_at: str
+    pet_id: str | None = None
+    session_id: str | None = None
+    source_message_id: str | None = None
+    kind: str = ""
+    detail: dict[str, Any] = field(default_factory=dict)
+    create_time: str | None = None
+
+
 @dataclass(frozen=True)
 class ProfileSnapshot:
     """画像快照：同一 `(user, pet)` 追加式版本，不覆盖历史。
