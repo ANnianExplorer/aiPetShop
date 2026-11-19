@@ -6,7 +6,7 @@ from typing import Any
 
 from conftest import make_http, make_settings
 
-from app.domain.models import StepKind
+from app.domain.models import Route, StepKind
 from app.graph import build_graph
 from app.llm import LLMReply, ScriptedModel, ToolCall
 from app.tools import BackendClient, ToolGateway, ToolPolicy, build_registry
@@ -87,6 +87,27 @@ async def test_l2_runs_tool_then_answers() -> None:
     first_call = model.calls[0]
     assert first_call[0]["role"] == "system"
     assert first_call[-1] == {"role": "user", "content": "上次疫苗是什么时候"}
+
+
+async def test_pet_list_question_uses_pet_profile_tool() -> None:
+    """「我现在有什么宠物」必须走 L2 并调用 get_pet_profile，不能直答没有数据。"""
+    model = ScriptedModel(
+        replies=[
+            LLMReply(
+                tool_calls=[
+                    ToolCall(id="c1", name="get_pet_profile", arguments={}),
+                ]
+            ),
+            LLMReply(text="你有一只宠物，叫 11。"),
+        ]
+    )
+    result = await make_graph(model).ainvoke(state("我现在有什么宠物"))
+
+    assert result["route"] is Route.L2
+    assert [s.kind for s in result["steps"]][2] is StepKind.TOOL
+    assert result["steps"][2].name == "get_pet_profile"
+    assert result["citations"][0].locator == "/pet-detail/5001"
+    assert result["answer_messages"][-1]["content"] == "你有一只宠物，叫 11。"
 
 
 async def test_hop_limit_stops_loop() -> None:

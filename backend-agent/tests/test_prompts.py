@@ -56,6 +56,12 @@ def test_safety_rules_survive_edits(phrase: str) -> None:
     assert phrase in SYSTEM_PROMPT
 
 
+def test_pet_list_rule_is_present() -> None:
+    """宠物列表问题必须显式引导到 get_pet_profile，避免模型声称「没有工具」。"""
+    assert "get_pet_profile" in SYSTEM_PROMPT
+    assert "没有宠物查询工具" in SYSTEM_PROMPT
+
+
 async def _chat(client: httpx.AsyncClient, text: str = "你好呀") -> str:
     resp = await client.post(
         "/agent/chat", json={"message": text, "channel": "app"}, headers=AUTH_HEADERS

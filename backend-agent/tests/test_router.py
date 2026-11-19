@@ -19,6 +19,8 @@ from app.domain.router import classify
         ("上次疫苗是什么时候", Intent.LOG, Route.L2, "keyword:上次"),
         ("最近心率怎么样", Intent.HEALTH, Route.L2, "keyword:心率"),
         ("它的品种是什么", Intent.PROFILE, Route.L2, "keyword:品种"),
+        ("我现在有什么宠物", Intent.PROFILE, Route.L2, "keyword:宠物"),
+        ("我的宠物叫什么", Intent.PROFILE, Route.L2, "keyword:宠物"),
     ],
 )
 def test_classify(question: str, intent: Intent, route: Route, reason: str) -> None:
