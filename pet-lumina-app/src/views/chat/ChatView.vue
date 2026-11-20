@@ -41,9 +41,29 @@ const uploading = ref(false)
 // 链路状态：断线自动重连时告诉用户「不是没反应，是在接回去」
 const linkState = ref<LinkState>('live')
 const retryAttempt = ref(0)
+// 无障碍：独立播报区只播「开始回复 / 回复完成」这类状态，不跟随每个 delta，
+// 否则读屏会把流式分片逐片念出来（详见 docs/plans/s1.35-chat-a11y.md）
+const liveMessage = ref('')
+const historyTrigger = ref<HTMLButtonElement | null>(null)
+const historyPanel = ref<HTMLElement | null>(null)
 
 let controller: AbortController | null = null
 let seqCounter = 0
+
+/** 播报一句状态；空串表示不播报 */
+function announce(message: string) {
+  liveMessage.value = message
+}
+
+/** 历史面板内当前可聚焦的元素（每次按键时重新收集，避免异步列表让焦点表过期） */
+function focusableIn(panel: HTMLElement | null): HTMLElement[] {
+  if (!panel) return []
+  return Array.from(
+    panel.querySelectorAll<HTMLElement>(
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+    ),
+  ).filter(el => !el.hasAttribute('disabled') && el.getAttribute('aria-hidden') !== 'true')
+}
 
 const petName = computed(() => userStore.currentPet?.name ?? '')
 const canSend = computed(() => draft.value.trim().length > 0 && !streaming.value)
@@ -134,6 +154,9 @@ function handleEvent(event: AgentEvent, assistant: ChatBubble) {
   if (outcome.error) {
     lastError.value = outcome.error
   }
+  if (event.event === 'done') {
+    announce(t('chat.a11y.replyDone'))
+  }
   if (event.event === 'delta' || event.event === 'done') {
     void scrollToBottom()
   }
@@ -169,6 +192,7 @@ async function send(text?: string) {
   }
   bubbles.value.push(assistant)
   streaming.value = true
+  announce(t('chat.a11y.replyStarted'))
   publishWorkState('thinking')
   controller = new AbortController()
   await scrollToBottom()
@@ -256,6 +280,9 @@ async function openHistory() {
   historyOpen.value = true
   historyLoading.value = true
   historyError.value = ''
+  // 焦点先进入对话框：读屏会读出 aria-label，键盘用户也不会留在背景按钮上
+  await nextTick()
+  historyPanel.value?.focus()
   try {
     const page = await fetchSessions(1, 20)
     sessions.value = page.items
@@ -273,9 +300,46 @@ async function openHistory() {
   }
 }
 
+/** 关闭历史面板：焦点还给打开它的按钮，不把用户丢在页面顶部 */
+async function closeHistory() {
+  if (!historyOpen.value) return
+  historyOpen.value = false
+  await nextTick()
+  historyTrigger.value?.focus()
+}
+
+/** 历史面板内的键盘闭环：Esc 关闭；Tab 在面板内循环，不跑到背景内容里 */
+function onHistoryKeydown(event: KeyboardEvent) {
+  if (event.key === 'Escape') {
+    event.preventDefault()
+    void closeHistory()
+    return
+  }
+  if (event.key !== 'Tab') return
+
+  const items = focusableIn(historyPanel.value)
+  if (items.length === 0) return
+  const first = items[0]
+  const last = items[items.length - 1]
+  const active = document.activeElement as HTMLElement | null
+  const inside = active !== null && historyPanel.value?.contains(active) === true
+
+  if (event.shiftKey) {
+    if (!inside || active === first || active === historyPanel.value) {
+      event.preventDefault()
+      last.focus()
+    }
+    return
+  }
+  if (!inside || active === last) {
+    event.preventDefault()
+    first.focus()
+  }
+}
+
 /** 切换到某个历史会话：先清空气泡再回读，避免上一条会话的内容串进来 */
 function openSession(id: string) {
-  historyOpen.value = false
+  void closeHistory()
   if (id === sessionId.value) return
   rememberSession(id)
   bubbles.value = []
@@ -315,13 +379,14 @@ onBeforeUnmount(() => {
             <span class="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-background bg-emerald-500" />
           </div>
           <div class="leading-tight">
-            <p class="font-title-md text-on-surface">Lumina</p>
+            <h1 class="font-title-md text-on-surface">Lumina</h1>
             <p class="text-xs text-on-surface-variant">
               {{ petName ? t('chat.subtitlePet', { name: petName }) : t('chat.subtitle') }}
             </p>
           </div>
         </div>
         <button
+          ref="historyTrigger"
           class="flex h-10 w-10 items-center justify-center rounded-full bg-surface-container-low text-on-surface-variant"
           :aria-label="t('chat.history')"
           @click="openHistory"
@@ -338,8 +403,20 @@ onBeforeUnmount(() => {
       </div>
     </header>
 
+    <!-- 读屏播报区：只报状态（开始/完成），不报流式分片 -->
+    <p data-testid="chat-live" class="sr-only" role="status" aria-live="polite" aria-atomic="true">
+      {{ liveMessage }}
+    </p>
+
     <!-- 消息区 -->
-    <main ref="scroller" class="flex-1 space-y-4 overflow-y-auto px-4 pb-40 no-scrollbar">
+    <main
+      ref="scroller"
+      class="flex-1 space-y-4 overflow-y-auto px-4 pb-40 no-scrollbar"
+      role="region"
+      :aria-label="t('chat.a11y.logLabel')"
+      :aria-busy="streaming"
+      tabindex="0"
+    >
       <div v-if="bubbles.length === 0" class="mt-10 space-y-6">
         <div class="glass-card rounded-3xl p-6">
           <p class="font-title-md text-on-surface">{{ t('chat.emptyTitle') }}</p>
@@ -370,7 +447,7 @@ onBeforeUnmount(() => {
           <div class="max-w-[85%] space-y-2">
             <div class="glass-card rounded-3xl rounded-bl-lg px-4 py-3">
               <p v-if="bubble.content" class="whitespace-pre-wrap text-sm leading-relaxed text-on-surface">
-                {{ bubble.content }}<span v-if="bubble.streaming" class="ml-0.5 animate-pulse">▍</span>
+                {{ bubble.content }}<span v-if="bubble.streaming" class="ml-0.5 animate-pulse" aria-hidden="true">▍</span>
               </p>
               <p v-else-if="bubble.streaming" class="text-sm text-on-surface-variant animate-pulse">
                 {{ t('chat.thinking') }}
@@ -413,7 +490,7 @@ onBeforeUnmount(() => {
         <p>{{ t('chat.reconnecting', { n: retryAttempt }) }}</p>
       </div>
 
-      <div v-if="lastError" data-testid="chat-error" class="rounded-2xl bg-error/10 px-4 py-3 text-sm text-error">
+      <div v-if="lastError" data-testid="chat-error" class="rounded-2xl bg-error/10 px-4 py-3 text-sm text-error" role="alert">
         <p>{{ lastError }}</p>
         <button data-testid="chat-retry" class="mt-2 font-label-bold text-primary" @click="retry">{{ t('chat.retry') }}</button>
       </div>
@@ -443,6 +520,8 @@ onBeforeUnmount(() => {
           data-testid="chat-input"
           rows="1"
           :placeholder="t('chat.placeholder')"
+          :aria-label="t('chat.a11y.inputLabel')"
+          aria-describedby="chat-disclaimer"
           class="max-h-32 flex-1 resize-none rounded-2xl bg-surface-container-low px-4 py-3 text-sm text-on-surface outline-none placeholder:text-on-surface-variant/60"
           @keydown="onKeydown"
         />
@@ -457,7 +536,7 @@ onBeforeUnmount(() => {
           <span class="material-symbols-outlined">{{ streaming ? 'more_horiz' : 'send' }}</span>
         </button>
       </div>
-      <p class="pb-2 pt-1.5 text-center text-[10px] text-on-surface-variant/60">
+      <p id="chat-disclaimer" class="pb-2 pt-1.5 text-center text-[10px] text-on-surface-variant/60">
         {{ t('chat.disclaimer') }}
       </p>
     </div>
@@ -470,7 +549,7 @@ onBeforeUnmount(() => {
       leave-to-class="opacity-0"
     >
       <div v-if="historyOpen" class="fixed inset-0 z-40">
-        <div class="absolute inset-0 bg-black/30" @click="historyOpen = false" />
+        <div class="absolute inset-0 bg-black/30" aria-hidden="true" @click="closeHistory" />
         <transition
           enter-active-class="transition duration-200 ease-out"
           enter-from-class="translate-y-full"
@@ -479,16 +558,20 @@ onBeforeUnmount(() => {
           appear
         >
           <section
+            ref="historyPanel"
             class="absolute bottom-0 left-0 right-0 flex max-h-[70vh] flex-col rounded-t-3xl bg-surface pb-safe shadow-2xl"
             role="dialog"
+            aria-modal="true"
+            tabindex="-1"
             :aria-label="t('chat.history')"
+            @keydown="onHistoryKeydown"
           >
             <div class="flex items-center justify-between px-5 pb-2 pt-4">
               <p class="font-title-md text-on-surface">{{ t('chat.history') }}</p>
               <button
                 class="flex h-8 w-8 items-center justify-center rounded-full bg-surface-container-low text-on-surface-variant"
                 :aria-label="t('common.back')"
-                @click="historyOpen = false"
+                @click="closeHistory"
               >
                 <span class="material-symbols-outlined text-lg">close</span>
               </button>

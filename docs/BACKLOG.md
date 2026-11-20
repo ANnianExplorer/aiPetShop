@@ -69,7 +69,8 @@
 | D6 | ✅ **Prompt 版本管理**（2026-11-15，S1.28） | 已交付：`SYSTEM_PROMPT` 从 `app/graph/nodes.py` 搬到 `app/graph/prompts.py` 的版本登记表（`PROMPT_VERSIONS` 只增不改 + `FROZEN_SHA256` 手写冻结哈希；当前 `2026-11-15.1`，270 字，sha256 `a04df4e3…6806c9`），`nodes.SYSTEM_PROMPT` 名字不变；改正文不升版本 → 单测红（变异实验：改成「4 句以内」后 2 条红、还原即绿）；run 的 assistant `meta` 与 `run finished` 日志都带 `prompt_version`。剩余：管理端会话详情未透出 message `meta`（版本号只在库与日志里，界面看不到）；版本号靠人手写日期；拦不住「同时改正文+哈希且故意不升版本」。证据 `docs/reports/2026-11-15-s1.28-prompt-version.md`（`pytest` 229 例 0 失败 1 跳过、`evals` 69 条全绿、`ruff` 全绿） |
 | D7 | 备份与恢复演练 | MySQL/Redis 均无脚本化备份 |
 | D8 | 国际化覆盖 | `chat.*` 已三语；Agent 错误码文案仍是中文硬编码（服务端返回 message） |
-| D9 | 无障碍 | 对话页无 `aria-live`、无焦点管理 |
+| D9 | ✅ **对话页无障碍基线**（2026-11-20，S1.35） | 已交付：消息区 `role=region` + 名称 + `aria-busy` + 可聚焦；独立 `role=status` 播报区只报「开始回复 / 回复完成」，避免流式 delta 刷屏；错误条 `role=alert`；标题改 `h1`；输入框 `aria-label` + `aria-describedby` 指向免责说明；历史面板 `aria-modal`、打开聚焦、`Tab` 圈定、`Esc` 关闭、关闭还焦点；`chat.a11y.*` 三语。剩余：真实读屏人工验收；全站其余页面未覆盖（见 D10） | 读屏软件人工体验（NVDA/VoiceOver）需真机；`inert` 背景禁用、动效降级未做 | 已达成：`ChatView.a11y.spec.ts` 6/6；全量 `vitest` 161/161（17 文件）、`vue-tsc -b` 0、`npm run build` 0；证据 `docs/reports/2026-11-20-s1.35-chat-a11y.md` | 已完成（0.5 天） |
+| D10 | 全站无障碍审计 | 对话页基线已由 D9 交付；设置、我的记忆、社区、管理端等页面未做系统审计（焦点顺序、对比度、表单错误播报、`prefers-reduced-motion`） | 需要先定审计清单与自动化工具；避免逐页零散改 | 关键页面键盘可走通、读屏可读、对比度达 WCAG AA；动效降级可关 | 3 天 |
 
 ---
 

@@ -351,6 +351,12 @@
     "emptyTitle": "こんにちは、Lumina です",
     "emptyBody": "ワクチン・体重・駆虫・毎日の記録を把握しています。根拠付きで答えます。",
     "disclaimer": "獣医師の診断の代わりにはなりません",
+    "a11y": {
+      "logLabel": "会話メッセージ",
+      "inputLabel": "メッセージ入力欄",
+      "replyStarted": "Lumina が返信中…",
+      "replyDone": "返信が完了しました"
+    },
     "subtitle": "ペット健康アシスタント",
     "subtitlePet": "{name} と一緒",
     "suggest": {

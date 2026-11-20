@@ -1,7 +1,7 @@
-# 规格：App 对话页（Web）v1.0
+# 规格：App 对话页（Web）v1.1
 
-- 状态：Frozen
-- 日期：2026-11-07
+- 状态：Frozen（v1.1 为无障碍增补）
+- 日期：2026-11-07（v1.1：2026-11-20）
 - 实现：`pet-lumina-app/src/views/chat/ChatView.vue` + `src/{api/sse.ts,api/agent.ts,utils/chatStream.ts}`
 - 关联：[运行时 SPEC](agent-runtime-api.md) · [ADR-0006](../adr/0006-web-sse-client.md)
 
@@ -79,7 +79,7 @@ stateDiagram-v2
 
 ## 7. 文案（i18n）
 
-`chat` 命名空间共 17 键（`zh-CN` / `en-US` / `ja-JP` 同步）：`title`、`subtitle`、`subtitlePet`、`placeholder`、`send`、`thinking`、`newChat`、`retry`、`emptyTitle`、`emptyBody`、`disclaimer`、`loginExpired`、`sendFailed`、`historyFailed`、`entry`、`entryHint`、`suggest.*`、`tool.*`。
+`chat` 命名空间含基础 17 键（`title`、`subtitle`、`subtitlePet`、`placeholder`、`send`、`thinking`、`newChat`、`retry`、`emptyTitle`、`emptyBody`、`disclaimer`、`loginExpired`、`sendFailed`、`historyFailed`、`entry`、`entryHint`、`suggest.*`、`tool.*`）与 S1.35 新增的 `a11y.*`（`zh-CN` / `en-US` / `ja-JP` 同步）。
 
 规则：新增可见文案必须先加三语键；`tool.*` 未覆盖的工具名回落 `chat.tool.generic`。
 
@@ -101,3 +101,18 @@ stateDiagram-v2
 | 版本 | 日期 | 变更 |
 | --- | --- | --- |
 | v1.0 | 2026-11-07 | 初版：随 S1.5 Web 接入冻结 |
+| v1.1 | 2026-11-20 | S1.35 补无障碍基线（D9）：状态播报区、消息区语义、错误 `alert`、输入框名称、`h1`、历史面板焦点闭环 |
+
+## 10. 无障碍基线（S1.35）
+
+| 项 | 规则 |
+| --- | --- |
+| 消息区 | `role="region"` + `:aria-label="chat.a11y.logLabel"` + `tabindex="0"`；流式期间 `aria-busy="true"`，流结束/失败回到 `"false"` |
+| 播报 | 独立 `role="status"`（`aria-live="polite"`、`aria-atomic="true"`、`sr-only`）节点，只播 `chat.a11y.replyStarted` / `chat.a11y.replyDone`；流式 `delta` 不播报 |
+| 错误 | 错误条 `role="alert"`（含错误文案与重试按钮） |
+| 输入 | `aria-label=chat.a11y.inputLabel`；`aria-describedby` 指向 `#chat-disclaimer` |
+| 标题 | 页面唯一 `h1`（Lumina） |
+| 历史面板 | `role="dialog"` + `aria-modal="true"` + `tabindex="-1"`；打开后焦点进入容器；`Tab` / `Shift+Tab` 在面板内循环；`Esc` / 遮罩 / 关闭按钮退出；关闭后焦点回到触发按钮 |
+| 视觉 | 仅新增 `sr-only` 节点与 ARIA 属性，不改布局、颜色与动效 |
+
+验收：`pet-lumina-app/src/views/chat/ChatView.a11y.spec.ts`（6 例，含焦点闭环与 `aria-busy` 生命周期）。真实读屏软件（NVDA/VoiceOver）的人工验收不在自动化范围内。

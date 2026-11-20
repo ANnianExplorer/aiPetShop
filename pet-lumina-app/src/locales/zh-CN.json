@@ -351,6 +351,12 @@
     "emptyTitle": "嗨，我是 Lumina",
     "emptyBody": "我知道毛孩子的疫苗、体重、驱虫和日常记录。问我点什么吧——答案都会标出依据。",
     "disclaimer": "建议不能替代兽医诊断",
+    "a11y": {
+      "logLabel": "对话消息",
+      "inputLabel": "消息输入框",
+      "replyStarted": "Lumina 正在回复…",
+      "replyDone": "回复已完成"
+    },
     "subtitle": "宠物健康助理",
     "subtitlePet": "正在陪 {name}",
     "suggest": {

@@ -351,6 +351,12 @@
     "emptyTitle": "Hi, I'm Lumina",
     "emptyBody": "I know the vaccines, weight, deworming and daily logs. Ask me anything — every answer cites its source.",
     "disclaimer": "Not a substitute for veterinary advice",
+    "a11y": {
+      "logLabel": "Conversation messages",
+      "inputLabel": "Message input",
+      "replyStarted": "Lumina is replying…",
+      "replyDone": "Reply complete"
+    },
     "subtitle": "Pet health assistant",
     "subtitlePet": "Hanging out with {name}",
     "suggest": {
