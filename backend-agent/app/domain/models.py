@@ -221,6 +221,20 @@ class DayUsage:
 
 
 @dataclass(frozen=True)
+class ModelUsage:
+    """按模型拆分的用量：管理端回答"钱花在哪个模型上"。"""
+
+    model: str
+    runs: int
+    prompt_tokens: int
+    completion_tokens: int
+
+    @property
+    def total_tokens(self) -> int:
+        return self.prompt_tokens + self.completion_tokens
+
+
+@dataclass(frozen=True)
 class UsageOverview:
     """全局用量：管理端看"今天花了多少、谁在用"。"""
 
@@ -230,6 +244,7 @@ class UsageOverview:
     completion_tokens: int = 0
     avg_latency_ms: int = 0
     by_day: list[DayUsage] = field(default_factory=list)
+    by_model: list[ModelUsage] = field(default_factory=list)
 
     @property
     def total_tokens(self) -> int:

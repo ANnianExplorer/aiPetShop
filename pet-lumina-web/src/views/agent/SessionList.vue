@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import PageHeader from '@/components/common/PageHeader.vue'
@@ -14,6 +14,22 @@ const page = ref(1)
 const pageSize = ref(10)
 const filters = ref({ userId: '', keyword: '' })
 const usage = ref<AdminUsage | null>(null)
+
+const hasCost = computed(
+  () => usage.value?.by_model?.some((row) => row.cost_usd !== null) ?? false,
+)
+
+function formatTokens(value: number): string {
+  return value.toLocaleString()
+}
+
+function formatCost(value: number | null): string {
+  if (value === null) {
+    return '未配置'
+  }
+  const fixed = value.toFixed(6).replace(/0+$/, '').replace(/\.$/, '')
+  return `$${fixed}`
+}
 
 async function load() {
   loading.value = true
@@ -89,6 +105,41 @@ onMounted(() => {
         <p class="text-xs text-on-surface-variant mb-1">平均延迟</p>
         <p class="text-2xl font-bold text-primary">{{ usage.avg_latency_ms }} ms</p>
       </div>
+    </div>
+
+    <div v-if="usage" class="glass-panel rounded-2xl p-6">
+      <div class="flex flex-wrap items-start justify-between gap-3 mb-4">
+        <div>
+          <h2 class="text-lg font-semibold text-on-surface">按模型分账（近 {{ usage.days }} 天）</h2>
+          <p class="text-xs text-on-surface-variant mt-1">
+            成本按 <code class="text-xs">PET_AGENT_MODEL_PRICES</code> 的单价估算（USD / 1M tokens），仅供运营参考。
+          </p>
+        </div>
+        <el-tag v-if="!hasCost" type="info" effect="plain">未配置单价，仅统计 token</el-tag>
+      </div>
+      <el-table :data="usage.by_model" data-testid="admin-model-usage" row-key="model">
+        <el-table-column prop="model" label="模型" min-width="180" show-overflow-tooltip />
+        <el-table-column prop="runs" label="对话数" width="100" />
+        <el-table-column label="Prompt" width="120">
+          <template #default="{ row }">{{ formatTokens(row.prompt_tokens) }}</template>
+        </el-table-column>
+        <el-table-column label="Completion" width="120">
+          <template #default="{ row }">{{ formatTokens(row.completion_tokens) }}</template>
+        </el-table-column>
+        <el-table-column label="合计" width="120">
+          <template #default="{ row }">{{ formatTokens(row.total_tokens) }}</template>
+        </el-table-column>
+        <el-table-column label="估算成本（USD）" width="160">
+          <template #default="{ row }">
+            <span :class="row.cost_usd === null ? 'text-on-surface-variant' : ''">
+              {{ formatCost(row.cost_usd) }}
+            </span>
+          </template>
+        </el-table-column>
+        <template #empty>
+          <el-empty description="近 N 天还没有成功的对话" />
+        </template>
+      </el-table>
     </div>
 
     <div class="glass-panel rounded-2xl p-6">

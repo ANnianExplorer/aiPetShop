@@ -13,6 +13,8 @@ from typing import Literal
 from pydantic import Field, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from .core.pricing import ModelPrice
+
 AuthMode = Literal["backend", "header"]
 RepoBackend = Literal["memory", "mysql"]
 
@@ -42,6 +44,11 @@ class Settings(BaseSettings):
     config_secret: str = Field(default="", repr=False)
     model_config_key_file: str = "data/model-config.key"
     model_config_file: str = "data/model-config.json"
+
+    # ---- 成本估算 ----
+    # 按模型配置单价（USD / 1M tokens），只用于管理端展示；
+    # 未配置的模型返回 cost_usd=null，不猜价格。
+    model_prices: dict[str, ModelPrice] = Field(default_factory=dict)
 
     # ---- 业务后端（Java /api/v1）----
     backend_base_url: str = "http://localhost:8080/api/v1"

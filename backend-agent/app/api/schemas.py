@@ -264,6 +264,16 @@ class AdminDayUsage(BaseModel):
     tokens: int
 
 
+class AdminModelUsage(BaseModel):
+    model: str
+    runs: int
+    prompt_tokens: int
+    completion_tokens: int
+    total_tokens: int
+    # 未配置该模型单价时为 null：只报 token，不猜钱
+    cost_usd: float | None = None
+
+
 class AdminUsageOut(BaseModel):
     days: int
     runs: int
@@ -273,6 +283,7 @@ class AdminUsageOut(BaseModel):
     total_tokens: int
     avg_latency_ms: int
     by_day: list[AdminDayUsage]
+    by_model: list[AdminModelUsage]
 
 
 class AdminTaskTopicOut(BaseModel):

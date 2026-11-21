@@ -189,7 +189,7 @@ class AgentRepository(Protocol):
         ...
 
     async def usage_overview(self, since: str | None = None) -> UsageOverview:
-        """全局用量：总量 + 按天趋势，只统计 succeeded 的 run。"""
+        """全局用量：总量 + 按天趋势 + 按模型分账，只统计 succeeded 的 run。"""
         ...
 
     # ---- 文档问答（RAG）----

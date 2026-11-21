@@ -1,7 +1,7 @@
-# 规格：Agent Runtime HTTP/SSE 契约 v1.17
+# 规格：Agent Runtime HTTP/SSE 契约 v1.18
 
 - 状态：Frozen（实现已按此验收；破坏性变更需升 v2）
-- 日期：2026-11-19（v1.17 增情景往事与导出 v2；v1.16 提示词版本化；v1.15 记忆评测；v1.14 引用回跳；v1.13 断线续传；v1.12 退避重试；v1.11 宠物画像与 I33–I36；v1.10 管理端队列/记忆/图谱与 I30–I32；v1.9 记忆删除导出与 `/metrics`；v1.8 文档问答与 I23–I26；v1.7 App 会话列表与 I22；v1.6 队列运维接口；v1.5 记忆最终一致；v1.4 幂等与熔断；v1.3 管理端）
+- 日期：2026-11-21（v1.18 管理端按模型分账；v1.17 情景往事/错误码三语化；v1.16 提示词版本化；v1.15 记忆评测；v1.14 引用回跳；v1.13 断线续传；v1.12 退避重试；v1.11 宠物画像与 I33–I36；v1.10 管理端队列/记忆/图谱与 I30–I32；v1.9 记忆删除导出与 `/metrics`；v1.8 文档问答与 I23–I26；v1.7 App 会话列表与 I22；v1.6 队列运维接口；v1.5 记忆最终一致；v1.4 幂等与熔断；v1.3 管理端）
 - 实现：`backend-agent/app/api/`
 - 关联：[SDD](../sdd/pet-agent-sdd.md) · [ADR-0003](../adr/0003-sse-event-contract.md)
 
@@ -272,7 +272,9 @@ data: {"text":"9月1日打过疫苗，"}
 | `GET /agent/admin/sessions` | `page`(1) / `page_size`(10, ≤50) / `user_id?` / `q?`（标题包含，忽略大小写） | `{total, page, page_size, items:[{id,user_id,pet_id,channel,title,message_count,create_time}]}`，按最后活跃时间倒序 |
 | `GET /agent/admin/sessions/{id}` | — | `{session, messages:[{id,role,content,run_id,citations,create_time}], runs:[{id,route,intent,status,prompt_tokens,completion_tokens,total_tokens,latency_ms,error,steps:[{seq,kind,name,status,latency_ms,error}]}]}`；未知会话 `404` |
 | `GET /agent/admin/memory` | `user_id`（必填）/ `pet_id?` | `{pet_id, facts:[{id,key,label,value,confidence,update_time}]}` |
-| `GET /agent/admin/usage` | `days`(7, 1–90) | `{days, runs, users, prompt_tokens, completion_tokens, total_tokens, avg_latency_ms, by_day:[{day,runs,tokens}]}` |
+| `GET /agent/admin/usage` | `days`(7, 1–90) | `{days, runs, users, prompt_tokens, completion_tokens, total_tokens, avg_latency_ms, by_day:[{day,runs,tokens}], by_model:[{model,runs,prompt_tokens,completion_tokens,total_tokens,cost_usd}]}` |
+
+`by_model` 只统计 `succeeded` 的 run，模型取 `agent_run.model`，空值归为 `unknown`；同一 `days` 口径下各行 runs/token 之和等于顶层总量。`cost_usd` 是按 `PET_AGENT_MODEL_PRICES`（JSON，USD / 1M tokens，如 `{"deepseek-chat":{"input_per_mtok":0.27,"output_per_mtok":1.10}}`）估算的展示值，四舍五入到 6 位小数；未配置该模型单价时为 `null`，不是 0。价格是部署配置快照，历史成本会随配置重算。
 
 审计：每次读取**他人**会话或记忆都写一条 `admin.access` 日志，字段 `admin_id`、`target_user`、`session_id`（记忆为 `scope=memory`），**不记录消息正文与记忆值**。
 
@@ -466,6 +468,7 @@ meta        { factWatermark, builtAt }
 | I44 | 情景按 `(user_id, source_message_id)` 幂等；同一消息重复投递只一行，不同用户/宠物互不可见 | `test_memory_episodes.py::test_record_episode_is_idempotent_by_source_message`、`test_repository_contract.py::test_memory_episode_dedupes_by_source_message` |
 | I45 | 回忆往事必须带发生日期与来源消息 id，且只注入类型命中的情景；问句/否定/习惯不写入 | `test_api.py::test_conversation_recalls_episode_with_source_message_id`、`test_memory_episodes.py::test_episode_lines_recall_matching_event_only` |
 | I46 | `error.code` 是稳定契约：App 对已知 code 用 `agentError.*` 本地化，未知 code 才展示服务端 message；`retry_after_s` 向上取整 | `agentError.spec.ts`、`ChatView.error.spec.ts` |
+| I47 | `by_model` 与顶层用量同口径：各行 runs/token 之和等于总量，空模型归 `unknown`；未配置单价时 `cost_usd=null`（不按 0 计） | `test_admin.py::test_admin_usage_overview`、`test_admin.py::test_admin_usage_by_model_cost` |
 
 ## 8. 验收用例（可执行）
 
@@ -473,7 +476,7 @@ meta        { factWatermark, builtAt }
 cd backend-agent
 # 含真机仓储契约测试（需要 DSN，否则跳过 mysql 变体）
 $env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:<本机口令>@127.0.0.1:3306/petlumina"
-.\.venv\Scripts\python -m pytest              # 283 passed + 1 skipped（未开 DSN；开 DSN 另跑 MySQL 契约变体）
+.\.venv\Scripts\python -m pytest              # 290 passed + 1 skipped（未开 DSN；开 DSN 另跑 MySQL 契约变体）
 .\.venv\Scripts\python -m evals.run           # routing 15/15, safety 6/6, memory 48/48
 .\.venv\Scripts\python -m scripts.e2e_smoke       # 10/10
 .\.venv\Scripts\python -m scripts.p1_smoke        # 9/9（配额/用量/记忆）
@@ -509,3 +512,4 @@ $env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:<本机口令>@127.0.0.1:3306/petl
 | v1.16 | 2026-11-15 | **无接口变更**（本轮不动任何 HTTP/SSE 形状）：系统提示词改为版本登记表 + 冻结哈希，`prompt_version` 只进 `agent_message.meta` 与 `run finished` 日志；验收 228 passed + 1 skipped、`evals` 69 条全绿（BACKLOG D6 / S1.28） |
 | v1.17 | 2026-11-21 | **无接口变更**：把 4.3 已有字段固化为客户端展示契约（4.3.1 错误码→三语文案、未知 code 回退、`retry_after_s` 向上取整）并增 I46；验收 283 passed + 1 skipped、App 176 tests（BACKLOG D8 / S1.36） |
 | v1.17 | 2026-11-19 | 增 6.1.1 情景往事（`GET/DELETE /agent/memory/me/episodes`）、导出升 v2 并含 `episodes`、I44–I45；验收 283 passed + 1 skipped（未开 DSN）（BACKLOG C1 / S1.34） |
+| v1.18 | 2026-11-21 | 6.3 `/agent/admin/usage` 增 `by_model`（模型、runs、prompt/completion/total、`cost_usd`）；单价由 `PET_AGENT_MODEL_PRICES` 配置，未配置为 `null`；增 I47；验收 290 passed + 1 skipped、管理端 `vue-tsc` 0 + build 0（BACKLOG D4 / S1.37） |

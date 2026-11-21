@@ -139,6 +139,16 @@ export interface AdminDayUsage {
   tokens: number
 }
 
+export interface AdminModelUsage {
+  model: string
+  runs: number
+  prompt_tokens: number
+  completion_tokens: number
+  total_tokens: number
+  // 未配置该模型单价时为 null
+  cost_usd: number | null
+}
+
 export interface AdminUsage {
   days: number
   runs: number
@@ -148,6 +158,7 @@ export interface AdminUsage {
   total_tokens: number
   avg_latency_ms: number
   by_day: AdminDayUsage[]
+  by_model: AdminModelUsage[]
 }
 
 export interface AdminMemoryFact {

@@ -27,7 +27,7 @@
 | 文档 | 内容 |
 | --- | --- |
 | [pet-agent-architecture.md](pet-agent-architecture.md) | Pet-Agent 总体方案：五条原则、分层架构、六大能力、12 张表、开源选型、四阶段路线图、成本与风险、§10 harness 选型、§11 GitHub 调研、§12 S1 落地、§13 Web 接入 |
-| [BACKLOG.md](BACKLOG.md) | 未完成事项清单：P0 3 条 / P1 8 条 / P2 10 条 / P3 9 条 / 原项目卫生债 0 条（E1–E8、E13 已修），当前剩 9 条（P1 1 + P2 1 + P3 7），每条带现状、卡点、验收标准与估算 |
+| [BACKLOG.md](BACKLOG.md) | 未完成事项清单：P0 3 条 / P1 8 条 / P2 10 条 / P3 9 条 / 原项目卫生债 0 条（E1–E8、E13 已修），当前剩 8 条（P1 1 + P2 1 + P3 6），每条带现状、卡点、验收标准与估算 |
 
 ### SDD
 
@@ -39,7 +39,7 @@
 
 | 文档 | 版本 | 内容 |
 | --- | --- | --- |
-| [spec/agent-runtime-api.md](spec/agent-runtime-api.md) | v1.17 | `/healthz`、`/readyz`、`/metrics`、`POST /agent/chat`、事件续传、消息回读、会话列表、文档问答（上传/能力矩阵/删除）、记忆（含删除/导出）与用量、宠物画像、管理端只读与队列运维接口、任务退避重试与多副本语义的请求/响应/事件/错误码/不变量 |
+| [spec/agent-runtime-api.md](spec/agent-runtime-api.md) | v1.18 | `/healthz`、`/readyz`、`/metrics`、`POST /agent/chat`、事件续传、消息回读、会话列表、文档问答（上传/能力矩阵/删除）、记忆（含删除/导出）与用量、宠物画像、管理端只读与队列运维接口、任务退避重试与多副本语义的请求/响应/事件/错误码/不变量 |
 | [spec/web-chat-ui.md](spec/web-chat-ui.md) | v1.2 | 对话页状态机、交互、持久化键、错误码→三语文案映射、布局约束、i18n 键、非目标 |
 
 ### ADR
@@ -85,6 +85,7 @@
 | [plans/s1.34-memory-episodes.md](plans/s1.34-memory-episodes.md) | S1.34 情景记忆：规则抽取 + 按来源消息幂等 + 确定性召回 + API/导出 v2（C1 第一刀） | 已完成 |
 | [plans/s1.35-chat-a11y.md](plans/s1.35-chat-a11y.md) | S1.35 对话页无障碍基线：状态播报 + 消息区语义 + 历史面板焦点闭环（D9） | 已完成 |
 | [plans/s1.36-agent-error-i18n.md](plans/s1.36-agent-error-i18n.md) | S1.36 Agent 错误码三语化：稳定 code → `agentError.*` + `retry_after_s`（D8） | 已完成 |
+| [plans/s1.37-admin-model-cost.md](plans/s1.37-admin-model-cost.md) | S1.37 管理端按模型分账：`by_model` + 可配置单价 + 工作台表格（D4） | 已完成 |
 
 ### REPORT
 
@@ -126,6 +127,7 @@
 | [reports/2026-11-19-s1.34-memory-episodes.md](reports/2026-11-19-s1.34-memory-episodes.md) | S1.34 情景记忆（C1 第一刀） | 写入 `memory_episode` 并带来源消息 id、按 `(user, source_message_id)` 幂等、确定性召回注入 system、列表/删除/导出 v2；`pytest` **283 passed + 1 skipped**（未开 DSN）、`ruff` 全绿；MySQL 变体与浏览器点击未执行 |
 | [reports/2026-11-20-s1.35-chat-a11y.md](reports/2026-11-20-s1.35-chat-a11y.md) | S1.35 对话页无障碍基线（D9） | 回复生命周期播报、消息区 `aria-busy`、错误 `alert`、输入框名称、历史面板焦点闭环；App **161 tests**（17 文件）+ `vue-tsc -b` 0 + build 0；真实读屏人工验收未执行 |
 | [reports/2026-11-21-s1.36-agent-error-i18n.md](reports/2026-11-21-s1.36-agent-error-i18n.md) | S1.36 Agent 错误码三语化（D8） | 14 个服务端 code + HTTP 状态 → `agentError.*`，`retry_after_s` 向上取整，未知 code 回退 message；三语 20 键；App **176 tests**（19 文件）+ `vue-tsc -b` 0 + build 0；后端 283 passed + 1 skipped、`ruff` 全绿（本轮无后端改动） |
+| [reports/2026-11-21-s1.37-admin-model-cost.md](reports/2026-11-21-s1.37-admin-model-cost.md) | S1.37 管理端按模型分账（D4） | `/agent/admin/usage` 增 `by_model`，按 `PET_AGENT_MODEL_PRICES` 估算成本、未配置为 null；后端 **290 passed + 1 skipped**、`ruff` 全绿；管理端 `vue-tsc` 0 + build 0；MySQL 变体未开 DSN |
 
 ## 3. 新增文档怎么起头
 

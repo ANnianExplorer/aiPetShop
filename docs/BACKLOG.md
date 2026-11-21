@@ -2,7 +2,7 @@
 
 - 状态：活文档（每次交付后更新；做完的条目移到对应 REPORT，并从本表删除）
 - 更新：2026-11-21
-- 基线：`main` @ S1.36 提交（2026-11-21，见 `docs/reports/2026-11-21-s1.36-agent-error-i18n.md`）
+- 基线：`main` @ S1.37 提交（2026-11-21，见 `docs/reports/2026-11-21-s1.37-admin-model-cost.md`）
 
 ## 0. 怎么读这份文档
 
@@ -11,7 +11,7 @@
 3. 优先级按"卡不卡产品可用"分：P0 阻断、P1 该做、P2 值得做、P3 以后。
 4. 估算是"一个人、熟悉代码"的量级，不是承诺。
 
-统计：**P0 3 条（A1、A2、A3 已交付）· P1 8 条（B2/B3/B4/B5/B6/B7/B8 已交付，剩 1 条 B1）· P2 10 条（C1、C2、C3、C4、C6、C7、C8、C9、C10 已交付，剩 1 条 C5）· P3 9 条（D6、D8 已交付，剩 7 条）· 原项目卫生债 0 条**，原计划 42 条 + 新增 C10，剩余 9 条（P1 1 + P2 1 + P3 7）。各批证据：E1/E3/E4/E5 见 `docs/reports/2026-11-08-s1.11-hygiene-debts.md`；E2/E6/E7 见 `docs/reports/2026-11-08-s1.12-e2-e6-e7.md`；E8/E13 见 `docs/reports/2026-11-08-s1.13-e8-e13.md`；E9/E10/E11/E12 见 `docs/reports/2026-11-08-s1.14-e9-e12.md`；A3 见 `docs/reports/2026-11-08-s1.15-doc-rag.md`；B5/B7 见 `docs/reports/2026-11-08-s1.16-ops.md`；B6 见 `docs/reports/2026-11-08-s1.17-admin-console.md`；C2 见 `docs/reports/2026-11-08-s1.18-profile.md`；B2/B4/C6 见 `docs/reports/2026-11-08-s1.19-b4-b2-pet.md`；B8 见 `docs/reports/2026-11-14-s1.23-auto-reconnect.md`；B3 收尾见 `docs/reports/2026-11-14-s1.24-stale-run-reaper.md`；C4 见 `docs/reports/2026-11-14-s1.25-citation-jump-links.md`；C8 见 `docs/reports/2026-11-14-s1.26-ci-docker-context.md`；C3 见 `docs/reports/2026-11-15-s1.27-memory-evals.md`；D6 见 `docs/reports/2026-11-15-s1.28-prompt-version.md`；C7 见 `docs/reports/2026-11-16-s1.29-capacity-baseline.md`；C7 上限见 `docs/reports/2026-11-17-s1.31-capacity-ceiling.md`；B7 App 入口见 `docs/reports/2026-11-17-s1.30-app-memory.md`；C9 见 `docs/reports/2026-11-18-s1.32-browser-e2e.md`；C10 见 `docs/reports/2026-11-18-s1.33-admin-model-config.md`；C1 见 `docs/reports/2026-11-19-s1.34-memory-episodes.md`；D8 见 `docs/reports/2026-11-21-s1.36-agent-error-i18n.md`。
+统计：**P0 3 条（A1、A2、A3 已交付）· P1 8 条（B2/B3/B4/B5/B6/B7/B8 已交付，剩 1 条 B1）· P2 10 条（C1、C2、C3、C4、C6、C7、C8、C9、C10 已交付，剩 1 条 C5）· P3 9 条（D4、D6、D8 已交付，剩 6 条）· 原项目卫生债 0 条**，原计划 42 条 + 新增 C10，剩余 8 条（P1 1 + P2 1 + P3 6）。各批证据：E1/E3/E4/E5 见 `docs/reports/2026-11-08-s1.11-hygiene-debts.md`；E2/E6/E7 见 `docs/reports/2026-11-08-s1.12-e2-e6-e7.md`；E8/E13 见 `docs/reports/2026-11-08-s1.13-e8-e13.md`；E9/E10/E11/E12 见 `docs/reports/2026-11-08-s1.14-e9-e12.md`；A3 见 `docs/reports/2026-11-08-s1.15-doc-rag.md`；B5/B7 见 `docs/reports/2026-11-08-s1.16-ops.md`；B6 见 `docs/reports/2026-11-08-s1.17-admin-console.md`；C2 见 `docs/reports/2026-11-08-s1.18-profile.md`；B2/B4/C6 见 `docs/reports/2026-11-08-s1.19-b4-b2-pet.md`；B8 见 `docs/reports/2026-11-14-s1.23-auto-reconnect.md`；B3 收尾见 `docs/reports/2026-11-14-s1.24-stale-run-reaper.md`；C4 见 `docs/reports/2026-11-14-s1.25-citation-jump-links.md`；C8 见 `docs/reports/2026-11-14-s1.26-ci-docker-context.md`；C3 见 `docs/reports/2026-11-15-s1.27-memory-evals.md`；D6 见 `docs/reports/2026-11-15-s1.28-prompt-version.md`；C7 见 `docs/reports/2026-11-16-s1.29-capacity-baseline.md`；C7 上限见 `docs/reports/2026-11-17-s1.31-capacity-ceiling.md`；B7 App 入口见 `docs/reports/2026-11-17-s1.30-app-memory.md`；C9 见 `docs/reports/2026-11-18-s1.32-browser-e2e.md`；C10 见 `docs/reports/2026-11-18-s1.33-admin-model-config.md`；C1 见 `docs/reports/2026-11-19-s1.34-memory-episodes.md`；D8 见 `docs/reports/2026-11-21-s1.36-agent-error-i18n.md`；D4 见 `docs/reports/2026-11-21-s1.37-admin-model-cost.md`。
 
 ---
 
@@ -64,7 +64,7 @@
 | D1 | 多模态生成 | 桌宠形象由"部件库拼装"起步，生成式形象（单图→可动）属远期 |
 | D2 | 规划层 L3（Plan-Execute） | 现在只有 L1/L2；L3 需要子任务编排与中断恢复，等真实需求出现再做 |
 | D3 | 多租户 / 团队账号 | 现在一圈一人；多宠共享账号下的记忆归属需要重新设计 |
-| D4 | 数据看板：成本按模型分账 | 现在只按用户 token 汇总 |
+| D4 | ✅ **数据看板：成本按模型分账**（2026-11-21，S1.37） | 已交付：`GET /agent/admin/usage` 增 `by_model`（模型、runs、prompt/completion/total tokens、`cost_usd`）；memory 与 MySQL 同口径，空模型归 `unknown`，分账合计可对回顶层总量；单价由 `PET_AGENT_MODEL_PRICES`（USD / 1M tokens）配置，未配置 `cost_usd=null`；管理端会话工作台新增「按模型分账」表。**剩余**：MySQL 查询未开 DSN 真库验证；价格是当前配置快照，不是财务结算账 | 无外部依赖，已本地完成 | 已达成：`pytest` **290 passed + 1 skipped**（未开 DSN）、`ruff` 全绿；管理端 `vue-tsc -b` 0 + `npm run build` 0；证据 `docs/reports/2026-11-21-s1.37-admin-model-cost.md` | 已完成（0.5 天） |
 | D5 | 灰度与回滚 | 无 feature flag、无按用户/渠道切流；**提示词版本化已由 D6 交付（2026-11-15）**，`PROMPT_VERSION` 可直接当分流键，但还没有按比例/按用户的路由层 |
 | D6 | ✅ **Prompt 版本管理**（2026-11-15，S1.28） | 已交付：`SYSTEM_PROMPT` 从 `app/graph/nodes.py` 搬到 `app/graph/prompts.py` 的版本登记表（`PROMPT_VERSIONS` 只增不改 + `FROZEN_SHA256` 手写冻结哈希；当前 `2026-11-15.1`，270 字，sha256 `a04df4e3…6806c9`），`nodes.SYSTEM_PROMPT` 名字不变；改正文不升版本 → 单测红（变异实验：改成「4 句以内」后 2 条红、还原即绿）；run 的 assistant `meta` 与 `run finished` 日志都带 `prompt_version`。剩余：管理端会话详情未透出 message `meta`（版本号只在库与日志里，界面看不到）；版本号靠人手写日期；拦不住「同时改正文+哈希且故意不升版本」。证据 `docs/reports/2026-11-15-s1.28-prompt-version.md`（`pytest` 229 例 0 失败 1 跳过、`evals` 69 条全绿、`ruff` 全绿） |
 | D7 | 备份与恢复演练 | MySQL/Redis 均无脚本化备份 |
@@ -113,4 +113,5 @@ E1–E13 全部完成，本表不再列条目。证据分布：
 9. ~~**B6 管理端三页**~~ ✅ 已完成（2026-11-08）：队列运维（现场 + 死信重放）、长期记忆（查/删）、知识图谱（宠物—事实—事件）；Edge 实点三页，`pytest` 183 passed。见 `docs/reports/2026-11-08-s1.17-admin-console.md`。
 10. ~~**C2 用户画像**~~ ✅ 已完成（2026-11-08）：`profile_snapshot` 版本化快照 + 确定性 builder + 记忆消费后重算 + 四接口 + 管理端画像页；`pytest` 203 passed、真机 `v2 facts=3`、Edge 实点。见 `docs/reports/2026-11-08-s1.18-profile.md`。
 11. ~~**B4 死信自动重试 / B2 多副本 / C6 桌宠**~~ ✅ 已完成（2026-11-08，S1.19）：退避 `5s→600s` 封顶 + `redrives` 有界重投（默认关）；双副本 `multi_replica_smoke` 8/8；桌宠档 A（纯函数状态机 + H5 组件）。`pytest` 208 passed、App 50 tests。见 `docs/reports/2026-11-08-s1.19-b4-b2-pet.md`。下一批建议 **B3 僵死 run 收敛**、**C1 `memory_episode` 情景记忆** 或 **B1 RocketMQ**。
-12. ~~**C1 情景记忆（第一刀）**~~ ✅ 已完成（2026-11-19，S1.34）：写入 `memory_episode` 并带来源消息 id、按来源消息幂等、确定性召回注入 system、列表/删除/导出 v2；`pytest` 283 passed + 1 skipped、`ruff` 全绿。见 `docs/reports/2026-11-19-s1.34-memory-episodes.md`。**剩余**：向量语义召回（S2）、结构化日志/健康行回填。下一批建议 **B1 RocketMQ**（需先有 broker）或 **C5 语音链路**。
+12. ~~**C1 情景记忆（第一刀）**~~ ✅ 已完成（2026-11-19，S1.34）：写入 `memory_episode` 并带来源消息 id、按来源消息幂等、确定性召回注入 system、列表/删除/导出 v2；`pytest` 283 passed + 1 skipped、`ruff` 全绿。见 `docs/reports/2026-11-19-s1.34-memory-episodes.md`。**剩余**：向量语义召回（S2）、结构化日志/健康行回填。
+13. ~~**D4 成本按模型分账**~~ ✅ 已完成（2026-11-21，S1.37）：`by_model` + `PET_AGENT_MODEL_PRICES` + 管理端表格；`pytest` 290 passed + 1 skipped、管理端 `vue-tsc` 0 + build 0。见 `docs/reports/2026-11-21-s1.37-admin-model-cost.md`。下一批建议 **B1 RocketMQ**（需先有 broker）或 **C5 语音链路**（均需外部依赖/多日预算）；无外部依赖的小切片只剩 **D7 备份恢复脚本**、**D10 全站 a11y 审计**。

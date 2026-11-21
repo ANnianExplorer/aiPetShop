@@ -13,6 +13,7 @@ from ..domain.models import (
     MemoryEpisode,
     MemoryFact,
     Message,
+    ModelUsage,
     ProfileSnapshot,
     Role,
     Run,
@@ -451,6 +452,7 @@ class InMemoryRepository:
         latencies: list[int] = []
         users: set[str] = set()
         days: dict[str, list[int]] = {}
+        models: dict[str, list[int]] = {}
         for record in self._runs.values():
             if record["status"] is not RunStatus.SUCCEEDED:
                 continue
@@ -469,7 +471,22 @@ class InMemoryRepository:
             bucket = days.setdefault(created[:10], [0, 0])
             bucket[0] += 1
             bucket[1] += usage.total
+            model = run.model or "unknown"
+            model_bucket = models.setdefault(model, [0, 0, 0])
+            model_bucket[0] += 1
+            model_bucket[1] += usage.prompt_tokens
+            model_bucket[2] += usage.completion_tokens
         avg = int(sum(latencies) / len(latencies)) if latencies else 0
+        by_model = [
+            ModelUsage(
+                model=model,
+                runs=v[0],
+                prompt_tokens=v[1],
+                completion_tokens=v[2],
+            )
+            for model, v in models.items()
+        ]
+        by_model.sort(key=lambda m: (-m.total_tokens, m.model))
         return UsageOverview(
             runs=runs,
             users=len(users),
@@ -477,6 +494,7 @@ class InMemoryRepository:
             completion_tokens=completion,
             avg_latency_ms=avg,
             by_day=[DayUsage(day=d, runs=v[0], tokens=v[1]) for d, v in sorted(days.items())],
+            by_model=by_model,
         )
 
     # ------------------------------------------------------------ 文档问答

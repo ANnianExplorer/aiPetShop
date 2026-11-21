@@ -15,6 +15,7 @@ from ..config import Settings
 from ..core.errors import Forbidden, InvalidRequest, NotFound, RateLimited, Unauthorized
 from ..core.logging import log_event
 from ..core.metrics import QUEUE_DEPTH, metrics
+from ..core.pricing import estimate_cost_usd
 from ..core.ratelimit import RateLimiter
 from ..memory import label_of, label_of_kind
 from ..model_config import ModelConfigService
@@ -28,6 +29,7 @@ from ..tasks.base import TaskQueueFull
 from .schemas import (
     AdminDayUsage,
     AdminGraphOut,
+    AdminModelUsage,
     AdminRunOut,
     AdminSessionDetail,
     AdminSessionItem,
@@ -845,6 +847,7 @@ async def admin_usage(
 ) -> AdminUsageOut:
     """全局用量与按天趋势：成本排查与容量预估用。"""
     await _admin_identity(request)
+    settings: Settings = request.app.state.settings
     since = (datetime.now() - timedelta(days=days)).strftime("%Y-%m-%d %H:%M:%S")
     overview = await _repo(request).usage_overview(since)
     return AdminUsageOut(
@@ -857,6 +860,21 @@ async def admin_usage(
         avg_latency_ms=overview.avg_latency_ms,
         by_day=[
             AdminDayUsage(day=d.day, runs=d.runs, tokens=d.tokens) for d in overview.by_day
+        ],
+        by_model=[
+            AdminModelUsage(
+                model=m.model,
+                runs=m.runs,
+                prompt_tokens=m.prompt_tokens,
+                completion_tokens=m.completion_tokens,
+                total_tokens=m.total_tokens,
+                cost_usd=estimate_cost_usd(
+                    m.prompt_tokens,
+                    m.completion_tokens,
+                    settings.model_prices.get(m.model),
+                ),
+            )
+            for m in overview.by_model
         ],
     )
 

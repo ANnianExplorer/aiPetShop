@@ -15,7 +15,7 @@ import pytest
 from conftest import AUTH_HEADERS, make_http, make_settings
 
 from app.api import create_app
-from app.domain.models import MemoryFact
+from app.domain.models import MemoryFact, Usage
 from app.llm import ScriptedModel
 from app.storage import InMemoryRepository
 from app.tasks import (
@@ -125,6 +125,49 @@ async def test_admin_usage_overview(client: httpx.AsyncClient) -> None:
     assert body["users"] == 1
     assert body["total_tokens"] >= 0
     assert isinstance(body["by_day"], list)
+    # 没有配置单价时也要给出 token 分账，但成本必须是 null，不能猜成 0
+    assert len(body["by_model"]) == 1
+    row = body["by_model"][0]
+    assert row["model"] == "scripted"
+    assert row["runs"] == 1
+    assert row["total_tokens"] == body["total_tokens"]
+    assert row["prompt_tokens"] + row["completion_tokens"] == row["total_tokens"]
+    assert row["cost_usd"] is None
+    # 分账必须能对回总量，否则管理端看到的是两套账
+    assert sum(r["runs"] for r in body["by_model"]) == body["runs"]
+    assert sum(r["total_tokens"] for r in body["by_model"]) == body["total_tokens"]
+
+
+@pytest.mark.asyncio
+async def test_admin_usage_by_model_cost() -> None:
+    """配置单价后，成本按 run.model 匹配；1000 prompt + 500 completion → 0.002 USD。"""
+    settings = make_settings(
+        model_prices={"scripted": {"input_per_mtok": 1.0, "output_per_mtok": 2.0}}
+    )
+    app = create_app(
+        settings,
+        model=ScriptedModel(usage=Usage(1000, 500)),
+        repo=InMemoryRepository(),
+        http_client=make_http(),
+    )
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://agent"
+    ) as http:
+        await _chat(http, AUTH_HEADERS)
+        resp = await http.get("/agent/admin/usage?days=7", headers=ADMIN_HEADERS)
+
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["by_model"] == [
+        {
+            "model": "scripted",
+            "runs": 1,
+            "prompt_tokens": 1000,
+            "completion_tokens": 500,
+            "total_tokens": 1500,
+            "cost_usd": 0.002,
+        }
+    ]
 
 
 @pytest.mark.asyncio

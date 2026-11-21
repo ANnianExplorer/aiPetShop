@@ -25,6 +25,7 @@ from ..domain.models import (
     MemoryEpisode,
     MemoryFact,
     Message,
+    ModelUsage,
     ProfileSnapshot,
     Role,
     Route,
@@ -792,6 +793,15 @@ class MySqlRepository:
                 tuple(params),
             )
             day_rows = await cur.fetchall()
+            await cur.execute(
+                "SELECT COALESCE(NULLIF(r.model,''),'unknown') AS m, COUNT(*),"
+                " COALESCE(SUM(r.prompt_tokens),0), COALESCE(SUM(r.completion_tokens),0)"
+                " FROM agent_run r JOIN agent_session s ON s.id=r.session_id"
+                f" WHERE {where} GROUP BY m"
+                " ORDER BY SUM(r.prompt_tokens+r.completion_tokens) DESC, m ASC",
+                tuple(params),
+            )
+            model_rows = await cur.fetchall()
         runs, users, prompt, completion, avg = row if row else (0, 0, 0, 0, 0)
         return UsageOverview(
             runs=int(runs or 0),
@@ -801,6 +811,15 @@ class MySqlRepository:
             avg_latency_ms=int(avg or 0),
             by_day=[
                 DayUsage(day=str(d), runs=int(c or 0), tokens=int(t or 0)) for d, c, t in day_rows
+            ],
+            by_model=[
+                ModelUsage(
+                    model=str(m),
+                    runs=int(c or 0),
+                    prompt_tokens=int(p or 0),
+                    completion_tokens=int(comp or 0),
+                )
+                for m, c, p, comp in model_rows
             ],
         )
 
