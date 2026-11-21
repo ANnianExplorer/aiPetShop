@@ -150,6 +150,25 @@ data: {"text":"9月1日打过疫苗，"}
 - 前端只按「能否跳转」判断，不再按 `kind` 硬编码；没有路由形态 `locator` 的历史数据由前端按 `kind` 兜底。
 `steps[]` 元素：`{seq, kind, name, status, latency_ms, error}`。
 
+#### 4.3.1 错误码与客户端展示（v1.17 / S1.36）
+
+`error.code` 是稳定契约：客户端**按 code 映射文案**，不得解析 `message` 做分支。
+
+| code | 常见来源 | App 文案 key | 可重试 |
+| --- | --- | --- | --- |
+| `invalid_request` / `invalid_arguments` | 请求体、工具参数不合法 | `agentError.invalidRequest` / `agentError.invalidArguments` | 否 |
+| `unauthorized` / `forbidden` / `not_found` | 鉴权、越权、资源不存在 | `agentError.unauthorized` / `agentError.forbidden` / `agentError.notFound` | 否 |
+| `tool_not_allowed` / `tool_failed` | 工具白名单、工具执行失败 | `agentError.toolNotAllowed` / `agentError.toolFailed` | `tool_failed` 是 |
+| `backend_error` / `model_error` / `model_not_configured` | 后端、模型、模型未配置 | `agentError.backendError` / `agentError.modelError` / `agentError.modelNotConfigured` | 前两者是 |
+| `run_timeout` / `budget_exceeded` | 运行超时、预算/配额耗尽 | `agentError.runTimeout` / `agentError.budgetExceeded` | `run_timeout` 是 |
+| `rate_limited` | 限流；`detail={retry_after_s,scope,limit}` | 有秒数用 `agentError.rateLimitedWithRetry`，否则 `agentError.rateLimited` | 是 |
+| `circuit_open` | 熔断；`detail={retry_after_s,breaker}` | 有秒数用 `agentError.circuitOpenWithRetry`，否则 `agentError.circuitOpen` | 是 |
+
+- HTTP `401`/`403`/`404`/`408`/`429`/`5xx` 走同一套映射（客户端以 `http_<status>` 伪 code 复用）。
+- `detail.retry_after_s` 是秒数（可能为小数），展示前**向上取整**；缺失、非数字或 `<= 0` 时退回「稍后再试」。
+- 客户端不认识的 code 展示服务端 `message`；`message` 为空时展示 `agentError.unknown`，避免空白错误条。
+- `message` 仍是中文兜底、不承诺多语言；三语文案由 App 的 `agentError.*` 命名空间维护，新增 code 必须同时补三种语言。
+
 ### 4.4 事件顺序保证
 
 1. `route` 一定先于任何 `delta`；
@@ -446,6 +465,7 @@ meta        { factWatermark, builtAt }
 | I43 | `citations[].locator` 是 App 内路由（`/` 开头），前端据此跳转；`doc` 例外（文档内定位串） | `test_citations.py::test_every_locator_is_an_app_route`、`citationRoute.spec.ts` |
 | I44 | 情景按 `(user_id, source_message_id)` 幂等；同一消息重复投递只一行，不同用户/宠物互不可见 | `test_memory_episodes.py::test_record_episode_is_idempotent_by_source_message`、`test_repository_contract.py::test_memory_episode_dedupes_by_source_message` |
 | I45 | 回忆往事必须带发生日期与来源消息 id，且只注入类型命中的情景；问句/否定/习惯不写入 | `test_api.py::test_conversation_recalls_episode_with_source_message_id`、`test_memory_episodes.py::test_episode_lines_recall_matching_event_only` |
+| I46 | `error.code` 是稳定契约：App 对已知 code 用 `agentError.*` 本地化，未知 code 才展示服务端 message；`retry_after_s` 向上取整 | `agentError.spec.ts`、`ChatView.error.spec.ts` |
 
 ## 8. 验收用例（可执行）
 
@@ -487,4 +507,5 @@ $env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:<本机口令>@127.0.0.1:3306/petl
 | v1.14 | 2026-11-14 | `citations[].locator` 明确为 App 内路由（`/pet-detail`、`/log`、`/post`、`/weekly-health-detail?petId=&date=`），新增只读工具 `search_posts` 提供帖子引用来源；增 I43；验收 216 passed + 1 skipped、App 141 tests、`e2e_smoke` 10/10（BACKLOG C4 / S1.25） |
 | v1.15 | 2026-11-15 | memory 评测 2→48 条（`text`/`observe`/`turns` 三种用例形状），阈值 1.0→0.9，失败 note 区分 `wrong`/`extra`/`forbid_leaked`；抽取规则修 5 类缺陷；验收 221 passed + 1 skipped、`memory 48/48`（BACKLOG C3 / S1.27） |
 | v1.16 | 2026-11-15 | **无接口变更**（本轮不动任何 HTTP/SSE 形状）：系统提示词改为版本登记表 + 冻结哈希，`prompt_version` 只进 `agent_message.meta` 与 `run finished` 日志；验收 228 passed + 1 skipped、`evals` 69 条全绿（BACKLOG D6 / S1.28） |
+| v1.17 | 2026-11-21 | **无接口变更**：把 4.3 已有字段固化为客户端展示契约（4.3.1 错误码→三语文案、未知 code 回退、`retry_after_s` 向上取整）并增 I46；验收 283 passed + 1 skipped、App 176 tests（BACKLOG D8 / S1.36） |
 | v1.17 | 2026-11-19 | 增 6.1.1 情景往事（`GET/DELETE /agent/memory/me/episodes`）、导出升 v2 并含 `episodes`、I44–I45；验收 283 passed + 1 skipped（未开 DSN）（BACKLOG C1 / S1.34） |

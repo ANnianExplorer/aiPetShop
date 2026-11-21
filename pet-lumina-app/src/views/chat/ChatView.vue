@@ -11,6 +11,7 @@ import {
   uploadDocument,
 } from '@/api/agent'
 import { applyAgentEvent, historyToBubbles } from '@/utils/chatStream'
+import { translateAgentError } from '@/utils/agentError'
 import { citationRoute } from '@/utils/citationRoute'
 import { streamChatResilient } from '@/utils/resilientChat'
 import { publishWorkState } from '@/pet/signal'
@@ -132,7 +133,10 @@ async function onFilePicked(event: Event) {
         : t('chat.uploadQueued', { name: file.name }),
     )
   } catch (error) {
-    const message = error instanceof AgentRequestError ? error.message : String(error)
+    const message =
+      error instanceof AgentRequestError
+        ? translateAgentError(t, error.code, error.message, error.detail.retry_after_s)
+        : String(error)
     showToast(t('chat.uploadFailed', { reason: message }))
   } finally {
     uploading.value = false
@@ -151,8 +155,13 @@ function handleEvent(event: AgentEvent, assistant: ChatBubble) {
   if (outcome.dropBubble) {
     bubbles.value = bubbles.value.filter((b) => b.id !== assistant.id)
   }
-  if (outcome.error) {
-    lastError.value = outcome.error
+  if (outcome.error || outcome.errorCode) {
+    lastError.value = translateAgentError(
+      t,
+      outcome.errorCode,
+      outcome.error,
+      outcome.retryAfterS,
+    )
   }
   if (event.event === 'done') {
     announce(t('chat.a11y.replyDone'))
@@ -220,7 +229,7 @@ async function send(text?: string) {
         void router.push('/login')
         return
       }
-      lastError.value = error.message
+      lastError.value = translateAgentError(t, error.code, error.message, error.detail.retry_after_s)
     } else {
       lastError.value = t('chat.sendFailed')
     }

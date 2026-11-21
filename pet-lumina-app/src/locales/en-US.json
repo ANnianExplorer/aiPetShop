@@ -423,5 +423,27 @@
     "exportFailed": "Export failed, please try again later",
     "confidence": "Confidence {value}%",
     "updatedAt": "Updated {time}"
+  },
+  "agentError": {
+    "network": "Can't reach the assistant service. Check your connection and try again.",
+    "unauthorized": "Your session has expired. Please sign in again.",
+    "forbidden": "This account isn't allowed to do that.",
+    "notFound": "The requested item no longer exists.",
+    "invalidRequest": "The request was invalid. Check it and try again.",
+    "invalidArguments": "The assistant couldn't use those parameters. Try rephrasing.",
+    "toolNotAllowed": "This action isn't available in this conversation.",
+    "toolFailed": "Couldn't fetch your pet's data. Try again later.",
+    "backendError": "The pet service is temporarily unavailable. Try again later.",
+    "modelError": "The model service is temporarily unavailable. Try again later.",
+    "modelNotConfigured": "No model service is configured yet. Contact an administrator.",
+    "runTimeout": "This reply timed out. Please try again.",
+    "budgetExceeded": "This conversation hit its usage limit. Try again later.",
+    "rateLimited": "Too many requests. Try again later.",
+    "rateLimitedWithRetry": "Too many requests. Try again in {seconds} seconds.",
+    "circuitOpen": "The service is temporarily unavailable. Try again later.",
+    "circuitOpenWithRetry": "The service is temporarily unavailable. Try again in {seconds} seconds.",
+    "serverError": "Something went wrong on our side. Try again later.",
+    "streamInterrupted": "The reply was interrupted. Please try again.",
+    "unknown": "Something went wrong. Try again later."
   }
 }

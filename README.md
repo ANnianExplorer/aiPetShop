@@ -452,7 +452,7 @@ $env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:yourpwd@127.0.0.1:3306/petlumina"
 前端：
 
 ```bash
-cd pet-lumina-app && npm run build && npm test    # vue-tsc + vitest（161 例：SSE / 聊天流 / 断线重连 / 引用回跳 / 对话页无障碍 / 我的记忆 / 分类 / 提醒日期 / 桌宠引擎（编排·物理·渲染·外壳）/ 图像生成管线）
+cd pet-lumina-app && npm run build && npm test    # vue-tsc + vitest（176 例：SSE / 聊天流 / 断线重连 / 引用回跳 / 对话页无障碍 / 错误码三语 / 我的记忆 / 分类 / 提醒日期 / 桌宠引擎（编排·物理·渲染·外壳）/ 图像生成管线）
 cd pet-lumina-web && npm run typecheck && npm run build   # 管理端 vue-tsc -b（真检查，不是空转）
 cd pet-lumina-app && powershell -NoProfile -ExecutionPolicy Bypass -File scripts/e2e-stack.ps1   # Playwright + 系统 Edge，三条 e2e
 
@@ -489,8 +489,9 @@ cd backend && mvn test                            # 后端单测 27 例（仪表
 - 浏览器 e2e（S1.32）：Playwright + 系统 Edge + 固定桩，`scripts/e2e-stack.ps1` 一条命令起停五个进程；三条真实链路（App 登录→对话→引用回跳、管理员会话详情、429 提示+重试）3/3 通过，22.2s
 - 情景记忆（S1.34）：`memory_episode` 从「只建表」变为可用——对话规则抽取 10 类事件（洗澡/驱虫/疫苗/体检/就医/绝育/美容/剪指甲/呕吐/腹泻），按 `(user_id, source_message_id)` 幂等；召回用类型命中 + 字符重叠 + 新鲜度（阈值 0.50，最多 3 条）注入 system；新增往事列表/删除接口，导出升 v2；「上周给豆豆洗澡了」→「上次洗澡是什么时候」有集成用例
 - 对话页无障碍（S1.35）：回复开始/完成走独立 `role="status"` 播报（不逐片念 delta）、消息区带名称与 `aria-busy`、错误条 `role="alert"`、标题改 `h1`、输入框由免责说明描述；历史面板 `aria-modal` + `Tab` 圈定 + `Esc` 关闭 + 焦点归还触发按钮；新增 6 条 DOM 层验收用例
-- 文档体系：9 条 ADR、2 份 SPEC、1 份 SDD、24 份 PLAN、35 份 REPORT（见 `docs/README.md`）
-- 验收：283 passed + 1 skipped（未开 DSN）、69 条评测（routing 15 / safety 6 / memory 48）、9 个真进程冒烟（10/9/6/8/8/10/11/8 + `reconnect_smoke` 5/5）+ 真实模型冒烟 13/13（L1 P50 929 ms / P95 1064 ms）、App 161 tests + `vue-tsc` 0 + build 0、浏览器 e2e 3/3、`ruff` 全绿
+- 错误码三语化（S1.36）：Agent 的稳定 `error.code` 不再被丢弃——`rate_limited`/`circuit_open` 等 14 个 code 与 HTTP 401/403/404/408/429/5xx 统一映射到 `agentError.*`，`retry_after_s` 显示「N 秒后再试」（向上取整）；未知 code 才回退服务端 message，空 message 有兜底；对话页上传/发送/SSE 与「我的记忆」删除共用同一套文案
+- 文档体系：9 条 ADR、2 份 SPEC、1 份 SDD、25 份 PLAN、36 份 REPORT（见 `docs/README.md`）
+- 验收：283 passed + 1 skipped（未开 DSN）、69 条评测（routing 15 / safety 6 / memory 48）、9 个真进程冒烟（10/9/6/8/8/10/11/8 + `reconnect_smoke` 5/5）+ 真实模型冒烟 13/13（L1 P50 929 ms / P95 1064 ms）、App 176 tests + `vue-tsc` 0 + build 0、浏览器 e2e 3/3、`ruff` 全绿
 
 ### v2.7 (2026-06-03)
 

@@ -52,11 +52,11 @@ stateDiagram-v2
 | `tool` 事件 | 在助手气泡内追加 chip，文案 `chat.tool.<name>`，未知工具回落 `chat.tool.generic` |
 | `delta` | 追加文本；光标跟随 |
 | `done` | **用 `answer` 覆盖**气泡文本（防止拼接误差），落地 `citations`，`streaming=false` |
-| `error` | 若气泡为空则移除空气泡；显示错误条，`retryable=true` 时给「重试」 |
+| `error` | 按 `error.code` 映射 `agentError.*`；若气泡为空则移除空气泡；错误条 `role=alert`，`retryable=true` 时给「重试」；未知 code 展示服务端 `message`，空 message 用 `agentError.unknown` |
 | 重试 | 重发**最后一条用户消息**；失败气泡先清空再流式 |
 | 404（会话不存在） | 静默清 `localStorage` 并新建会话，不打扰用户 |
 | 401 / `unauthorized` | 清 `satoken`，跳 `/login`，toast `chat.loginExpired` |
-| 网络中断 | 保留已收内容，显示 `chat.networkFailed` + 重试 |
+| 网络中断 | 保留已收内容，显示 `agentError.network` + 重试 |
 | 输入 | Enter 发送、Shift+Enter 换行；`event.isComposing` 为真时不发送（中文输入法） |
 | 离开页面 | `AbortController.abort()`；不阻塞路由切换 |
 | 新会话 | 清 `localStorage` 会话键 + 清空消息区，回到 `Empty` |
@@ -83,18 +83,21 @@ stateDiagram-v2
 
 规则：新增可见文案必须先加三语键；`tool.*` 未覆盖的工具名回落 `chat.tool.generic`。
 
+S1.36 起错误文案单独放 `agentError` 命名空间（20 键：`network`、`unauthorized`、`forbidden`、`notFound`、`invalidRequest`、`invalidArguments`、`toolNotAllowed`、`toolFailed`、`backendError`、`modelError`、`modelNotConfigured`、`runTimeout`、`budgetExceeded`、`rateLimited`、`rateLimitedWithRetry`、`circuitOpen`、`circuitOpenWithRetry`、`serverError`、`streamInterrupted`、`unknown`），映射规则见 `docs/spec/agent-runtime-api.md` 4.3.1。`*WithRetry` 用 `{seconds}` 插值（`retry_after_s` 向上取整）；已知 code 不再直接展示服务端中文 `message`。
+
 ## 8. 验收用例
 
 | 编号 | 给 | 期望 |
 | --- | --- | --- |
 | W1 | 空会话发送"你好" | 出现 `route`→多个 `delta`→`done`；气泡文本等于 `done.answer` |
 | W2 | 发送跨 chunk 的 SSE 文本 | 解析器正确拼回（`sse.spec.ts`） |
-| W3 | 服务端 `error(model_error)` | 错误条出现、可重试；run 状态 failed |
+| W3 | 服务端 `error(model_error)` | 错误条显示 `agentError.modelError` 三语文案（不直接显示中文 message），可重试；run 状态 failed |
 | W4 | 刷新页面 | 回读历史，顺序与条数一致 |
 | W5 | 服务端返回 404（会话过期） | 自动换新会话，无报错弹窗 |
 | W6 | 401 | 跳登录并清 token |
 | W7 | 中文输入法按 Enter 选词 | 不触发发送 |
 | W8 | 对话页打开 | 底部导航隐藏，输入框完整可见 |
+| W9 | 服务端 `error(rate_limited, detail.retry_after_s=37)`，英文界面 | 错误条为 `Too many requests. Try again in 37 seconds.`，不出现服务端中文 message |
 
 ## 9. 变更记录
 
@@ -102,6 +105,7 @@ stateDiagram-v2
 | --- | --- | --- |
 | v1.0 | 2026-11-07 | 初版：随 S1.5 Web 接入冻结 |
 | v1.1 | 2026-11-20 | S1.35 补无障碍基线（D9）：状态播报区、消息区语义、错误 `alert`、输入框名称、`h1`、历史面板焦点闭环 |
+| v1.2 | 2026-11-21 | S1.36 错误文案按 `code` 三语化（D8）：`agentError.*` 20 键、`retry_after_s` 向上取整、未知 code 回退服务端 message；补 W9 |
 
 ## 10. 无障碍基线（S1.35）
 

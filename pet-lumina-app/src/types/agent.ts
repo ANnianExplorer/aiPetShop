@@ -63,6 +63,10 @@ export interface ErrorEvent {
   code: string
   message: string
   retryable: boolean
+  /** 限流 / 熔断时带建议重试等待秒数 */
+  detail?: {
+    retry_after_s?: number
+  }
 }
 
 /** 会话消息（GET /agent/sessions/{id}/messages） */

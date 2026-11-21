@@ -21,15 +21,22 @@ import type {
   ToolEvent,
 } from '@/types/agent'
 
+/** 后端错误体里的可选补充信息（HTTP 429/503 会带重试等待） */
+export interface AgentErrorDetail {
+  retry_after_s?: number
+}
+
 export class AgentRequestError extends Error {
   readonly code: string
   readonly retryable: boolean
+  readonly detail: AgentErrorDetail
 
-  constructor(message: string, code = 'network', retryable = true) {
+  constructor(message: string, code = 'network', retryable = true, detail: AgentErrorDetail = {}) {
     super(message)
     this.name = 'AgentRequestError'
     this.code = code
     this.retryable = retryable
+    this.detail = detail
   }
 }
 
@@ -63,20 +70,42 @@ function authHeaders(): Record<string, string> {
   return token ? { satoken: token } : {}
 }
 
+/** `Retry-After` 可能是秒数字符串；HTTP-date 形式暂不解析（后端只发秒数） */
+function retryAfterSeconds(value: unknown): number | undefined {
+  if (typeof value === 'number') {
+    return Number.isFinite(value) && value > 0 ? value : undefined
+  }
+  if (typeof value === 'string' && value.trim() !== '') {
+    const seconds = Number(value)
+    return Number.isFinite(seconds) && seconds > 0 ? seconds : undefined
+  }
+  return undefined
+}
+
 async function assertOk(response: Response): Promise<void> {
   if (response.ok) {
     return
   }
   let code = `http_${response.status}`
   let message = `请求失败（${response.status}）`
+  let detail: AgentErrorDetail = {}
   try {
-    const payload = (await response.json()) as { code?: string; message?: string }
+    const payload = (await response.json()) as {
+      code?: string
+      message?: string
+      detail?: { retry_after_s?: number }
+    }
     if (payload.code) code = payload.code
     if (payload.message) message = payload.message
+    // 优先用错误体 detail，其次用标准 Retry-After 头
+    const retryAfter =
+      retryAfterSeconds(payload.detail?.retry_after_s) ??
+      retryAfterSeconds(response.headers?.get?.('Retry-After'))
+    if (retryAfter !== undefined) detail = { retry_after_s: retryAfter }
   } catch {
     // 非 JSON 错误体：保留状态码提示即可
   }
-  throw new AgentRequestError(message, code, response.status >= 500)
+  throw new AgentRequestError(message, code, response.status >= 500, detail)
 }
 
 /** 逐块读取响应体，交给 SseDecoder 解析；每拿到一条完整记录就回调。 */

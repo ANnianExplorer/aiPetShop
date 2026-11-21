@@ -423,5 +423,27 @@
     "exportFailed": "导出失败，请稍后重试",
     "confidence": "置信度 {value}%",
     "updatedAt": "更新于 {time}"
+  },
+  "agentError": {
+    "network": "连不上智能体服务，请检查网络后重试",
+    "unauthorized": "登录已过期，请重新登录",
+    "forbidden": "当前账号没有这个操作的权限",
+    "notFound": "请求的内容不存在或已被清理",
+    "invalidRequest": "请求参数不正确，请修改后重试",
+    "invalidArguments": "工具参数不合法，请换个说法再试",
+    "toolNotAllowed": "当前对话不支持这个操作",
+    "toolFailed": "查询宠物数据失败，请稍后重试",
+    "backendError": "业务服务暂时不可用，请稍后重试",
+    "modelError": "模型服务暂时不可用，请稍后重试",
+    "modelNotConfigured": "还没有配置模型服务，请联系管理员",
+    "runTimeout": "这次回复超时了，请重试",
+    "budgetExceeded": "本次对话超出用量上限，请稍后再试",
+    "rateLimited": "请求太频繁，请稍后再试",
+    "rateLimitedWithRetry": "请求太频繁，请 {seconds} 秒后再试",
+    "circuitOpen": "服务暂时不可用，请稍后再试",
+    "circuitOpenWithRetry": "服务暂时不可用，请 {seconds} 秒后再试",
+    "serverError": "服务出了点问题，请稍后重试",
+    "streamInterrupted": "回复中断了，请重试",
+    "unknown": "出了点问题，请稍后重试"
   }
 }

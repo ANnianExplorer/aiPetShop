@@ -1,8 +1,8 @@
 # 未完成事项清单（Backlog）
 
 - 状态：活文档（每次交付后更新；做完的条目移到对应 REPORT，并从本表删除）
-- 更新：2026-11-19
-- 基线：`main` @ S1.34 提交（2026-11-19，见 `docs/reports/2026-11-19-s1.34-memory-episodes.md`）
+- 更新：2026-11-21
+- 基线：`main` @ S1.36 提交（2026-11-21，见 `docs/reports/2026-11-21-s1.36-agent-error-i18n.md`）
 
 ## 0. 怎么读这份文档
 
@@ -11,7 +11,7 @@
 3. 优先级按"卡不卡产品可用"分：P0 阻断、P1 该做、P2 值得做、P3 以后。
 4. 估算是"一个人、熟悉代码"的量级，不是承诺。
 
-统计：**P0 3 条（A1、A2、A3 已交付）· P1 8 条（B2/B3/B4/B5/B6/B7/B8 已交付，剩 1 条 B1）· P2 10 条（C1、C2、C3、C4、C6、C7、C8、C9、C10 已交付，剩 1 条 C5）· P3 9 条（D6 已交付，剩 8 条）· 原项目卫生债 0 条**，原计划 42 条 + 新增 C10，剩余 10 条（P1 1 + P2 1 + P3 8）。各批证据：E1/E3/E4/E5 见 `docs/reports/2026-11-08-s1.11-hygiene-debts.md`；E2/E6/E7 见 `docs/reports/2026-11-08-s1.12-e2-e6-e7.md`；E8/E13 见 `docs/reports/2026-11-08-s1.13-e8-e13.md`；E9/E10/E11/E12 见 `docs/reports/2026-11-08-s1.14-e9-e12.md`；A3 见 `docs/reports/2026-11-08-s1.15-doc-rag.md`；B5/B7 见 `docs/reports/2026-11-08-s1.16-ops.md`；B6 见 `docs/reports/2026-11-08-s1.17-admin-console.md`；C2 见 `docs/reports/2026-11-08-s1.18-profile.md`；B2/B4/C6 见 `docs/reports/2026-11-08-s1.19-b4-b2-pet.md`；B8 见 `docs/reports/2026-11-14-s1.23-auto-reconnect.md`；B3 收尾见 `docs/reports/2026-11-14-s1.24-stale-run-reaper.md`；C4 见 `docs/reports/2026-11-14-s1.25-citation-jump-links.md`；C8 见 `docs/reports/2026-11-14-s1.26-ci-docker-context.md`；C3 见 `docs/reports/2026-11-15-s1.27-memory-evals.md`；D6 见 `docs/reports/2026-11-15-s1.28-prompt-version.md`；C7 见 `docs/reports/2026-11-16-s1.29-capacity-baseline.md`；C7 上限见 `docs/reports/2026-11-17-s1.31-capacity-ceiling.md`；B7 App 入口见 `docs/reports/2026-11-17-s1.30-app-memory.md`；C9 见 `docs/reports/2026-11-18-s1.32-browser-e2e.md`；C10 见 `docs/reports/2026-11-18-s1.33-admin-model-config.md`；C1 见 `docs/reports/2026-11-19-s1.34-memory-episodes.md`。
+统计：**P0 3 条（A1、A2、A3 已交付）· P1 8 条（B2/B3/B4/B5/B6/B7/B8 已交付，剩 1 条 B1）· P2 10 条（C1、C2、C3、C4、C6、C7、C8、C9、C10 已交付，剩 1 条 C5）· P3 9 条（D6、D8 已交付，剩 7 条）· 原项目卫生债 0 条**，原计划 42 条 + 新增 C10，剩余 9 条（P1 1 + P2 1 + P3 7）。各批证据：E1/E3/E4/E5 见 `docs/reports/2026-11-08-s1.11-hygiene-debts.md`；E2/E6/E7 见 `docs/reports/2026-11-08-s1.12-e2-e6-e7.md`；E8/E13 见 `docs/reports/2026-11-08-s1.13-e8-e13.md`；E9/E10/E11/E12 见 `docs/reports/2026-11-08-s1.14-e9-e12.md`；A3 见 `docs/reports/2026-11-08-s1.15-doc-rag.md`；B5/B7 见 `docs/reports/2026-11-08-s1.16-ops.md`；B6 见 `docs/reports/2026-11-08-s1.17-admin-console.md`；C2 见 `docs/reports/2026-11-08-s1.18-profile.md`；B2/B4/C6 见 `docs/reports/2026-11-08-s1.19-b4-b2-pet.md`；B8 见 `docs/reports/2026-11-14-s1.23-auto-reconnect.md`；B3 收尾见 `docs/reports/2026-11-14-s1.24-stale-run-reaper.md`；C4 见 `docs/reports/2026-11-14-s1.25-citation-jump-links.md`；C8 见 `docs/reports/2026-11-14-s1.26-ci-docker-context.md`；C3 见 `docs/reports/2026-11-15-s1.27-memory-evals.md`；D6 见 `docs/reports/2026-11-15-s1.28-prompt-version.md`；C7 见 `docs/reports/2026-11-16-s1.29-capacity-baseline.md`；C7 上限见 `docs/reports/2026-11-17-s1.31-capacity-ceiling.md`；B7 App 入口见 `docs/reports/2026-11-17-s1.30-app-memory.md`；C9 见 `docs/reports/2026-11-18-s1.32-browser-e2e.md`；C10 见 `docs/reports/2026-11-18-s1.33-admin-model-config.md`；C1 见 `docs/reports/2026-11-19-s1.34-memory-episodes.md`；D8 见 `docs/reports/2026-11-21-s1.36-agent-error-i18n.md`。
 
 ---
 
@@ -68,7 +68,7 @@
 | D5 | 灰度与回滚 | 无 feature flag、无按用户/渠道切流；**提示词版本化已由 D6 交付（2026-11-15）**，`PROMPT_VERSION` 可直接当分流键，但还没有按比例/按用户的路由层 |
 | D6 | ✅ **Prompt 版本管理**（2026-11-15，S1.28） | 已交付：`SYSTEM_PROMPT` 从 `app/graph/nodes.py` 搬到 `app/graph/prompts.py` 的版本登记表（`PROMPT_VERSIONS` 只增不改 + `FROZEN_SHA256` 手写冻结哈希；当前 `2026-11-15.1`，270 字，sha256 `a04df4e3…6806c9`），`nodes.SYSTEM_PROMPT` 名字不变；改正文不升版本 → 单测红（变异实验：改成「4 句以内」后 2 条红、还原即绿）；run 的 assistant `meta` 与 `run finished` 日志都带 `prompt_version`。剩余：管理端会话详情未透出 message `meta`（版本号只在库与日志里，界面看不到）；版本号靠人手写日期；拦不住「同时改正文+哈希且故意不升版本」。证据 `docs/reports/2026-11-15-s1.28-prompt-version.md`（`pytest` 229 例 0 失败 1 跳过、`evals` 69 条全绿、`ruff` 全绿） |
 | D7 | 备份与恢复演练 | MySQL/Redis 均无脚本化备份 |
-| D8 | 国际化覆盖 | `chat.*` 已三语；Agent 错误码文案仍是中文硬编码（服务端返回 message） |
+| D8 | ✅ **Agent 错误码三语化**（2026-11-21，S1.36） | 已交付：新增 `src/utils/agentError.ts`——14 个服务端 code + `http_<status>` → `agentError.*`，`rate_limited`/`circuit_open` 带 `retry_after_s` 时用 `*WithRetry`（向上取整）；`chatStream` 透出 `errorCode`/`retryAfterS`；`AgentRequestError.detail` 解析 `detail.retry_after_s` 与 `Retry-After`；对话页上传/发送/SSE 错误与「我的记忆」统一走 `translateAgentError`；`agentError` 20 键三语同步；SPEC 增 4.3.1 与 I46。剩余：管理端/Java 错误未纳入（当前范围只到 App Agent 链路）；服务端 `message` 仍中文兜底 | 未覆盖 `pet-lumina-web`、Java `/api/v1` 错误；翻译为手写，未做真机语言切换人工验收 | 已达成：`agentError.spec.ts` 8 例、`chatStream.spec.ts` 12 例、`ChatView.error.spec.ts` 4 例、`ChatView.a11y.spec.ts` 6 例、`MyMemory.spec.ts` 8 例；全量 `vitest` 176/176（19 文件）、`vue-tsc -b` 0、`npm run build` 0；后端 283 passed + 1 skipped、`ruff` 全绿（本轮无后端改动）；证据 `docs/reports/2026-11-21-s1.36-agent-error-i18n.md` | 已完成（0.5 天） |
 | D9 | ✅ **对话页无障碍基线**（2026-11-20，S1.35） | 已交付：消息区 `role=region` + 名称 + `aria-busy` + 可聚焦；独立 `role=status` 播报区只报「开始回复 / 回复完成」，避免流式 delta 刷屏；错误条 `role=alert`；标题改 `h1`；输入框 `aria-label` + `aria-describedby` 指向免责说明；历史面板 `aria-modal`、打开聚焦、`Tab` 圈定、`Esc` 关闭、关闭还焦点；`chat.a11y.*` 三语。剩余：真实读屏人工验收；全站其余页面未覆盖（见 D10） | 读屏软件人工体验（NVDA/VoiceOver）需真机；`inert` 背景禁用、动效降级未做 | 已达成：`ChatView.a11y.spec.ts` 6/6；全量 `vitest` 161/161（17 文件）、`vue-tsc -b` 0、`npm run build` 0；证据 `docs/reports/2026-11-20-s1.35-chat-a11y.md` | 已完成（0.5 天） |
 | D10 | 全站无障碍审计 | 对话页基线已由 D9 交付；设置、我的记忆、社区、管理端等页面未做系统审计（焦点顺序、对比度、表单错误播报、`prefers-reduced-motion`） | 需要先定审计清单与自动化工具；避免逐页零散改 | 关键页面键盘可走通、读屏可读、对比度达 WCAG AA；动效降级可关 | 3 天 |
 

@@ -1,0 +1,1 @@
+import{N as o}from"./index-DL6jl-T5.js";const p={add:t=>o.post("/post/add",t),edit:t=>o.post("/post/edit",t),delete:t=>o.post("/post/delete",{id:t}),getById:t=>o.get("/post/get/vo",{params:{id:String(t)}}),listPage:t=>o.post("/post/list/page/vo",t),toggleLike:t=>o.post(`/post/like/${String(t)}`),toggleFavorite:t=>o.post(`/post/favorite/${String(t)}`)};export{p};

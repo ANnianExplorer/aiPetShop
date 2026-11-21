@@ -18,8 +18,12 @@ import type { ChatBubble } from '@/types/agent'
 export interface ReduceResult {
   /** 服务端分配/确认的会话 id（route 与 done 都会带） */
   sessionId?: string
-  /** 本事件产生的错误文案；没有错误就不出现该字段 */
+  /** 服务端原始错误文案；仅用于未知 code 的兜底展示 */
   error?: string
+  /** 稳定错误码；界面按它映射三语文案 */
+  errorCode?: string
+  /** 限流 / 熔断时服务端建议的重试等待秒数 */
+  retryAfterS?: number
   /** true 表示这条气泡应该被丢弃（还没输出内容就失败了） */
   dropBubble?: boolean
 }
@@ -50,8 +54,12 @@ export function applyAgentEvent(bubble: ChatBubble, event: AgentEvent): ReduceRe
 
   if (event.event === 'error' && isErrorEvent(data)) {
     bubble.streaming = false
+    const retryAfterS = data.detail?.retry_after_s
     return {
-      error: data.message || 'error',
+      error: data.message,
+      errorCode: data.code,
+      retryAfterS:
+        typeof retryAfterS === 'number' && Number.isFinite(retryAfterS) ? retryAfterS : undefined,
       dropBubble: bubble.content.length === 0,
     }
   }

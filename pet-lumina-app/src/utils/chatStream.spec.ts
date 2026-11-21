@@ -94,6 +94,42 @@ describe('applyAgentEvent', () => {
     expect(target.content).toBe('已经说了一半')
   })
 
+  it('error 事件透出错误码与重试秒数，供界面按 code 本地化', () => {
+    const target = bubble()
+    const outcome = applyAgentEvent(target, {
+      event: 'error',
+      data: {
+        code: 'rate_limited',
+        message: '请求太频繁',
+        retryable: true,
+        detail: { retry_after_s: 2.5 },
+      },
+    })
+    expect(outcome.error).toBe('请求太频繁')
+    expect(outcome.errorCode).toBe('rate_limited')
+    expect(outcome.retryAfterS).toBe(2.5)
+  })
+
+  it('error 事件没有 detail 或秒数非法时，不带 retryAfterS', () => {
+    const target = bubble()
+    const noDetail = applyAgentEvent(target, {
+      event: 'error',
+      data: { code: 'circuit_open', message: '熔断', retryable: true },
+    })
+    expect(noDetail.retryAfterS).toBeUndefined()
+
+    const badDetail = applyAgentEvent(target, {
+      event: 'error',
+      data: {
+        code: 'circuit_open',
+        message: '熔断',
+        retryable: true,
+        detail: { retry_after_s: Number.NaN },
+      },
+    })
+    expect(badDetail.retryAfterS).toBeUndefined()
+  })
+
   it('未知事件与格式不符的数据都被忽略，不抛异常', () => {
     const target = bubble()
     expect(applyAgentEvent(target, { event: 'ping', data: null })).toEqual({})

@@ -4,7 +4,8 @@ import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useToast } from '@/composables/useToast'
 import { useUserStore } from '@/stores/user'
-import { deleteMemoryFact, exportMemory, fetchMemoryFacts } from '@/api/agent'
+import { deleteMemoryFact, exportMemory, fetchMemoryFacts, AgentRequestError } from '@/api/agent'
+import { translateAgentError } from '@/utils/agentError'
 import { downloadTextFile } from '@/utils/download'
 import {
   buildMemoryExport,
@@ -76,6 +77,9 @@ function isRejected(result: PromiseSettledResult<unknown>): result is PromiseRej
 }
 
 function reasonText(reason: unknown): string {
+  if (reason instanceof AgentRequestError) {
+    return translateAgentError(t, reason.code, reason.message, reason.detail.retry_after_s)
+  }
   if (reason instanceof Error && reason.message) return reason.message
   return t('memory.error')
 }

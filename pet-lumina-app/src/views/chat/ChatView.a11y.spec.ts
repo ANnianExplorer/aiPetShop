@@ -165,7 +165,9 @@ describe('ChatView 无障碍基线', () => {
     await flushPromises()
 
     expect(wrapper.get('[data-testid="chat-error"]').attributes('role')).toBe('alert')
-    expect(wrapper.text()).toContain('模型超时')
+    // S1.36：已知 code 走三语文案，不再直接展示服务端中文 message
+    expect(wrapper.text()).toContain('模型服务暂时不可用')
+    expect(wrapper.text()).not.toContain('模型超时')
     expect(wrapper.findAll('[data-testid="chat-assistant"]')).toHaveLength(0)
 
     stream.finish()

@@ -3,18 +3,23 @@ import { flushPromises, mount } from '@vue/test-utils'
 import { createPinia, setActivePinia } from 'pinia'
 import { createI18n } from 'vue-i18n'
 import zhCN from '@/locales/zh-CN.json'
-import { deleteMemoryFact, exportMemory, fetchMemoryFacts } from '@/api/agent'
+import { AgentRequestError, deleteMemoryFact, exportMemory, fetchMemoryFacts } from '@/api/agent'
+import { useToast } from '@/composables/useToast'
 import { downloadTextFile } from '@/utils/download'
 import { useUserStore } from '@/stores/user'
 import type { AgentMemoryFact } from '@/types/agent'
 import type { Pet } from '@/types'
 import MyMemory from './MyMemory.vue'
 
-vi.mock('@/api/agent', () => ({
-  fetchMemoryFacts: vi.fn(),
-  deleteMemoryFact: vi.fn(),
-  exportMemory: vi.fn(),
-}))
+vi.mock('@/api/agent', async importOriginal => {
+  const actual = await importOriginal<typeof import('@/api/agent')>()
+  return {
+    ...actual,
+    fetchMemoryFacts: vi.fn(),
+    deleteMemoryFact: vi.fn(),
+    exportMemory: vi.fn(),
+  }
+})
 
 vi.mock('@/utils/download', () => ({ downloadTextFile: vi.fn() }))
 
@@ -173,6 +178,24 @@ describe('MyMemory', () => {
     expect(vi.mocked(deleteMemoryFact)).toHaveBeenCalledTimes(1)
     expect(wrapper.findAll('article')).toHaveLength(3)
     expect(wrapper.text()).toContain('牛奶')
+  })
+
+  it('删除失败时按错误码本地化，不把服务端中文 message 拼进 toast', async () => {
+    vi.mocked(deleteMemoryFact).mockRejectedValue(
+      new AgentRequestError('没有这条记忆：pet.allergy', 'not_found'),
+    )
+    const wrapper = mountView()
+    await flushPromises()
+
+    await wrapper.findAll('article')[0].find('button').trigger('click')
+    await buttonByText(wrapper, '删除')?.trigger('click')
+    await flushPromises()
+
+    const messages = useToast().toasts.value.map(toast => toast.message)
+    expect(messages.some(message => message.includes('请求的内容不存在'))).toBe(true)
+    expect(messages.some(message => message.includes('没有这条记忆'))).toBe(false)
+
+    wrapper.unmount()
   })
 
   it('某个分组失败不影响其它分组，并提示部分失败', async () => {
