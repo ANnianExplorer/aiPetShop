@@ -213,7 +213,7 @@ PetLumina 是一个面向宠物主人的智能生活管理与社区互动平台�
 | aiomysql | 0.3 | 会话 / 消息 / 运行 / 记忆落库 |
 | redis-py | 8.1（RESP2） | 事件存储、限流、旁路任务队列 |
 | ruff | 0.17 | lint 门禁 |
-| pytest + pytest-asyncio | 9.2 / 1.4 | 291 项契约测试（含真机 MySQL 契约；不带 DSN 为 290 通过 + 1 跳过） |
+| pytest + pytest-asyncio | 9.2 / 1.4 | 328 项契约测试（含真机 MySQL 契约；不带 DSN 为 327 通过 + 1 跳过） |
 
 ## 快速开始
 
@@ -407,7 +407,7 @@ ai-PetShop/
 │   │   ├── llm/                     # ChatModel 协议 / OpenAI 兼容实现 / 脚本化桩
 │   │   ├── core/                    # 错误模型 / ID 生成 / 日志 / 熔断 / 限流 / Redis 客户端
 │   │   └── domain/                  # 领域模型 / 事件 / 意图路由
-│   ├── tests/                       # 291 项契约级测试 + 本地桩（Java / LLM）
+│   ├── tests/                       # 328 项契约级测试 + 本地桩（Java / LLM）
 │   ├── evals/                       # 69 条评测用例（routing 15 / safety 6 / memory 48）+ 三套阈值门禁
 │   ├── scripts/                     # 9 个真进程冒烟脚本（含多副本）
 │   ├── Dockerfile                   # 多阶段构建 + 非 root
@@ -437,7 +437,7 @@ Agent 侧的验收是"可复现命令"，不是口头结论：
 cd backend-agent
 # 可选：设置 DSN 后 tests/test_repository_contract.py 会额外跑一组 MySQL 契约变体
 $env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:yourpwd@127.0.0.1:3306/petlumina"
-.venv\Scripts\python -m pytest            # 未设 DSN 时 290 passed + 1 skipped（跳过的就是 MySQL 变体）
+.venv\Scripts\python -m pytest            # 未设 DSN 时 327 passed + 1 skipped（跳过的就是 MySQL 变体）
 .venv\Scripts\python -m evals.run         # routing 15/15、safety 6/6、memory 48/48
 .venv\Scripts\python -m scripts.e2e_smoke          # 10/10（SSE / 续传 / 越权）
 .venv\Scripts\python -m scripts.reconnect_smoke    # 5/5（掐线后 run 仍跑完、follow 续上不重不漏）
@@ -461,7 +461,7 @@ cd backend && mvn test                            # 后端单测 27 例（仪表
 
 文档入口：[`docs/README.md`](./docs/README.md)（四类文档职责 + 索引），
 面向决策的背景见 [`docs/pet-agent-architecture.md`](./docs/pet-agent-architecture.md)，
-**还差什么**见 [`docs/BACKLOG.md`](./docs/BACKLOG.md)（原 42 条，剩 8 条；卫生债 E1–E13 已清零）。
+**还差什么**见 [`docs/BACKLOG.md`](./docs/BACKLOG.md)（原 42 条，剩 7 条；卫生债 E1–E13 已清零）。
 
 ## 更新日志
 
@@ -491,8 +491,9 @@ cd backend && mvn test                            # 后端单测 27 例（仪表
 - 对话页无障碍（S1.35）：回复开始/完成走独立 `role="status"` 播报（不逐片念 delta）、消息区带名称与 `aria-busy`、错误条 `role="alert"`、标题改 `h1`、输入框由免责说明描述；历史面板 `aria-modal` + `Tab` 圈定 + `Esc` 关闭 + 焦点归还触发按钮；新增 6 条 DOM 层验收用例
 - 错误码三语化（S1.36）：Agent 的稳定 `error.code` 不再被丢弃——`rate_limited`/`circuit_open` 等 14 个 code 与 HTTP 401/403/404/408/429/5xx 统一映射到 `agentError.*`，`retry_after_s` 显示「N 秒后再试」（向上取整）；未知 code 才回退服务端 message，空 message 有兜底；对话页上传/发送/SSE 与「我的记忆」删除共用同一套文案
 - 成本按模型分账（S1.37）：`GET /agent/admin/usage` 在总量与按日之外增加 `by_model`（模型、runs、prompt/completion/total tokens、`cost_usd`）；单价由 `PET_AGENT_MODEL_PRICES`（USD / 1M tokens）配置，未配置时成本为 `null` 而不是 0；模型为空归 `unknown`，分账合计可对回顶层总量；管理端会话工作台新增「按模型分账」表
-- 文档体系：9 条 ADR、2 份 SPEC、1 份 SDD、26 份 PLAN、37 份 REPORT（见 `docs/README.md`）
-- 验收：290 passed + 1 skipped（未开 DSN）、69 条评测（routing 15 / safety 6 / memory 48）、9 个真进程冒烟（10/9/6/8/8/10/11/8 + `reconnect_smoke` 5/5）+ 真实模型冒烟 13/13（L1 P50 929 ms / P95 1064 ms）、App 176 tests + `vue-tsc` 0 + build 0、浏览器 e2e 3/3、`ruff` 全绿
+- 备份与恢复演练（S1.38）：`backend-agent/scripts/backup_restore.py` 一条命令完成 `backup`（`mysqldump --single-transaction` + Redis `BGSAVE` 拷 RDB + sha256 清单、口令脱敏）/ `verify`（离线文件与哈希校验，篡改退出 1）/ `drill`（MySQL 临时库逐表比对 + Redis 临时实例比对，结束清理）；本机真机 MySQL 27/27 表、Redis 1/1 DB/4 键一致，37 例新单测
+- 文档体系：9 条 ADR、2 份 SPEC、1 份 SDD、27 份 PLAN、38 份 REPORT（见 `docs/README.md`）
+- 验收：327 passed + 1 skipped（未开 DSN）、69 条评测（routing 15 / safety 6 / memory 48）、9 个真进程冒烟（10/9/6/8/8/10/11/8 + `reconnect_smoke` 5/5）+ 真实模型冒烟 13/13（L1 P50 929 ms / P95 1064 ms）、App 176 tests + `vue-tsc` 0 + build 0、浏览器 e2e 3/3、`ruff` 全绿
 
 ### v2.7 (2026-06-03)
 

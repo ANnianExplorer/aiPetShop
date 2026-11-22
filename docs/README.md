@@ -27,7 +27,7 @@
 | 文档 | 内容 |
 | --- | --- |
 | [pet-agent-architecture.md](pet-agent-architecture.md) | Pet-Agent 总体方案：五条原则、分层架构、六大能力、12 张表、开源选型、四阶段路线图、成本与风险、§10 harness 选型、§11 GitHub 调研、§12 S1 落地、§13 Web 接入 |
-| [BACKLOG.md](BACKLOG.md) | 未完成事项清单：P0 3 条 / P1 8 条 / P2 10 条 / P3 9 条 / 原项目卫生债 0 条（E1–E8、E13 已修），当前剩 8 条（P1 1 + P2 1 + P3 6），每条带现状、卡点、验收标准与估算 |
+| [BACKLOG.md](BACKLOG.md) | 未完成事项清单：P0 3 条 / P1 8 条 / P2 10 条 / P3 9 条 / 原项目卫生债 0 条（E1–E8、E13 已修），当前剩 7 条（P1 1 + P2 1 + P3 5），每条带现状、卡点、验收标准与估算 |
 
 ### SDD
 
@@ -86,6 +86,7 @@
 | [plans/s1.35-chat-a11y.md](plans/s1.35-chat-a11y.md) | S1.35 对话页无障碍基线：状态播报 + 消息区语义 + 历史面板焦点闭环（D9） | 已完成 |
 | [plans/s1.36-agent-error-i18n.md](plans/s1.36-agent-error-i18n.md) | S1.36 Agent 错误码三语化：稳定 code → `agentError.*` + `retry_after_s`（D8） | 已完成 |
 | [plans/s1.37-admin-model-cost.md](plans/s1.37-admin-model-cost.md) | S1.37 管理端按模型分账：`by_model` + 可配置单价 + 工作台表格（D4） | 已完成 |
+| [plans/s1.38-backup-restore.md](plans/s1.38-backup-restore.md) | S1.38 MySQL/Redis 备份与恢复演练：一条命令备份 + 离线校验 + 临时库/临时实例 drill（D7） | 已完成 |
 
 ### REPORT
 
@@ -128,6 +129,7 @@
 | [reports/2026-11-20-s1.35-chat-a11y.md](reports/2026-11-20-s1.35-chat-a11y.md) | S1.35 对话页无障碍基线（D9） | 回复生命周期播报、消息区 `aria-busy`、错误 `alert`、输入框名称、历史面板焦点闭环；App **161 tests**（17 文件）+ `vue-tsc -b` 0 + build 0；真实读屏人工验收未执行 |
 | [reports/2026-11-21-s1.36-agent-error-i18n.md](reports/2026-11-21-s1.36-agent-error-i18n.md) | S1.36 Agent 错误码三语化（D8） | 14 个服务端 code + HTTP 状态 → `agentError.*`，`retry_after_s` 向上取整，未知 code 回退 message；三语 20 键；App **176 tests**（19 文件）+ `vue-tsc -b` 0 + build 0；后端 283 passed + 1 skipped、`ruff` 全绿（本轮无后端改动） |
 | [reports/2026-11-21-s1.37-admin-model-cost.md](reports/2026-11-21-s1.37-admin-model-cost.md) | S1.37 管理端按模型分账（D4） | `/agent/admin/usage` 增 `by_model`，按 `PET_AGENT_MODEL_PRICES` 估算成本、未配置为 null；后端 **290 passed + 1 skipped**、`ruff` 全绿；管理端 `vue-tsc` 0 + build 0；MySQL 变体未开 DSN |
+| [reports/2026-11-22-s1.38-backup-restore.md](reports/2026-11-22-s1.38-backup-restore.md) | S1.38 备份与恢复演练（D7） | 真机 MySQL 27/27 表 + Redis 4 键恢复一致、离线校验 12/12；`pytest` **327 passed + 1 skipped**、`ruff` 全绿；备份明文未加密 |
 
 ## 3. 新增文档怎么起头
 
