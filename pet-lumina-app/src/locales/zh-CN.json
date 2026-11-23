@@ -7,6 +7,7 @@
     "edit": "编辑",
     "add": "添加",
     "back": "返回",
+    "close": "关闭",
     "loading": "加载中...",
     "noData": "暂无数据",
     "success": "操作成功",
@@ -14,6 +15,7 @@
     "networkError": "网络错误，请稍后重试"
   },
   "nav": {
+    "main": "主导航",
     "home": "首页",
     "lifeLog": "生活记录",
     "community": "宠物社区",

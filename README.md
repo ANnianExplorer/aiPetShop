@@ -452,7 +452,7 @@ $env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:yourpwd@127.0.0.1:3306/petlumina"
 前端：
 
 ```bash
-cd pet-lumina-app && npm run build && npm test    # vue-tsc + vitest（176 例：SSE / 聊天流 / 断线重连 / 引用回跳 / 对话页无障碍 / 错误码三语 / 我的记忆 / 分类 / 提醒日期 / 桌宠引擎（编排·物理·渲染·外壳）/ 图像生成管线）
+cd pet-lumina-app && npm run build && npm test    # vue-tsc + vitest（191 例：SSE / 聊天流 / 断线重连 / 引用回跳 / 对话页无障碍 / 错误码三语 / 我的记忆 / 分类 / 提醒日期 / 桌宠引擎（编排·物理·渲染·外壳）/ 图像生成管线 / 导航·Toast·设置页无障碍）
 cd pet-lumina-web && npm run typecheck && npm run build   # 管理端 vue-tsc -b（真检查，不是空转）
 cd pet-lumina-app && powershell -NoProfile -ExecutionPolicy Bypass -File scripts/e2e-stack.ps1   # Playwright + 系统 Edge，三条 e2e
 
@@ -492,8 +492,9 @@ cd backend && mvn test                            # 后端单测 27 例（仪表
 - 错误码三语化（S1.36）：Agent 的稳定 `error.code` 不再被丢弃——`rate_limited`/`circuit_open` 等 14 个 code 与 HTTP 401/403/404/408/429/5xx 统一映射到 `agentError.*`，`retry_after_s` 显示「N 秒后再试」（向上取整）；未知 code 才回退服务端 message，空 message 有兜底；对话页上传/发送/SSE 与「我的记忆」删除共用同一套文案
 - 成本按模型分账（S1.37）：`GET /agent/admin/usage` 在总量与按日之外增加 `by_model`（模型、runs、prompt/completion/total tokens、`cost_usd`）；单价由 `PET_AGENT_MODEL_PRICES`（USD / 1M tokens）配置，未配置时成本为 `null` 而不是 0；模型为空归 `unknown`，分账合计可对回顶层总量；管理端会话工作台新增「按模型分账」表
 - 备份与恢复演练（S1.38）：`backend-agent/scripts/backup_restore.py` 一条命令完成 `backup`（`mysqldump --single-transaction` + Redis `BGSAVE` 拷 RDB + sha256 清单、口令脱敏）/ `verify`（离线文件与哈希校验，篡改退出 1）/ `drill`（MySQL 临时库逐表比对 + Redis 临时实例比对，结束清理）；本机真机 MySQL 27/27 表、Redis 1/1 DB/4 键一致，37 例新单测
-- 文档体系：9 条 ADR、2 份 SPEC、1 份 SDD、27 份 PLAN、38 份 REPORT（见 `docs/README.md`）
-- 验收：327 passed + 1 skipped（未开 DSN）、69 条评测（routing 15 / safety 6 / memory 48）、9 个真进程冒烟（10/9/6/8/8/10/11/8 + `reconnect_smoke` 5/5）+ 真实模型冒烟 13/13（L1 P50 929 ms / P95 1064 ms）、App 176 tests + `vue-tsc` 0 + build 0、浏览器 e2e 3/3、`ruff` 全绿
+- 导航 / 提示 / 设置页无障碍（S1.39，D10 第一刀）：底部导航 5 个 `div` 改为原生按钮并带导航名称与 `aria-current="page"`；Toast 增加 `role="status"` / `aria-live`，错误升级 `alert`，关闭按钮有名称；通用设置页补 `h1`、返回名称、热点推送/深色模式的 `switch` 语义，语言弹窗具备 `dialog` + 打开聚焦 + `Tab` 圈定 + `Esc` 关闭 + 焦点归还；全局统一 `:focus-visible` 焦点环，`prefers-reduced-motion` 下关闭动画/过渡/平滑滚动；新增 15 例 DOM 契约测试
+- 文档体系：9 条 ADR、2 份 SPEC、1 份 SDD、28 份 PLAN、39 份 REPORT（见 `docs/README.md`）
+- 验收：327 passed + 1 skipped（未开 DSN）、69 条评测（routing 15 / safety 6 / memory 48）、9 个真进程冒烟（10/9/6/8/8/10/11/8 + `reconnect_smoke` 5/5）+ 真实模型冒烟 13/13（L1 P50 929 ms / P95 1064 ms）、App 191 tests + `vue-tsc` 0 + build 0、浏览器 e2e 3/3、`ruff` 全绿
 
 ### v2.7 (2026-06-03)
 

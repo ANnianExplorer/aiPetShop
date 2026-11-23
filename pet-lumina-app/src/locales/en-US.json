@@ -7,6 +7,7 @@
     "edit": "Edit",
     "add": "Add",
     "back": "Back",
+    "close": "Close",
     "loading": "Loading...",
     "noData": "No data",
     "success": "Success",
@@ -14,6 +15,7 @@
     "networkError": "Network error, please try again later"
   },
   "nav": {
+    "main": "Main navigation",
     "home": "Home",
     "lifeLog": "Life Log",
     "community": "Community",

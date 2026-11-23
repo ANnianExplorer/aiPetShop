@@ -623,3 +623,27 @@
 .dark .depth-3 {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), 0 0 0 1px rgba(255, 255, 255, 0.08);
 }
+
+/* ========== ACCESSIBILITY BASELINE (S1.39 / D10) ==========
+   层外规则：优先于 Tailwind utilities，能压过页面上的 outline-none。
+   统一键盘焦点环，避免只有鼠标用户能看清当前位置。 */
+:focus-visible {
+  outline: 2px solid #4b6455;
+  outline-offset: 2px;
+}
+
+.dark :focus-visible {
+  outline-color: #89a392;
+}
+
+/* 尊重系统「减少动态效果」：动画与过渡压到不可感知，保留终态。 */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

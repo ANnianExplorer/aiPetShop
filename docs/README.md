@@ -87,6 +87,7 @@
 | [plans/s1.36-agent-error-i18n.md](plans/s1.36-agent-error-i18n.md) | S1.36 Agent 错误码三语化：稳定 code → `agentError.*` + `retry_after_s`（D8） | 已完成 |
 | [plans/s1.37-admin-model-cost.md](plans/s1.37-admin-model-cost.md) | S1.37 管理端按模型分账：`by_model` + 可配置单价 + 工作台表格（D4） | 已完成 |
 | [plans/s1.38-backup-restore.md](plans/s1.38-backup-restore.md) | S1.38 MySQL/Redis 备份与恢复演练：一条命令备份 + 离线校验 + 临时库/临时实例 drill（D7） | 已完成 |
+| [plans/s1.39-a11y-nav-settings.md](plans/s1.39-a11y-nav-settings.md) | S1.39 全站导航 / Toast / 设置页无障碍：原生按钮导航 + live region + switch/dialog 焦点闭环 + 全局焦点环与减少动效（D10 第一刀） | 已完成 |
 
 ### REPORT
 
@@ -130,6 +131,7 @@
 | [reports/2026-11-21-s1.36-agent-error-i18n.md](reports/2026-11-21-s1.36-agent-error-i18n.md) | S1.36 Agent 错误码三语化（D8） | 14 个服务端 code + HTTP 状态 → `agentError.*`，`retry_after_s` 向上取整，未知 code 回退 message；三语 20 键；App **176 tests**（19 文件）+ `vue-tsc -b` 0 + build 0；后端 283 passed + 1 skipped、`ruff` 全绿（本轮无后端改动） |
 | [reports/2026-11-21-s1.37-admin-model-cost.md](reports/2026-11-21-s1.37-admin-model-cost.md) | S1.37 管理端按模型分账（D4） | `/agent/admin/usage` 增 `by_model`，按 `PET_AGENT_MODEL_PRICES` 估算成本、未配置为 null；后端 **290 passed + 1 skipped**、`ruff` 全绿；管理端 `vue-tsc` 0 + build 0；MySQL 变体未开 DSN |
 | [reports/2026-11-22-s1.38-backup-restore.md](reports/2026-11-22-s1.38-backup-restore.md) | S1.38 备份与恢复演练（D7） | 真机 MySQL 27/27 表 + Redis 4 键恢复一致、离线校验 12/12；`pytest` **327 passed + 1 skipped**、`ruff` 全绿；备份明文未加密 |
+| [reports/2026-11-23-s1.39-a11y-nav-settings.md](reports/2026-11-23-s1.39-a11y-nav-settings.md) | S1.39 导航/提示/设置页无障碍（D10 第一刀） | 导航改 5 个原生按钮 + `aria-current`；Toast `role=status` / 错误 `alert`；设置页 `switch` 与 `dialog` 焦点闭环；全局焦点环 + `prefers-reduced-motion`；App **191 tests**（22 文件）+ `vue-tsc -b` 0 + build 0；真实读屏与对比度未验收 |
 
 ## 3. 新增文档怎么起头
 

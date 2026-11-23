@@ -1,6 +1,8 @@
 <script setup lang="ts">
+import { useI18n } from 'vue-i18n'
 import { useToast } from '@/composables/useToast'
 
+const { t } = useI18n()
 const { toasts, removeToast } = useToast()
 
 const getIcon = (type: string) => {
@@ -28,6 +30,9 @@ const getColor = (type: string) => {
   <Teleport to="body">
     <TransitionGroup 
       tag="div" 
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
       class="fixed top-20 left-0 right-0 z-[100] flex flex-col items-center gap-2 px-4 pointer-events-none"
       enter-active-class="transition-all duration-300 ease-out"
       enter-from-class="opacity-0 -translate-y-4 scale-95"
@@ -39,13 +44,19 @@ const getColor = (type: string) => {
       <div
         v-for="toast in toasts"
         :key="toast.id"
+        :role="toast.type === 'error' ? 'alert' : undefined"
         class="pointer-events-auto flex items-center gap-3 px-4 py-3 rounded-2xl shadow-lg backdrop-blur-xl max-w-sm w-full"
         :class="getColor(toast.type)"
       >
-        <span class="material-symbols-outlined text-xl flex-shrink-0">{{ getIcon(toast.type) }}</span>
+        <span aria-hidden="true" class="material-symbols-outlined text-xl flex-shrink-0">{{ getIcon(toast.type) }}</span>
         <p class="font-body-md text-sm flex-1">{{ toast.message }}</p>
-        <button @click="removeToast(toast.id)" class="flex-shrink-0 opacity-80 hover:opacity-100 transition-opacity">
-          <span class="material-symbols-outlined text-lg">close</span>
+        <button
+          type="button"
+          :aria-label="t('common.close')"
+          @click="removeToast(toast.id)"
+          class="flex-shrink-0 opacity-80 hover:opacity-100 transition-opacity"
+        >
+          <span aria-hidden="true" class="material-symbols-outlined text-lg">close</span>
         </button>
       </div>
     </TransitionGroup>

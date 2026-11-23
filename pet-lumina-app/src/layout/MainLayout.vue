@@ -39,26 +39,29 @@ const showNav = computed(() => route.name !== 'chat')
 <template>
   <div class="min-h-screen bg-background relative">
     <!-- Ambient decorative glows -->
-    <div class="fixed top-[-10%] left-[-5%] w-[50%] h-[50%] bg-primary-fixed-dim/20 dark:bg-primary/10 blur-[100px] rounded-full pointer-events-none animate-ambient-drift z-0" />
-    <div class="fixed bottom-[10%] right-[-5%] w-[40%] h-[40%] bg-secondary-container/10 dark:bg-secondary/5 blur-[80px] rounded-full pointer-events-none animate-ambient-drift z-0" style="animation-delay: -4s" />
+    <div aria-hidden="true" class="fixed top-[-10%] left-[-5%] w-[50%] h-[50%] bg-primary-fixed-dim/20 dark:bg-primary/10 blur-[100px] rounded-full pointer-events-none animate-ambient-drift z-0" />
+    <div aria-hidden="true" class="fixed bottom-[10%] right-[-5%] w-[40%] h-[40%] bg-secondary-container/10 dark:bg-secondary/5 blur-[80px] rounded-full pointer-events-none animate-ambient-drift z-0" style="animation-delay: -4s" />
 
     <!-- 页面内容区域 -->
     <RouterView />
 
     <!-- 全局底部导航 - 胶囊样式 -->
-    <nav v-if="showNav" class="fixed bottom-3 left-4 right-4 z-50 pb-safe">
+    <nav v-if="showNav" :aria-label="t('nav.main')" class="fixed bottom-3 left-4 right-4 z-50 pb-safe">
       <div class="bg-white/80 dark:bg-surface-container/80 backdrop-blur-2xl rounded-[28px] shadow-[0_8px_32px_rgba(75,100,85,0.12),0_0_0_1px_rgba(255,255,255,0.5)] dark:shadow-[0_8px_32px_rgba(0,0,0,0.2),0_0_0_1px_rgba(255,255,255,0.08)] px-2 py-2">
         <div class="flex justify-around items-center max-w-screen-xl mx-auto">
-          <div
+          <button
             v-for="tab in tabs"
             :key="tab.name"
+            type="button"
             @click="navigate(tab)"
-            class="flex flex-col items-center justify-center cursor-pointer transition-all duration-300 ease-out relative rounded-[20px] py-2 px-3 min-w-[56px]"
+            class="flex flex-col items-center justify-center cursor-pointer transition-all duration-300 ease-out relative rounded-[20px] py-2 px-3 min-w-[56px] border-0 bg-transparent font-[inherit] text-inherit"
             :class="active === tab.name
               ? 'bg-primary/10 dark:bg-primary/20 scale-105'
               : 'active:scale-90 active:bg-black/[0.03] dark:active:bg-white/[0.05]'"
+            :aria-current="active === tab.name ? 'page' : undefined"
           >
             <span
+              aria-hidden="true"
               class="material-symbols-outlined mb-0.5 transition-all duration-300 text-[22px]"
               :style="active === tab.name
                 ? 'font-variation-settings: \'FILL\' 1, \'wght\' 600; filter: drop-shadow(0 0 6px rgba(75,100,85,0.4))'
@@ -71,7 +74,7 @@ const showNav = computed(() => route.name !== 'chat')
                 ? 'font-bold text-primary'
                 : 'font-medium text-on-surface-variant/60'"
             >{{ t(tab.labelKey) }}</span>
-          </div>
+          </button>
         </div>
       </div>
     </nav>
