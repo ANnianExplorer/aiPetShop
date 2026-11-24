@@ -89,6 +89,7 @@
 | [plans/s1.38-backup-restore.md](plans/s1.38-backup-restore.md) | S1.38 MySQL/Redis 备份与恢复演练：一条命令备份 + 离线校验 + 临时库/临时实例 drill（D7） | 已完成 |
 | [plans/s1.39-a11y-nav-settings.md](plans/s1.39-a11y-nav-settings.md) | S1.39 全站导航 / Toast / 设置页无障碍：原生按钮导航 + live region + switch/dialog 焦点闭环 + 全局焦点环与减少动效（D10 第一刀） | 已完成 |
 | [plans/s1.40-a11y-titles-cards.md](plans/s1.40-a11y-titles-cards.md) | S1.40 路由标题与卡片键盘语义：31 路由 `document.title` + 语言联动 + 社区/生活记录卡片 `RouterLink` 与图片 `alt`（D10 第二刀） | 已完成 |
+| [plans/s1.41-pet-animal-context-menu.md](plans/s1.41-pet-animal-context-menu.md) | S1.41 桌宠动物形象与右键动作菜单：按宠物类型选猫/狗/兔 + 8 项动作菜单 + 键盘/视口边界 | 已完成 |
 
 ### REPORT
 
@@ -134,6 +135,7 @@
 | [reports/2026-11-22-s1.38-backup-restore.md](reports/2026-11-22-s1.38-backup-restore.md) | S1.38 备份与恢复演练（D7） | 真机 MySQL 27/27 表 + Redis 4 键恢复一致、离线校验 12/12；`pytest` **327 passed + 1 skipped**、`ruff` 全绿；备份明文未加密 |
 | [reports/2026-11-23-s1.39-a11y-nav-settings.md](reports/2026-11-23-s1.39-a11y-nav-settings.md) | S1.39 导航/提示/设置页无障碍（D10 第一刀） | 导航改 5 个原生按钮 + `aria-current`；Toast `role=status` / 错误 `alert`；设置页 `switch` 与 `dialog` 焦点闭环；全局焦点环 + `prefers-reduced-motion`；App **191 tests**（22 文件）+ `vue-tsc -b` 0 + build 0；真实读屏与对比度未验收 |
 | [reports/2026-11-24-s1.40-a11y-titles-cards.md](reports/2026-11-24-s1.40-a11y-titles-cards.md) | S1.40 路由标题与卡片键盘语义（D10 第二刀） | 31 个具名路由 `document.title` + 切语言联动；社区/记录卡片改 `RouterLink` + 可读名称；图片 `alt` 与图标按钮名称补齐；App **207 tests**（25 文件）+ `vue-tsc -b` 0 + build 0；对比度与真实读屏未验收 |
+| [reports/2026-11-24-s1.41-pet-animal-context-menu.md](reports/2026-11-24-s1.41-pet-animal-context-menu.md) | S1.41 桌宠动物形象与右键动作菜单 | 三只 200×240 SVG（猫/柴犬/兔）按类型切换，PetStudio 自定义图优先；右键/长按/键盘打开 8 项动作菜单，睡眠禁用动作、视口夹取；App **215 tests**（26 文件）+ `vue-tsc -b` 0 + build 0；真实触屏未验收 |
 
 ## 3. 新增文档怎么起头
 

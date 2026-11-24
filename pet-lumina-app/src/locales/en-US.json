@@ -190,6 +190,7 @@
   },
   "pet": {
     "aria": "Desktop pet",
+    "ariaNamed": "Desktop pet: {name}",
     "hide": "Hide pet",
     "hint": {
       "sleepy": "It's late — {name} is asleep, talk tomorrow",
@@ -205,6 +206,10 @@
       "tap3": "I'll remember that tap",
       "tap4": "Want to ask Lumina something?",
       "eat": "Rice time! Token-flavoured",
+      "dance": "Watch me wiggle!",
+      "spin": "Spinning around… dizzy…",
+      "stretch": "Big stretch, then more rice",
+      "pat": "Pat my head, not my ears",
       "sleep": "Just a quick nap…",
       "wake": "I'm awake. What is it?"
     },
@@ -217,7 +222,13 @@
       "error": "Oops… something went wrong"
     },
     "menu": {
+      "title": "Pet actions",
+      "hint": "Right-click or long-press for actions",
       "eat": "Eat rice",
+      "dance": "Dance",
+      "spin": "Spin",
+      "stretch": "Stretch",
+      "pat": "Pat",
       "sleep": "Take a nap",
       "wake": "Wake up",
       "chat": "Chat",

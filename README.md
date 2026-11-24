@@ -452,7 +452,7 @@ $env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:yourpwd@127.0.0.1:3306/petlumina"
 前端：
 
 ```bash
-cd pet-lumina-app && npm run build && npm test    # vue-tsc + vitest（207 例：SSE / 聊天流 / 断线重连 / 引用回跳 / 对话页无障碍 / 错误码三语 / 我的记忆 / 分类 / 提醒日期 / 桌宠引擎（编排·物理·渲染·外壳）/ 图像生成管线 / 导航·Toast·设置页无障碍 / 路由标题·卡片键盘语义）
+cd pet-lumina-app && npm run build && npm test    # vue-tsc + vitest（215 例：SSE / 聊天流 / 断线重连 / 引用回跳 / 对话页无障碍 / 错误码三语 / 我的记忆 / 分类 / 提醒日期 / 桌宠引擎（编排·物理·渲染·外壳）/ 图像生成管线 / 导航·Toast·设置页无障碍 / 路由标题·卡片键盘语义 / 桌宠形象·右键动作菜单）
 cd pet-lumina-web && npm run typecheck && npm run build   # 管理端 vue-tsc -b（真检查，不是空转）
 cd pet-lumina-app && powershell -NoProfile -ExecutionPolicy Bypass -File scripts/e2e-stack.ps1   # Playwright + 系统 Edge，三条 e2e
 
@@ -494,8 +494,9 @@ cd backend && mvn test                            # 后端单测 27 例（仪表
 - 备份与恢复演练（S1.38）：`backend-agent/scripts/backup_restore.py` 一条命令完成 `backup`（`mysqldump --single-transaction` + Redis `BGSAVE` 拷 RDB + sha256 清单、口令脱敏）/ `verify`（离线文件与哈希校验，篡改退出 1）/ `drill`（MySQL 临时库逐表比对 + Redis 临时实例比对，结束清理）；本机真机 MySQL 27/27 表、Redis 1/1 DB/4 键一致，37 例新单测
 - 导航 / 提示 / 设置页无障碍（S1.39，D10 第一刀）：底部导航 5 个 `div` 改为原生按钮并带导航名称与 `aria-current="page"`；Toast 增加 `role="status"` / `aria-live`，错误升级 `alert`，关闭按钮有名称；通用设置页补 `h1`、返回名称、热点推送/深色模式的 `switch` 语义，语言弹窗具备 `dialog` + 打开聚焦 + `Tab` 圈定 + `Esc` 关闭 + 焦点归还；全局统一 `:focus-visible` 焦点环，`prefers-reduced-motion` 下关闭动画/过渡/平滑滚动；新增 15 例 DOM 契约测试
 - 路由标题与卡片键盘语义（S1.40，D10 第二刀）：31 个具名路由统一设置 `document.title`（`页面名 · PetLumina`），切中/英/日语言时按当前路由即时重算；社区帖子与生活记录卡片由 `div @click` 改为真正的 `RouterLink`，可 Tab 聚焦、Enter 进入，链接名称含作者与摘要；列表/详情图片补 `alt`（头像装饰性置空），纯图标按钮补 `aria-label`（点赞/评论带数量），装饰图标 `aria-hidden`；新增 16 例 DOM 与路由标题测试
-- 文档体系：9 条 ADR、2 份 SPEC、1 份 SDD、29 份 PLAN、40 份 REPORT（见 `docs/README.md`）
-- 验收：327 passed + 1 skipped（未开 DSN）、69 条评测（routing 15 / safety 6 / memory 48）、9 个真进程冒烟（10/9/6/8/8/10/11/8 + `reconnect_smoke` 5/5）+ 真实模型冒烟 13/13（L1 P50 929 ms / P95 1064 ms）、App 207 tests + `vue-tsc` 0 + build 0、浏览器 e2e 3/3、`ruff` 全绿
+- 桌宠动物形象与右键动作菜单（S1.41）：默认形象从绿发人形换成按宠物类型选择的橘猫 / 柴犬 / 奶油兔（200×240 透明 SVG，PetStudio 自定义精灵图仍优先）；右键或长按在宠物上方打开 8 项动作菜单（吃白饭/跳舞/转圈/伸懒腰/摸摸头/睡觉或叫醒/聊天/收起），睡眠时禁用动作，支持 Enter/ContextMenu/Shift+F10 打开、Escape 与点外部关闭，菜单固定定位并夹在视口内；新增 8 例测试
+- 文档体系：9 条 ADR、2 份 SPEC、1 份 SDD、30 份 PLAN、41 份 REPORT（见 `docs/README.md`）
+- 验收：327 passed + 1 skipped（未开 DSN）、69 条评测（routing 15 / safety 6 / memory 48）、9 个真进程冒烟（10/9/6/8/8/10/11/8 + `reconnect_smoke` 5/5）+ 真实模型冒烟 13/13（L1 P50 929 ms / P95 1064 ms）、App 215 tests + `vue-tsc` 0 + build 0、浏览器 e2e 3/3、`ruff` 全绿
 
 ### v2.7 (2026-06-03)
 

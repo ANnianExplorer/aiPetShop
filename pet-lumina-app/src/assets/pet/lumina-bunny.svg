@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240" width="200" height="240" role="img" aria-label="A fluffy cream rabbit">
+  <defs>
+    <linearGradient id="bunBody" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFDF8" />
+      <stop offset="100%" stop-color="#F3E4D2" />
+    </linearGradient>
+    <linearGradient id="bunHead" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFFDF9" />
+      <stop offset="100%" stop-color="#F8EADB" />
+    </linearGradient>
+  </defs>
+
+  <!-- ears -->
+  <path d="M74 52 C62 24 59 3 70 1 C82 -1 91 27 90 55 Z" fill="#FFFDF8" stroke="#D9C4AC" stroke-width="2.5" stroke-linejoin="round" />
+  <path d="M76 46 C68 25 68 10 73 8 C79 6 84 28 83 50 Z" fill="#F7B8C4" />
+  <path d="M126 52 C138 24 141 3 130 1 C118 -1 109 27 110 55 Z" fill="#FFFDF8" stroke="#D9C4AC" stroke-width="2.5" stroke-linejoin="round" />
+  <path d="M124 46 C132 25 132 10 127 8 C121 6 116 28 117 50 Z" fill="#F7B8C4" />
+
+  <!-- body -->
+  <path d="M100 116 C72 116 57 145 53 181 L51 211 Q51 223 65 223 H135 Q149 223 149 211 L147 181 C143 145 128 116 100 116 Z" fill="url(#bunBody)" stroke="#D9C4AC" stroke-width="2.5" />
+  <ellipse cx="100" cy="190" rx="35" ry="31" fill="#FFFDF8" opacity="0.95" />
+  <path d="M62 167 Q70 172 68 181 M138 167 Q130 172 132 181" fill="none" stroke="#E2CCB4" stroke-width="3.5" stroke-linecap="round" />
+
+  <!-- fluffy tail -->
+  <circle cx="158" cy="194" r="20" fill="#FFFDF8" stroke="#D9C4AC" stroke-width="2.5" />
+  <path d="M149 188 Q155 184 161 188 M151 197 Q157 201 164 197" fill="none" stroke="#E2CCB4" stroke-width="2" stroke-linecap="round" />
+
+  <!-- paws -->
+  <ellipse cx="78" cy="225" rx="15" ry="8" fill="#FFFDF8" stroke="#D9C4AC" stroke-width="2" />
+  <ellipse cx="122" cy="225" rx="15" ry="8" fill="#FFFDF8" stroke="#D9C4AC" stroke-width="2" />
+  <path d="M74 221 V228 M82 221 V228 M118 221 V228 M126 221 V228" stroke="#E2CCB4" stroke-width="1.5" stroke-linecap="round" />
+
+  <!-- collar -->
+  <path d="M69 133 Q100 146 131 133 L133 146 Q100 159 67 146 Z" fill="#8FB7AA" />
+  <circle cx="100" cy="155" r="7.5" fill="#F2C94C" stroke="#D9A62E" stroke-width="1.8" />
+  <path d="M97.5 153 H102.5 M100 155.5 V158" stroke="#B9851C" stroke-width="1.4" stroke-linecap="round" />
+
+  <!-- head -->
+  <circle cx="100" cy="83" r="59" fill="url(#bunHead)" stroke="#D9C4AC" stroke-width="2.5" />
+  <path d="M84 31 Q100 42 116 31" fill="none" stroke="#E9D6C1" stroke-width="3" stroke-linecap="round" />
+
+  <!-- eyes -->
+  <g>
+    <ellipse cx="78" cy="85" rx="12.5" ry="14.5" fill="#3A2E2A" />
+    <circle cx="73.5" cy="79" r="4.7" fill="#FFFFFF" />
+    <circle cx="82" cy="90" r="2.1" fill="#FFFFFF" opacity="0.85" />
+    <path d="M68 71 Q78 66 88 72" fill="none" stroke="#C9A78E" stroke-width="2" stroke-linecap="round" />
+  </g>
+  <g>
+    <ellipse cx="122" cy="85" rx="12.5" ry="14.5" fill="#3A2E2A" />
+    <circle cx="117.5" cy="79" r="4.7" fill="#FFFFFF" />
+    <circle cx="126" cy="90" r="2.1" fill="#FFFFFF" opacity="0.85" />
+    <path d="M112 72 Q122 66 132 71" fill="none" stroke="#C9A78E" stroke-width="2" stroke-linecap="round" />
+  </g>
+
+  <!-- blush -->
+  <ellipse cx="56" cy="101" rx="10.5" ry="6" fill="#F5A6B2" opacity="0.5" />
+  <ellipse cx="144" cy="101" rx="10.5" ry="6" fill="#F5A6B2" opacity="0.5" />
+
+  <!-- nose + mouth -->
+  <path d="M95 102 Q100 98 105 102 Q102 107 100 107 Q98 107 95 102 Z" fill="#E88C9A" />
+  <path d="M100 107 V111 M100 111 Q94 116 90 111 M100 111 Q106 116 110 111" fill="none" stroke="#8A5E52" stroke-width="2" stroke-linecap="round" />
+
+  <!-- buck teeth -->
+  <g>
+    <rect x="93" y="113" width="6" height="8" rx="2" fill="#FFFFFF" stroke="#D9C4AC" stroke-width="1.4" />
+    <rect x="101" y="113" width="6" height="8" rx="2" fill="#FFFFFF" stroke="#D9C4AC" stroke-width="1.4" />
+  </g>
+
+  <!-- whiskers -->
+  <path d="M52 99 L71 102 M50 108 L70 107 M148 99 L129 102 M150 108 L130 107" stroke="#C9A78E" stroke-width="1.6" stroke-linecap="round" opacity="0.7" />
+</svg>

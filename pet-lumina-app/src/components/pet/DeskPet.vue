@@ -5,7 +5,8 @@
  * 动画/物理/状态机都在 `@/pet`（纯逻辑，可单测）；这里只做四件事：
  * 建引擎、把指针事件喂给它、把「该说什么」翻译成 i18n 文案、记住用户把它拖到哪了。
  *
- * 形象来源：用户在 `/pet-studio` 用自己的图生成过精灵图就用它，否则用内置角色。
+ * 形象来源：用户在 `/pet-studio` 用自己的图生成过精灵图就用它；否则按当前宠物类型
+ * 选内置形象（猫 / 柴犬 / 兔子），不再让所有用户都看同一个角色。
  */
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, shallowRef, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
@@ -13,10 +14,10 @@ import { useRoute, useRouter } from 'vue-router'
 import { storeToRefs } from 'pinia'
 import { useUserStore } from '@/stores/user'
 import { derivePetMood } from '@/utils/petMood'
+import { defaultSpriteForPetType, spriteKindForPetType } from '@/utils/petSprite'
 import { loadSprite } from '@/utils/petSpriteStore'
 import { createDeskPetEngine, subscribeWorkState, type DeskPetEngine } from '@/pet'
 import type { WorkState } from '@/pet/types'
-import defaultSpriteUrl from '@/assets/pet/lumina.svg?url'
 
 const HIDDEN_KEY = 'petlumina-deskpet-hidden'
 const POS_KEY = 'petlumina-deskpet-pos-v2'
@@ -25,6 +26,9 @@ const MIN_SIZE = 112
 const MAX_SIZE = 160
 /** 长按判定（ms）。 */
 const LONG_PRESS_MS = 520
+/** 右键菜单尺寸：用于把菜单夹在视口内，别让最右边那只宠物把菜单顶出屏幕。 */
+const MENU_WIDTH = 204
+const MENU_HEIGHT = 232
 
 const { t } = useI18n()
 const router = useRouter()
@@ -37,15 +41,57 @@ const PUBLIC_PATHS = ['/login', '/sign-up', '/reset-password']
 
 const rootEl = ref<HTMLElement | null>(null)
 const canvasEl = ref<HTMLCanvasElement | null>(null)
+const menuEl = ref<HTMLElement | null>(null)
 const hidden = ref(false)
 const bubbleText = ref('')
 const menuOpen = ref(false)
+const menuPoint = ref<{ x: number; y: number } | null>(null)
+const sleeping = ref(false)
 const reduced = ref(false)
 const engineRef = shallowRef<DeskPetEngine | null>(null)
 let boxSize = MIN_SIZE
 
 const isPublic = computed(() => PUBLIC_PATHS.includes(route.path))
 const visible = computed(() => !hidden.value && !isPublic.value)
+const spriteKind = computed(() => spriteKindForPetType(currentPet.value?.type))
+const petAria = computed(() =>
+  currentPet.value?.name
+    ? t('pet.ariaNamed', { name: currentPet.value.name })
+    : t('pet.aria'),
+)
+
+type PetMenuAction = 'eat' | 'dance' | 'spin' | 'stretch' | 'pat' | 'sleep' | 'wake' | 'chat' | 'hide'
+
+interface PetMenuItem {
+  id: PetMenuAction
+  icon: string
+  label: string
+  disabled: boolean
+}
+
+/** 右键/长按菜单：动作全部走引擎已有的片段，不额外造动画。 */
+const menuItems = computed<PetMenuItem[]>(() => {
+  const locked = sleeping.value
+  const items: PetMenuItem[] = [
+    { id: 'eat', icon: 'restaurant', label: t('pet.menu.eat'), disabled: locked },
+    { id: 'dance', icon: 'music_note', label: t('pet.menu.dance'), disabled: locked },
+    { id: 'spin', icon: 'cycle', label: t('pet.menu.spin'), disabled: locked },
+    { id: 'stretch', icon: 'accessibility_new', label: t('pet.menu.stretch'), disabled: locked },
+    { id: 'pat', icon: 'pets', label: t('pet.menu.pat'), disabled: locked },
+    locked
+      ? { id: 'wake', icon: 'wb_sunny', label: t('pet.menu.wake'), disabled: false }
+      : { id: 'sleep', icon: 'bedtime', label: t('pet.menu.sleep'), disabled: false },
+    { id: 'chat', icon: 'chat', label: t('pet.menu.chat'), disabled: false },
+    { id: 'hide', icon: 'visibility_off', label: t('pet.menu.hide'), disabled: false },
+  ]
+  return items
+})
+
+const menuStyle = computed(() =>
+  menuPoint.value
+    ? { left: `${menuPoint.value.x}px`, top: `${menuPoint.value.y}px` }
+    : {},
+)
 
 const mood = computed(() =>
   derivePetMood({
@@ -160,7 +206,7 @@ function onPointerDown(event: PointerEvent): void {
   pressTimer = setTimeout(() => {
     if (!pointerState.moved) {
       pointerState.longPressed = true
-      menuOpen.value = true
+      openPetMenu()
     }
   }, LONG_PRESS_MS)
 }
@@ -200,31 +246,114 @@ function onWindowResize(): void {
   engineRef.value?.resize()
 }
 
-function closeMenu(): void {
-  menuOpen.value = false
+/** 引擎不向外抛睡眠事件；每次开菜单前读一次运行时，菜单标签就不会停在旧状态。 */
+function syncSleeping(): void {
+  sleeping.value = engineRef.value?.runtime.sleeping !== null
 }
 
-/** 菜单动作：吃白饭 / 打盹 / 醒来 / 对话。 */
-function menuAction(action: 'eat' | 'sleep' | 'wake' | 'chat'): void {
-  const engine = engineRef.value
+function clampMenu(x: number, y: number): { x: number; y: number } {
+  const maxX = Math.max(8, window.innerWidth - MENU_WIDTH - 8)
+  const maxY = Math.max(8, window.innerHeight - MENU_HEIGHT - 8)
+  return {
+    x: Math.min(Math.max(8, x), maxX),
+    y: Math.min(Math.max(8, y), maxY),
+  }
+}
+
+/** 右键 / 长按 / 键盘统一贴着宠物上方展开，别把刚点的那只盖住。 */
+function menuAnchor(): { x: number; y: number } {
+  const rect = rootEl.value?.getBoundingClientRect()
+  if (rect === undefined) {
+    return clampMenu(window.innerWidth - MENU_WIDTH - 16, window.innerHeight - MENU_HEIGHT - 96)
+  }
+  return clampMenu(rect.right - MENU_WIDTH, rect.top - MENU_HEIGHT - 8)
+}
+
+function openPetMenu(): void {
+  syncSleeping()
+  bubbleText.value = ''
+  menuPoint.value = menuAnchor()
+  menuOpen.value = true
+}
+
+function openMenuFromKeyboard(): void {
+  openPetMenu()
+  void nextTick(() => {
+    menuEl.value?.querySelector<HTMLButtonElement>('button:not(:disabled)')?.focus()
+  })
+}
+
+function onPetKeydown(event: KeyboardEvent): void {
+  if (event.key !== 'Enter' && event.key !== 'ContextMenu' && !(event.shiftKey && event.key === 'F10')) return
+  event.preventDefault()
+  openMenuFromKeyboard()
+}
+
+function closeMenu(restoreFocus = false): void {
+  menuOpen.value = false
+  if (restoreFocus) rootEl.value?.focus()
+}
+
+function onDocumentPointerDown(event: PointerEvent): void {
+  if (!menuOpen.value) return
+  const target = event.target as Node | null
+  if (target === null) return
+  if (menuEl.value?.contains(target) || rootEl.value?.contains(target)) return
   closeMenu()
-  if (engine === null) return
+}
+
+function onWindowKeydown(event: KeyboardEvent): void {
+  if (event.key !== 'Escape' || !menuOpen.value) return
+  event.preventDefault()
+  closeMenu(true)
+}
+
+/** 播一段动作；睡着时引擎会拒绝，菜单那边已经禁用了，这里再做一层兜底。 */
+function playMenuClip(clipId: string, sayKey: string): void {
+  if (engineRef.value?.playAction(clipId) !== true) return
+  say(t(sayKey))
+}
+
+/** 菜单动作：吃饭 / 跳舞 / 转圈 / 伸懒腰 / 摸头 / 睡觉 / 醒来 / 聊天 / 收起。 */
+function menuAction(action: PetMenuAction): void {
+  closeMenu()
   if (action === 'chat') {
     openChat()
     return
   }
-  if (action === 'sleep') {
-    engine.sleep()
-    say(t('pet.say.sleep'))
+  if (action === 'hide') {
+    hidePet()
     return
   }
-  if (action === 'wake') {
-    engine.wake()
-    say(t('pet.say.wake'))
-    return
+  const engine = engineRef.value
+  if (engine === null) return
+  switch (action) {
+    case 'eat':
+      playMenuClip('act.eat', 'pet.say.eat')
+      return
+    case 'dance':
+      playMenuClip('act.dance', 'pet.say.dance')
+      return
+    case 'spin':
+      playMenuClip('act.spin', 'pet.say.spin')
+      return
+    case 'stretch':
+      playMenuClip('act.stretch', 'pet.say.stretch')
+      return
+    case 'pat':
+      playMenuClip('click.pat', 'pet.say.pat')
+      return
+    case 'sleep':
+      engine.sleep()
+      sleeping.value = true
+      say(t('pet.say.sleep'))
+      return
+    case 'wake':
+      engine.wake()
+      sleeping.value = false
+      say(t('pet.say.wake'))
+      return
   }
-  engine.playAction('act.eat')
-  say(t('pet.say.eat'))
 }
 
 function mountPet(): void {
@@ -256,13 +385,15 @@ function mountPet(): void {
   engineRef.value = engine
   engine.setReducedMotion(reduced.value)
   const sprite = loadSprite()
-  engine.setSprite(sprite?.dataUrl ?? defaultSpriteUrl)
+  engine.setSprite(sprite?.dataUrl ?? defaultSpriteForPetType(currentPet.value?.type))
   restorePosition(engine)
   engine.start()
   window.addEventListener('pointermove', onWindowMove, { passive: true })
   window.addEventListener('pointerup', onWindowUp)
   window.addEventListener('pointercancel', onWindowUp)
   window.addEventListener('resize', onWindowResize)
+  window.addEventListener('keydown', onWindowKeydown)
+  document.addEventListener('pointerdown', onDocumentPointerDown, true)
   unsubscribe = subscribeWorkState((state) => {
     engine.setWorkState(state)
     if (state !== null) {
@@ -302,8 +433,11 @@ function unmountPet(): void {
   window.removeEventListener('pointerup', onWindowUp)
   window.removeEventListener('pointercancel', onWindowUp)
   window.removeEventListener('resize', onWindowResize)
+  window.removeEventListener('keydown', onWindowKeydown)
+  document.removeEventListener('pointerdown', onDocumentPointerDown, true)
   bubbleText.value = ''
   menuOpen.value = false
+  menuPoint.value = null
 }
 
 onMounted(() => {
@@ -325,6 +459,17 @@ watch(isPublic, async (pub) => {
   mountPet()
 })
 
+// 切换宠物（猫/狗/其他）时换内置形象；自定义精灵图仍然优先。
+watch(
+  () => currentPet.value?.type,
+  () => {
+    const engine = engineRef.value
+    if (engine === null) return
+    const custom = loadSprite()
+    engine.setSprite(custom?.dataUrl ?? defaultSpriteForPetType(currentPet.value?.type))
+  },
+)
+
 onBeforeUnmount(() => {
   unmountPet()
 })
@@ -337,11 +482,16 @@ onBeforeUnmount(() => {
         ref="rootEl"
         class="desk-pet"
         role="complementary"
-        :aria-label="t('pet.aria')"
+        tabindex="0"
+        :aria-label="petAria"
+        :title="t('pet.menu.hint')"
+        :data-sprite-kind="spriteKind"
         @pointerdown="onPointerDown"
         @pointermove="onPointerMove"
         @pointerup="onPointerUp"
         @pointercancel="onPointerUp"
+        @contextmenu.prevent.stop="openPetMenu"
+        @keydown="onPetKeydown"
       >
         <canvas ref="canvasEl" class="desk-pet-canvas" aria-hidden="true" />
 
@@ -357,16 +507,6 @@ onBeforeUnmount(() => {
           </button>
         </transition>
 
-        <transition name="pet-pop">
-          <div v-if="menuOpen" class="pet-menu" @pointerdown.stop>
-            <button type="button" @click="menuAction('eat')">{{ t('pet.menu.eat') }}</button>
-            <button type="button" @click="menuAction('sleep')">{{ t('pet.menu.sleep') }}</button>
-            <button type="button" @click="menuAction('wake')">{{ t('pet.menu.wake') }}</button>
-            <button type="button" @click="menuAction('chat')">{{ t('pet.menu.chat') }}</button>
-            <button type="button" class="is-muted" @click="hidePet">{{ t('pet.menu.hide') }}</button>
-          </div>
-        </transition>
-
         <button
           class="pet-close"
           type="button"
@@ -378,6 +518,30 @@ onBeforeUnmount(() => {
         </button>
       </div>
     </div>
+
+    <transition name="pet-pop">
+      <div
+        v-if="visible && menuOpen"
+        ref="menuEl"
+        class="pet-menu"
+        role="group"
+        :aria-label="t('pet.menu.title')"
+        :style="menuStyle"
+        @pointerdown.stop
+        @contextmenu.prevent
+      >
+        <button
+          v-for="item in menuItems"
+          :key="item.id"
+          type="button"
+          :disabled="item.disabled"
+          @click="menuAction(item.id)"
+        >
+          <span class="material-symbols-outlined" aria-hidden="true">{{ item.icon }}</span>
+          <span>{{ item.label }}</span>
+        </button>
+      </div>
+    </transition>
   </Teleport>
 </template>
 
@@ -433,36 +597,52 @@ onBeforeUnmount(() => {
 }
 
 .pet-menu {
-  position: absolute;
-  right: 0;
-  bottom: calc(100% - 6px);
-  width: 128px;
-  padding: 6px;
-  border-radius: 14px;
-  background: rgba(255, 255, 255, 0.96);
-  box-shadow: 0 10px 26px rgba(60, 82, 70, 0.24);
+  position: fixed;
+  z-index: 46;
+  width: 204px;
+  padding: 8px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 12px 30px rgba(60, 82, 70, 0.26);
   display: grid;
-  gap: 2px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 4px;
   backdrop-filter: blur(8px);
 }
 .dark .pet-menu {
-  background: rgba(38, 48, 42, 0.96);
+  background: rgba(38, 48, 42, 0.97);
 }
 .pet-menu button {
-  padding: 7px 10px;
-  border-radius: 10px;
-  font-size: 12px;
+  min-height: 48px;
+  padding: 6px 4px;
+  border-radius: 11px;
+  font-size: 11px;
+  line-height: 1.2;
   color: #35473c;
-  text-align: left;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+}
+.pet-menu button .material-symbols-outlined {
+  font-size: 18px;
+  max-width: 100%;
+  overflow: hidden;
+  white-space: nowrap;
+}
+.pet-menu button:hover:not(:disabled) {
+  background: rgba(111, 174, 147, 0.16);
+}
+.pet-menu button:disabled {
+  color: #a9b6ac;
+  cursor: default;
 }
 .dark .pet-menu button {
   color: #e3ebe5;
 }
-.pet-menu button:hover {
-  background: rgba(111, 174, 147, 0.16);
-}
-.pet-menu .is-muted {
-  color: #8a9a8f;
+.dark .pet-menu button:disabled {
+  color: #6f7c73;
 }
 
 .pet-close {

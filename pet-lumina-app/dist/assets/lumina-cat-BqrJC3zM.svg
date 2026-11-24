@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 240" width="200" height="240" role="img" aria-label="A chubby orange cat">
+  <defs>
+    <linearGradient id="catBody" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F8B76C" />
+      <stop offset="100%" stop-color="#E9934B" />
+    </linearGradient>
+    <linearGradient id="catHead" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F9BE79" />
+      <stop offset="100%" stop-color="#EFA35A" />
+    </linearGradient>
+  </defs>
+
+  <!-- tail -->
+  <g>
+    <path d="M140 198 C176 204 192 184 186 160 C181 142 164 140 159 152 C155 163 169 169 174 158" fill="none" stroke="#E9934B" stroke-width="17" stroke-linecap="round" />
+    <circle cx="174" cy="158" r="8.5" fill="#FFF6E7" />
+    <path d="M166 151 Q172 154 174 160" fill="none" stroke="#F6C79E" stroke-width="2" stroke-linecap="round" />
+  </g>
+
+  <!-- body -->
+  <path d="M100 116 C71 116 56 145 52 181 L50 211 Q50 223 64 223 H136 Q150 223 150 211 L148 181 C144 145 129 116 100 116 Z" fill="url(#catBody)" stroke="#D97F3E" stroke-width="2.5" />
+  <ellipse cx="100" cy="191" rx="36" ry="32" fill="#FFF6E7" opacity="0.96" />
+  <path d="M60 166 Q69 171 66 182" fill="none" stroke="#D97F3E" stroke-width="4" stroke-linecap="round" opacity="0.75" />
+  <path d="M140 166 Q131 171 134 182" fill="none" stroke="#D97F3E" stroke-width="4" stroke-linecap="round" opacity="0.75" />
+
+  <!-- paws -->
+  <ellipse cx="78" cy="225" rx="15" ry="8" fill="#FFF6E7" stroke="#D97F3E" stroke-width="2" />
+  <ellipse cx="122" cy="225" rx="15" ry="8" fill="#FFF6E7" stroke="#D97F3E" stroke-width="2" />
+  <path d="M74 221 V228 M82 221 V228 M118 221 V228 M126 221 V228" stroke="#E7C9A8" stroke-width="1.5" stroke-linecap="round" />
+
+  <!-- collar -->
+  <path d="M69 133 Q100 146 131 133 L133 146 Q100 159 67 146 Z" fill="#6FAE93" />
+  <circle cx="100" cy="155" r="7.5" fill="#F2C94C" stroke="#D9A62E" stroke-width="1.8" />
+  <path d="M97.5 153 H102.5 M100 155.5 V158" stroke="#B9851C" stroke-width="1.4" stroke-linecap="round" />
+
+  <!-- head -->
+  <circle cx="100" cy="82" r="60" fill="url(#catHead)" stroke="#D97F3E" stroke-width="2.5" />
+
+  <!-- ears -->
+  <path d="M53 45 L34 8 L88 29 Z" fill="#F3A35C" stroke="#D97F3E" stroke-width="2.5" stroke-linejoin="round" />
+  <path d="M55 40 L44 18 L77 31 Z" fill="#F6B7B7" />
+  <path d="M147 45 L166 8 L112 29 Z" fill="#F3A35C" stroke="#D97F3E" stroke-width="2.5" stroke-linejoin="round" />
+  <path d="M145 40 L156 18 L123 31 Z" fill="#F6B7B7" />
+
+  <!-- forehead stripes -->
+  <path d="M88 31 Q100 40 112 31" fill="none" stroke="#D97F3E" stroke-width="4" stroke-linecap="round" />
+  <path d="M76 38 Q88 47 96 39" fill="none" stroke="#D97F3E" stroke-width="3.5" stroke-linecap="round" />
+  <path d="M124 38 Q112 47 104 39" fill="none" stroke="#D97F3E" stroke-width="3.5" stroke-linecap="round" />
+
+  <!-- face -->
+  <ellipse cx="100" cy="94" rx="44" ry="39" fill="#FFF6E7" />
+
+  <!-- eyes -->
+  <g>
+    <ellipse cx="78" cy="86" rx="13" ry="15" fill="#3B2B24" />
+    <circle cx="73.5" cy="80" r="4.8" fill="#FFFFFF" />
+    <circle cx="82" cy="91" r="2.1" fill="#FFFFFF" opacity="0.85" />
+    <path d="M68 72 Q78 67 88 73" fill="none" stroke="#C98B6B" stroke-width="2.2" stroke-linecap="round" />
+  </g>
+  <g>
+    <ellipse cx="122" cy="86" rx="13" ry="15" fill="#3B2B24" />
+    <circle cx="117.5" cy="80" r="4.8" fill="#FFFFFF" />
+    <circle cx="126" cy="91" r="2.1" fill="#FFFFFF" opacity="0.85" />
+    <path d="M112 73 Q122 67 132 72" fill="none" stroke="#C98B6B" stroke-width="2.2" stroke-linecap="round" />
+  </g>
+
+  <!-- blush -->
+  <ellipse cx="56" cy="101" rx="10" ry="5.5" fill="#F6A6A6" opacity="0.55" />
+  <ellipse cx="144" cy="101" rx="10" ry="5.5" fill="#F6A6A6" opacity="0.55" />
+
+  <!-- nose + mouth -->
+  <path d="M95 103 Q100 99 105 103 Q102 108 100 108 Q98 108 95 103 Z" fill="#E88C8C" />
+  <path d="M100 108 Q100 114 92 114 M100 108 Q100 114 108 114" fill="none" stroke="#7A4B3A" stroke-width="2.2" stroke-linecap="round" />
+
+  <!-- whiskers -->
+  <path d="M52 100 L72 103 M50 110 L71 110 M148 100 L128 103 M150 110 L129 110" stroke="#C98B6B" stroke-width="1.8" stroke-linecap="round" opacity="0.8" />
+</svg>
