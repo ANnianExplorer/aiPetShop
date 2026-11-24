@@ -72,21 +72,21 @@ onMounted(async () => {
       <div class="flex justify-between items-center py-md mb-md animate-float-up">
         <div class="flex items-center gap-3">
           <div class="w-8 h-8 rounded-full bg-primary-container overflow-hidden shadow-md">
-            <img :src="currentUser?.avatar" class="w-full h-full object-cover" />
+            <img :src="currentUser?.avatar" class="w-full h-full object-cover" alt="" />
           </div>
           <span class="text-xl font-bold tracking-tighter text-primary font-['Plus_Jakarta_Sans']">PetLumina</span>
         </div>
         <div class="flex items-center gap-4">
-          <button @click="goToNotifications" class="icon-btn p-2 rounded-full">
-            <span class="material-symbols-outlined text-primary">notifications</span>
+          <button type="button" @click="goToNotifications" :aria-label="t('notification.notifications')" class="icon-btn p-2 rounded-full">
+            <span class="material-symbols-outlined text-primary" aria-hidden="true">notifications</span>
           </button>
         </div>
       </div>
 
       <!-- Search Bar -->
       <div class="relative flex items-center glass-panel rounded-full px-4 py-3 depth-1 group focus-within:ring-2 focus-within:ring-primary/20 transition-all animate-float-up stagger-1">
-        <span class="material-symbols-outlined text-outline mr-3">search</span>
-        <input v-model="searchQuery" type="text" :placeholder="t('community.searchPlaceholder')" class="bg-transparent border-none focus:ring-0 w-full text-body-md placeholder:text-outline-variant font-body-md outline-none" />
+        <span class="material-symbols-outlined text-outline mr-3" aria-hidden="true">search</span>
+        <input v-model="searchQuery" type="text" :placeholder="t('community.searchPlaceholder')" :aria-label="t('community.searchPlaceholder')" class="bg-transparent border-none focus:ring-0 w-full text-body-md placeholder:text-outline-variant font-body-md outline-none" />
       </div>
 
       <div class="animate-float-up stagger-2">

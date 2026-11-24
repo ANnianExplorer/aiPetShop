@@ -76,19 +76,19 @@ onMounted(() => {
       <div class="flex justify-between items-center py-md mb-md">
         <div class="flex items-center gap-3">
           <div class="w-8 h-8 rounded-full bg-primary-fixed overflow-hidden border border-primary/10">
-            <img :src="currentPet?.avatar" class="w-full h-full object-cover" />
+            <img :src="currentPet?.avatar" class="w-full h-full object-cover" alt="" />
           </div>
           <h1 class="text-xl font-bold tracking-tighter text-emerald-800 dark:text-emerald-100 font-['Plus_Jakarta_Sans']">PetLumina</h1>
         </div>
         <div class="flex gap-4">
-          <button @click="goToNotifications" class="material-symbols-outlined text-emerald-700 dark:text-emerald-400 active:scale-95 transition-transform duration-200">notifications</button>
+          <button type="button" @click="goToNotifications" :aria-label="t('notification.notifications')" class="material-symbols-outlined text-emerald-700 dark:text-emerald-400 active:scale-95 transition-transform duration-200">notifications</button>
         </div>
       </div>
       <!-- Search Bar Section -->
       <div class="mt-4 mb-6">
         <div class="relative flex items-center bg-surface-container-low rounded-full px-4 py-3 shadow-sm group focus-within:ring-2 focus-within:ring-primary/20 transition-all">
-          <span class="material-symbols-outlined text-outline mr-3">search</span>
-          <input v-model="searchQuery" type="text" :placeholder="t('log.searchPlaceholder')" class="bg-transparent border-none focus:ring-0 w-full text-body-md placeholder:text-outline-variant font-body-md outline-none" />
+          <span class="material-symbols-outlined text-outline mr-3" aria-hidden="true">search</span>
+          <input v-model="searchQuery" type="text" :placeholder="t('log.searchPlaceholder')" :aria-label="t('log.searchPlaceholder')" class="bg-transparent border-none focus:ring-0 w-full text-body-md placeholder:text-outline-variant font-body-md outline-none" />
         </div>
       </div>
 

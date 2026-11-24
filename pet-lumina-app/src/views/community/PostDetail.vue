@@ -131,17 +131,17 @@ const openComment = () => {
     <main v-if="post" class="pt-4">
       <div class="p-container-padding space-y-lg max-w-screen-xl mx-auto">
         <div class="flex items-center justify-between py-md mb-md">
-          <button @click="goBack" class="active:scale-95 transition-transform p-2 rounded-full hover:bg-zinc-100">
-            <span class="material-symbols-outlined text-emerald-700">arrow_back</span>
+          <button type="button" @click="goBack" :aria-label="t('common.back')" class="active:scale-95 transition-transform p-2 rounded-full hover:bg-zinc-100">
+            <span class="material-symbols-outlined text-emerald-700" aria-hidden="true">arrow_back</span>
           </button>
           <span class="font-title-sm text-on-surface">{{ t('community.postDetail') }}</span>
-          <button @click="openShare" class="active:scale-95 transition-transform p-2 rounded-full hover:bg-zinc-100">
-            <span class="material-symbols-outlined text-emerald-700">share</span>
+          <button type="button" @click="openShare" :aria-label="t('a11y.sharePost')" class="active:scale-95 transition-transform p-2 rounded-full hover:bg-zinc-100">
+            <span class="material-symbols-outlined text-emerald-700" aria-hidden="true">share</span>
           </button>
         </div>
 
         <div class="flex items-center gap-sm">
-          <img @click="goToUserProfile(post.user?.id)" class="w-10 h-10 rounded-full border-2 border-primary object-cover cursor-pointer active:scale-95 transition-transform" :src="post.user?.avatar" />
+          <img @click="goToUserProfile(post.user?.id)" class="w-10 h-10 rounded-full border-2 border-primary object-cover cursor-pointer active:scale-95 transition-transform" :src="post.user?.avatar" alt="" />
           <div @click="goToUserProfile(post.user?.id)" class="cursor-pointer">
             <p class="font-label-bold text-label-bold text-on-surface">{{ post.user?.nickname }}</p>
             <p class="text-xs text-on-surface-variant">{{ formatDate(post.createTime) }}</p>
@@ -149,7 +149,7 @@ const openComment = () => {
         </div>
 
         <div v-if="post.imageList && post.imageList.length > 0" class="rounded-xl overflow-hidden">
-          <img class="w-full h-auto object-cover" :src="post.imageList[0]" />
+          <img class="w-full h-auto object-cover" :src="post.imageList[0]" :alt="t('a11y.postImage', { author: post.user?.nickname || t('community.anonymousUser') })" />
         </div>
 
         <p class="font-body-md text-body-md text-on-surface leading-relaxed">{{ post.content }}</p>
@@ -161,16 +161,16 @@ const openComment = () => {
         </div>
 
         <div class="flex items-center justify-between py-md border-t border-b border-surface-variant/30">
-          <button @click="toggleLike" class="flex items-center gap-2 px-4 py-2 rounded-full transition-all active:scale-90" :class="[(post.isLiked === 1) ? 'text-rose-500' : 'text-on-surface-variant hover:bg-surface-container', likeAnimating ? 'scale-125' : '']">
-            <span class="material-symbols-outlined transition-all" :class="[(post.isLiked === 1) ? 'fill-current text-rose-500' : '', likeAnimating ? 'scale-125' : '']">{{ (post.isLiked === 1) ? 'favorite' : 'favorite_border' }}</span>
+          <button type="button" @click="toggleLike" :aria-label="post.isLiked === 1 ? t('a11y.unlikePost', { count: post.likes }) : t('a11y.likePost', { count: post.likes })" class="flex items-center gap-2 px-4 py-2 rounded-full transition-all active:scale-90" :class="[(post.isLiked === 1) ? 'text-rose-500' : 'text-on-surface-variant hover:bg-surface-container', likeAnimating ? 'scale-125' : '']">
+            <span class="material-symbols-outlined transition-all" :class="[(post.isLiked === 1) ? 'fill-current text-rose-500' : '', likeAnimating ? 'scale-125' : '']" aria-hidden="true">{{ (post.isLiked === 1) ? 'favorite' : 'favorite_border' }}</span>
             <span class="font-label-bold">{{ post.likes }}</span>
           </button>
-          <button @click="openComment" class="flex items-center gap-2 px-4 py-2 rounded-full text-on-surface-variant hover:bg-surface-container transition-colors active:scale-90">
-            <span class="material-symbols-outlined">mode_comment</span>
+          <button type="button" @click="openComment" :aria-label="t('a11y.commentPost', { count: comments.length })" class="flex items-center gap-2 px-4 py-2 rounded-full text-on-surface-variant hover:bg-surface-container transition-colors active:scale-90">
+            <span class="material-symbols-outlined" aria-hidden="true">mode_comment</span>
             <span class="font-label-bold">{{ comments.length }}</span>
           </button>
-          <button @click="toggleFavorite" class="flex items-center gap-2 px-4 py-2 rounded-full transition-all active:scale-90" :class="[(post.isFavorited === 1) ? 'text-amber-500' : 'text-on-surface-variant hover:bg-surface-container', bookmarkAnimating ? 'scale-125' : '']">
-            <span class="material-symbols-outlined transition-all" :class="[(post.isFavorited === 1) ? 'fill-current text-amber-500' : '', bookmarkAnimating ? 'scale-125' : '']">{{ (post.isFavorited === 1) ? 'bookmark' : 'bookmark_border' }}</span>
+          <button type="button" @click="toggleFavorite" :aria-label="post.isFavorited === 1 ? t('a11y.unfavoritePost') : t('a11y.favoritePost')" class="flex items-center gap-2 px-4 py-2 rounded-full transition-all active:scale-90" :class="[(post.isFavorited === 1) ? 'text-amber-500' : 'text-on-surface-variant hover:bg-surface-container', bookmarkAnimating ? 'scale-125' : '']">
+            <span class="material-symbols-outlined transition-all" :class="[(post.isFavorited === 1) ? 'fill-current text-amber-500' : '', bookmarkAnimating ? 'scale-125' : '']" aria-hidden="true">{{ (post.isFavorited === 1) ? 'bookmark' : 'bookmark_border' }}</span>
           </button>
         </div>
       </div>

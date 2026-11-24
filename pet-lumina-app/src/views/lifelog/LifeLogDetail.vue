@@ -78,16 +78,16 @@ const getTypeColor = (type: string) => {
     <main v-if="log" class="pt-4">
       <div class="p-container-padding space-y-lg max-w-screen-xl mx-auto">
         <div class="flex items-center justify-between py-md mb-md">
-          <button @click="goBack" class="active:scale-95 transition-transform p-2 rounded-full hover:bg-zinc-100">
-            <span class="material-symbols-outlined text-emerald-700">arrow_back</span>
+          <button type="button" @click="goBack" :aria-label="t('common.back')" class="active:scale-95 transition-transform p-2 rounded-full hover:bg-zinc-100">
+            <span class="material-symbols-outlined text-emerald-700" aria-hidden="true">arrow_back</span>
           </button>
           <span class="font-title-sm text-on-surface">{{ t('log.logDetail') }}</span>
-          <button @click="openShare" class="active:scale-95 transition-transform p-2 rounded-full hover:bg-zinc-100">
-            <span class="material-symbols-outlined text-emerald-700">more_vert</span>
+          <button type="button" @click="openShare" :aria-label="t('a11y.shareLog')" class="active:scale-95 transition-transform p-2 rounded-full hover:bg-zinc-100">
+            <span class="material-symbols-outlined text-emerald-700" aria-hidden="true">more_vert</span>
           </button>
         </div>
         <div class="flex items-center gap-sm">
-          <div class="w-12 h-12 rounded-xl flex items-center justify-center" :class="getTypeColor(log.type)">
+          <div class="w-12 h-12 rounded-xl flex items-center justify-center" :class="getTypeColor(log.type)" aria-hidden="true">
             <span class="material-symbols-outlined text-2xl">{{ getTypeIcon(log.type) }}</span>
           </div>
           <div>
@@ -97,7 +97,7 @@ const getTypeColor = (type: string) => {
         </div>
 
         <div v-if="log.imageList && log.imageList.length > 0" class="rounded-xl overflow-hidden">
-          <img class="w-full h-auto object-cover" :src="log.imageList[0]" />
+          <img class="w-full h-auto object-cover" :src="log.imageList[0]" :alt="t('a11y.logImage', { title: log.title })" />
         </div>
 
         <p class="font-body-md text-body-md text-on-surface leading-relaxed">{{ log.content }}</p>

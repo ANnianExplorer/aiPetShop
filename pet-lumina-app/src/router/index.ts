@@ -1,5 +1,7 @@
 import { createRouter, createWebHashHistory } from 'vue-router'
 import MainLayout from '@/layout/MainLayout.vue'
+import i18n from '@/i18n'
+import { installDocumentTitle } from '@/utils/pageTitle'
 import { useUserStore } from '@/stores/user'
 
 // 公开路径（不需要登录）
@@ -186,6 +188,9 @@ const router = createRouter({
     }
   ]
 })
+
+// 路由标题：导航完成后写入 document.title，语言切换时按当前路由重算
+installDocumentTitle(router, (key) => i18n.global.t(key), i18n.global.locale)
 
 // 路由守卫
 router.beforeEach(async (to, _from, next) => {
