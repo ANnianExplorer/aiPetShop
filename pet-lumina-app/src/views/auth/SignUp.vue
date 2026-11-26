@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { showToast } from 'vant'
 import { useI18n } from 'vue-i18n'
 import { useUserStore } from '@/stores/user'
 import { authApi } from '@/api/auth'
+import FormError from '@/components/common/FormError.vue'
+import { useFormA11y } from '@/composables/useFormA11y'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -16,10 +18,40 @@ const password = ref('')
 const loading = ref(false)
 const codeLoading = ref(false)
 const countdown = ref(0)
+const phoneInput = ref<HTMLInputElement | null>(null)
+const codeInput = ref<HTMLInputElement | null>(null)
+const passwordInput = ref<HTMLInputElement | null>(null)
+const attempted = ref(false)
+const codeAttempted = ref(false)
+const { errorMessage, errorId, announce, clear } = useFormA11y('signup')
+
+const phoneMissing = computed(() => (attempted.value || codeAttempted.value) && !phone.value.trim())
+const codeMissing = computed(() => attempted.value && !code.value.trim())
+const passwordMissing = computed(() => attempted.value && !password.value)
+
+watch([phone, code, password], () => {
+  if (codeAttempted.value && phone.value.trim()) {
+    codeAttempted.value = false
+  }
+  if (attempted.value && phone.value.trim() && code.value.trim() && password.value) {
+    attempted.value = false
+  }
+  if (!attempted.value && !codeAttempted.value) {
+    clear()
+  }
+})
 
 const handleSignUp = async () => {
-  if (!phone.value || !code.value || !password.value) {
-    showToast(t('auth.fillComplete'))
+  if (!phone.value.trim() || !code.value.trim() || !password.value) {
+    attempted.value = true
+    await announce(t('auth.fillComplete'))
+    if (!phone.value.trim()) {
+      phoneInput.value?.focus()
+    } else if (!code.value.trim()) {
+      codeInput.value?.focus()
+    } else {
+      passwordInput.value?.focus()
+    }
     return
   }
   loading.value = true
@@ -34,8 +66,10 @@ const handleSignUp = async () => {
 }
 
 const sendCode = async () => {
-  if (!phone.value) {
-    showToast(t('auth.enterPhoneFirst'))
+  if (!phone.value.trim()) {
+    codeAttempted.value = true
+    await announce(t('auth.enterPhoneFirst'))
+    phoneInput.value?.focus()
     return
   }
   codeLoading.value = true
@@ -96,8 +130,15 @@ const goToLogin = () => {
               <span class="material-symbols-outlined">person</span>
             </div>
             <input
+              ref="phoneInput"
               v-model="phone"
+              id="signup-phone"
               type="text"
+              :aria-label="t('auth.phone')"
+              autocomplete="tel"
+              inputmode="tel"
+              :aria-invalid="phoneMissing || undefined"
+              :aria-describedby="errorMessage ? errorId : undefined"
               class="w-full h-12 pl-12 pr-md bg-white/40 border-none rounded-xl font-body-md text-body-md placeholder-outline focus:ring-2 focus:ring-primary/20 transition-all"
               :placeholder="t('auth.phonePlaceholder')"
             />
@@ -110,8 +151,15 @@ const goToLogin = () => {
                 <span class="material-symbols-outlined">verified_user</span>
               </div>
               <input
+                ref="codeInput"
                 v-model="code"
+                id="signup-code"
                 type="text"
+                :aria-label="t('auth.verifyCode')"
+                autocomplete="one-time-code"
+                inputmode="numeric"
+                :aria-invalid="codeMissing || undefined"
+                :aria-describedby="errorMessage ? errorId : undefined"
                 class="w-full h-12 pl-12 pr-md bg-white/40 border-none rounded-xl font-body-md text-body-md placeholder-outline focus:ring-2 focus:ring-primary/20 transition-all"
                 :placeholder="t('auth.verifyCode')"
               />
@@ -132,19 +180,28 @@ const goToLogin = () => {
               <span class="material-symbols-outlined">lock</span>
             </div>
             <input
+              ref="passwordInput"
               v-model="password"
+              id="signup-password"
               :type="showPassword ? 'text' : 'password'"
+              :aria-label="t('auth.password')"
+              autocomplete="new-password"
+              :aria-invalid="passwordMissing || undefined"
+              :aria-describedby="errorMessage ? errorId : undefined"
               class="w-full h-12 pl-12 pr-12 bg-white/40 border-none rounded-xl font-body-md text-body-md placeholder-outline focus:ring-2 focus:ring-primary/20 transition-all"
               :placeholder="t('auth.setPassword')"
             />
             <button
               type="button"
+              :aria-label="showPassword ? t('auth.hidePassword') : t('auth.showPassword')"
               class="absolute inset-y-0 right-md flex items-center text-primary/50"
               @click="showPassword = !showPassword"
             >
-              <span class="material-symbols-outlined">{{ showPassword ? 'visibility' : 'visibility_off' }}</span>
+              <span class="material-symbols-outlined" aria-hidden="true">{{ showPassword ? 'visibility' : 'visibility_off' }}</span>
             </button>
           </div>
+
+          <FormError :id="errorId" :message="errorMessage" />
 
           <!-- Register Button -->
           <button

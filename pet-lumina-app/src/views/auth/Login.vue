@@ -1,9 +1,10 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { showToast } from 'vant'
 import { useI18n } from 'vue-i18n'
 import { useUserStore } from '@/stores/user'
+import FormError from '@/components/common/FormError.vue'
+import { useFormA11y } from '@/composables/useFormA11y'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -12,10 +13,30 @@ const showPassword = ref(false)
 const phone = ref('')
 const password = ref('')
 const loading = ref(false)
+const phoneInput = ref<HTMLInputElement | null>(null)
+const passwordInput = ref<HTMLInputElement | null>(null)
+const attempted = ref(false)
+const { errorMessage, errorId, announce, clear } = useFormA11y('login')
+
+const phoneMissing = computed(() => attempted.value && !phone.value.trim())
+const passwordMissing = computed(() => attempted.value && !password.value)
+
+watch([phone, password], () => {
+  if (phone.value.trim() && password.value) {
+    attempted.value = false
+    clear()
+  }
+})
 
 const handleLogin = async () => {
-  if (!phone.value || !password.value) {
-    showToast(t('auth.fillComplete'))
+  if (!phone.value.trim() || !password.value) {
+    attempted.value = true
+    await announce(t('auth.fillComplete'))
+    if (!phone.value.trim()) {
+      phoneInput.value?.focus()
+    } else {
+      passwordInput.value?.focus()
+    }
     return
   }
   loading.value = true
@@ -72,12 +93,19 @@ const goToResetPassword = () => {
           <!-- Account Field -->
           <div class="relative">
             <div class="absolute inset-y-0 left-md flex items-center pointer-events-none text-primary">
-              <span class="material-symbols-outlined">person</span>
+              <span class="material-symbols-outlined" aria-hidden="true">person</span>
             </div>
             <input
+              ref="phoneInput"
               v-model="phone"
+              id="login-phone"
               type="text"
               data-testid="login-phone"
+              :aria-label="t('auth.phone')"
+              autocomplete="tel"
+              inputmode="tel"
+              :aria-invalid="phoneMissing || undefined"
+              :aria-describedby="errorMessage ? errorId : undefined"
               class="glass-input w-full h-12 pl-12 pr-md rounded-xl font-body-md text-body-md placeholder-outline"
               :placeholder="t('auth.phonePlaceholder')"
             />
@@ -86,23 +114,32 @@ const goToResetPassword = () => {
           <!-- Password Field -->
           <div class="relative">
             <div class="absolute inset-y-0 left-md flex items-center pointer-events-none text-primary">
-              <span class="material-symbols-outlined">lock</span>
+              <span class="material-symbols-outlined" aria-hidden="true">lock</span>
             </div>
             <input
+              ref="passwordInput"
               v-model="password"
+              id="login-password"
               :type="showPassword ? 'text' : 'password'"
               data-testid="login-password"
+              :aria-label="t('auth.password')"
+              autocomplete="current-password"
+              :aria-invalid="passwordMissing || undefined"
+              :aria-describedby="errorMessage ? errorId : undefined"
               class="glass-input w-full h-12 pl-12 pr-12 rounded-xl font-body-md text-body-md placeholder-outline"
               :placeholder="t('auth.passwordPlaceholder')"
             />
             <button
               type="button"
+              :aria-label="showPassword ? t('auth.hidePassword') : t('auth.showPassword')"
               class="absolute inset-y-0 right-md flex items-center text-primary/50 hover:text-primary transition-colors"
               @click="showPassword = !showPassword"
             >
-              <span class="material-symbols-outlined">{{ showPassword ? 'visibility' : 'visibility_off' }}</span>
+              <span class="material-symbols-outlined" aria-hidden="true">{{ showPassword ? 'visibility' : 'visibility_off' }}</span>
             </button>
           </div>
+
+          <FormError :id="errorId" :message="errorMessage" />
 
           <!-- Forgot Password Link -->
           <div class="text-right">

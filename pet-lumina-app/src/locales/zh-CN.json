@@ -44,7 +44,11 @@
     "favoritePost": "收藏",
     "unfavoritePost": "取消收藏",
     "sharePost": "分享帖子",
-    "shareLog": "分享记录"
+    "shareLog": "分享记录",
+    "topicCard": "查看话题：{title}",
+    "viewUserProfile": "查看 {name} 的主页",
+    "prevTopic": "上一个话题",
+    "nextTopic": "下一个话题"
   },
   "common": {
     "save": "保存",
@@ -185,6 +189,7 @@
     "ageExample": "例如：2 岁",
     "healthNotesPlaceholder": "过敏、慢性病、用药等（选填）",
     "clickToUpload": "点击上传头像",
+    "uploadAvatar": "上传宠物头像",
     "uploading": "上传中…",
     "saving": "保存中…"
   },
@@ -288,7 +293,9 @@
     "unliked": "已取消点赞",
     "favorited": "已收藏",
     "unfavorited": "已取消收藏",
-    "commentSuccess": "评论成功"
+    "commentSuccess": "评论成功",
+    "trending": "热门话题",
+    "viewAll": "查看全部"
   },
   "home": {
     "greeting": "你好, {name}",
@@ -321,6 +328,8 @@
     "registering": "注册中...",
     "goToLogin": "前往登录",
     "fillComplete": "请填写完整信息",
+    "showPassword": "显示密码",
+    "hidePassword": "隐藏密码",
     "enterPhoneFirst": "请先输入手机号",
     "codeSent": "验证码已发送",
     "resetPassword": "重置密码",

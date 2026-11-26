@@ -1,11 +1,13 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useToast } from '@/composables/useToast'
+import { useFormA11y } from '@/composables/useFormA11y'
 import { storeToRefs } from 'pinia'
 import { useUserStore } from '@/stores/user'
 import { userApi } from '@/api/user'
+import FormError from '@/components/common/FormError.vue'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -22,14 +24,51 @@ const oldPassword = ref('')
 const newPassword = ref('')
 const confirmPassword = ref('')
 const loading = ref(false)
+const oldInput = ref<HTMLInputElement | null>(null)
+const newInput = ref<HTMLInputElement | null>(null)
+const confirmInput = ref<HTMLInputElement | null>(null)
+const attempted = ref(false)
+const { errorMessage, errorId, announce, clear } = useFormA11y('account-security')
+
+const oldMissing = computed(() => attempted.value && !oldPassword.value)
+const newMissing = computed(() => attempted.value && !newPassword.value)
+const confirmMissing = computed(() => attempted.value && !confirmPassword.value)
+const confirmMismatch = computed(() =>
+  attempted.value &&
+  !!newPassword.value &&
+  !!confirmPassword.value &&
+  newPassword.value !== confirmPassword.value
+)
+
+watch([oldPassword, newPassword, confirmPassword], () => {
+  if (
+    oldPassword.value &&
+    newPassword.value &&
+    confirmPassword.value &&
+    newPassword.value === confirmPassword.value
+  ) {
+    attempted.value = false
+    clear()
+  }
+})
 
 const handleChangePassword = async () => {
   if (!oldPassword.value || !newPassword.value || !confirmPassword.value) {
-    showToast(t('profile.fillAllPassword'), 'error')
+    attempted.value = true
+    await announce(t('profile.fillAllPassword'))
+    if (!oldPassword.value) {
+      oldInput.value?.focus()
+    } else if (!newPassword.value) {
+      newInput.value?.focus()
+    } else {
+      confirmInput.value?.focus()
+    }
     return
   }
   if (newPassword.value !== confirmPassword.value) {
-    showToast(t('profile.passwordMismatch'), 'error')
+    attempted.value = true
+    await announce(t('profile.passwordMismatch'))
+    confirmInput.value?.focus()
     return
   }
   loading.value = true
@@ -51,8 +90,8 @@ const handleChangePassword = async () => {
   <div class="pb-32 bg-background min-h-screen">
     <main class="pt-4 px-container-padding max-w-screen-xl mx-auto">
       <div class="flex items-center justify-between py-md mb-lg">
-        <button @click="goBack" class="active:scale-95 transition-transform p-2 rounded-full hover:bg-zinc-100">
-          <span class="material-symbols-outlined text-emerald-700">arrow_back</span>
+        <button type="button" @click="goBack" :aria-label="t('common.back')" class="active:scale-95 transition-transform p-2 rounded-full hover:bg-zinc-100">
+          <span class="material-symbols-outlined text-emerald-700" aria-hidden="true">arrow_back</span>
         </button>
         <span class="font-title-sm text-on-surface">{{ t('profile.accountSecurity') }}</span>
         <div class="w-10"></div>
@@ -83,33 +122,50 @@ const handleChangePassword = async () => {
           <h3 class="font-label-bold text-label-bold text-on-surface mb-3">{{ t('profile.changePassword') }}</h3>
           <div class="space-y-3">
             <div>
-              <label class="font-label-bold text-label-bold text-on-surface mb-2 block">{{ t('profile.oldPassword') }}</label>
+              <label for="security-old-password" class="font-label-bold text-label-bold text-on-surface mb-2 block">{{ t('profile.oldPassword') }}</label>
               <input
+                ref="oldInput"
+                id="security-old-password"
                 v-model="oldPassword"
                 type="password"
+                autocomplete="current-password"
+                :aria-invalid="oldMissing || undefined"
+                :aria-describedby="errorMessage ? errorId : undefined"
                 :placeholder="t('profile.oldPasswordPlaceholder')"
                 class="w-full bg-surface-container rounded-xl px-4 py-3 font-body-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
             <div>
-              <label class="font-label-bold text-label-bold text-on-surface mb-2 block">{{ t('profile.newPassword') }}</label>
+              <label for="security-new-password" class="font-label-bold text-label-bold text-on-surface mb-2 block">{{ t('profile.newPassword') }}</label>
               <input
+                ref="newInput"
+                id="security-new-password"
                 v-model="newPassword"
                 type="password"
+                autocomplete="new-password"
+                :aria-invalid="newMissing || undefined"
+                :aria-describedby="errorMessage ? errorId : undefined"
                 :placeholder="t('profile.newPasswordPlaceholder')"
                 class="w-full bg-surface-container rounded-xl px-4 py-3 font-body-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
             <div>
-              <label class="font-label-bold text-label-bold text-on-surface mb-2 block">{{ t('profile.confirmPassword') }}</label>
+              <label for="security-confirm-password" class="font-label-bold text-label-bold text-on-surface mb-2 block">{{ t('profile.confirmPassword') }}</label>
               <input
+                ref="confirmInput"
+                id="security-confirm-password"
                 v-model="confirmPassword"
                 type="password"
+                autocomplete="new-password"
+                :aria-invalid="confirmMissing || confirmMismatch || undefined"
+                :aria-describedby="errorMessage ? errorId : undefined"
                 :placeholder="t('profile.confirmPasswordPlaceholder')"
                 class="w-full bg-surface-container rounded-xl px-4 py-3 font-body-sm text-on-surface focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
+            <FormError :id="errorId" :message="errorMessage" />
             <button
+              type="button"
               @click="handleChangePassword"
               :disabled="loading"
               class="w-full py-3 bg-primary text-on-primary rounded-xl font-label-bold text-label-bold active:scale-95 transition-transform disabled:opacity-50"

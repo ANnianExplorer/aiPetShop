@@ -44,7 +44,11 @@
     "favoritePost": "お気に入り",
     "unfavoritePost": "お気に入り解除",
     "sharePost": "投稿を共有",
-    "shareLog": "記録を共有"
+    "shareLog": "記録を共有",
+    "topicCard": "トピックを表示：{title}",
+    "viewUserProfile": "{name} のプロフィールを見る",
+    "prevTopic": "前のトピック",
+    "nextTopic": "次のトピック"
   },
   "common": {
     "save": "保存",
@@ -185,6 +189,7 @@
     "ageExample": "例：2歳",
     "healthNotesPlaceholder": "アレルギー、持病、薬など（任意）",
     "clickToUpload": "タップして写真をアップロード",
+    "uploadAvatar": "ペットのアバターをアップロード",
     "uploading": "アップロード中…",
     "saving": "保存中…"
   },
@@ -288,7 +293,9 @@
     "unliked": "いいね解除",
     "favorited": "お気に入り済み",
     "unfavorited": "お気に入り解除",
-    "commentSuccess": "コメントを投稿しました"
+    "commentSuccess": "コメントを投稿しました",
+    "trending": "人気のトピック",
+    "viewAll": "すべて見る"
   },
   "home": {
     "greeting": "こんにちは、{name}",
@@ -321,6 +328,8 @@
     "registering": "登録中...",
     "goToLogin": "ログインへ",
     "fillComplete": "すべての項目を入力してください",
+    "showPassword": "パスワードを表示",
+    "hidePassword": "パスワードを隠す",
     "enterPhoneFirst": "まず電話番号を入力してください",
     "codeSent": "認証コードを送信しました",
     "resetPassword": "パスワードリセット",

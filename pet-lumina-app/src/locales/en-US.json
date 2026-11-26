@@ -44,7 +44,11 @@
     "favoritePost": "Save",
     "unfavoritePost": "Unsave",
     "sharePost": "Share post",
-    "shareLog": "Share log"
+    "shareLog": "Share log",
+    "topicCard": "View topic: {title}",
+    "viewUserProfile": "View {name}'s profile",
+    "prevTopic": "Previous topic",
+    "nextTopic": "Next topic"
   },
   "common": {
     "save": "Save",
@@ -185,6 +189,7 @@
     "ageExample": "e.g. 2 years",
     "healthNotesPlaceholder": "Allergies, chronic conditions, medication (optional)",
     "clickToUpload": "Tap to upload a photo",
+    "uploadAvatar": "Upload pet avatar",
     "uploading": "Uploading…",
     "saving": "Saving…"
   },
@@ -288,7 +293,9 @@
     "unliked": "Unliked",
     "favorited": "Favorited",
     "unfavorited": "Unfavorited",
-    "commentSuccess": "Comment posted"
+    "commentSuccess": "Comment posted",
+    "trending": "Trending topics",
+    "viewAll": "View all"
   },
   "home": {
     "greeting": "Hello, {name}",
@@ -321,6 +328,8 @@
     "registering": "Registering...",
     "goToLogin": "Go to Login",
     "fillComplete": "Please fill in all fields",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
     "enterPhoneFirst": "Please enter phone number first",
     "codeSent": "Verification code sent",
     "resetPassword": "Reset Password",

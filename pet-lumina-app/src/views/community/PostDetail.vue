@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
+import { useRoute, useRouter, RouterLink } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { useToast } from '@/composables/useToast'
 import { postApi } from '@/api/post'
@@ -20,6 +20,11 @@ const postId = computed(() => String(route.params.id))
 const post = ref<Post | null>(null)
 const comments = ref<Comment[]>([])
 const loading = ref(true)
+
+const authorId = computed(() => post.value?.user?.id ?? '')
+const authorName = computed(
+  () => post.value?.user?.nickname || t('community.anonymousUser')
+)
 
 const showShareModal = ref(false)
 const showCommentModal = ref(false)
@@ -111,12 +116,6 @@ const goBack = () => {
   router.back()
 }
 
-const goToUserProfile = (userId?: string) => {
-  if (userId != null) {
-    router.push({ name: 'userProfile', params: { id: userId } })
-  }
-}
-
 const openShare = () => {
   showShareModal.value = true
 }
@@ -141,11 +140,25 @@ const openComment = () => {
         </div>
 
         <div class="flex items-center gap-sm">
-          <img @click="goToUserProfile(post.user?.id)" class="w-10 h-10 rounded-full border-2 border-primary object-cover cursor-pointer active:scale-95 transition-transform" :src="post.user?.avatar" alt="" />
-          <div @click="goToUserProfile(post.user?.id)" class="cursor-pointer">
-            <p class="font-label-bold text-label-bold text-on-surface">{{ post.user?.nickname }}</p>
-            <p class="text-xs text-on-surface-variant">{{ formatDate(post.createTime) }}</p>
-          </div>
+          <RouterLink
+            v-if="authorId"
+            :to="{ name: 'userProfile', params: { id: authorId } }"
+            :aria-label="t('a11y.viewUserProfile', { name: authorName })"
+            class="flex items-center gap-sm rounded-full active:opacity-80 focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            <img class="w-10 h-10 rounded-full border-2 border-primary object-cover" :src="post.user?.avatar" alt="" />
+            <div>
+              <p class="font-label-bold text-label-bold text-on-surface">{{ post.user?.nickname }}</p>
+              <p class="text-xs text-on-surface-variant">{{ formatDate(post.createTime) }}</p>
+            </div>
+          </RouterLink>
+          <template v-else>
+            <img class="w-10 h-10 rounded-full border-2 border-primary object-cover" :src="post.user?.avatar" alt="" />
+            <div>
+              <p class="font-label-bold text-label-bold text-on-surface">{{ post.user?.nickname }}</p>
+              <p class="text-xs text-on-surface-variant">{{ formatDate(post.createTime) }}</p>
+            </div>
+          </template>
         </div>
 
         <div v-if="post.imageList && post.imageList.length > 0" class="rounded-xl overflow-hidden">
