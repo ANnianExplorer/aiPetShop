@@ -120,4 +120,4 @@ E1–E13 全部完成，本表不再列条目。证据分布：
 
 16. ~~**S1.41 桌宠动物形象与右键动作菜单（用户追加）**~~ ✅ 已完成（2026-11-24）：按 `Pet.type` 切换橘猫/柴犬/奶油兔三只 200×240 SVG（PetStudio 自定义精灵仍优先）；右键/长按/键盘在宠物上方打开 8 项动作菜单，睡眠时禁用动作，支持 Escape/点外部关闭、视口夹取；App 215 tests（26 文件）+ `vue-tsc -b` 0 + build 0。真实触屏与离线图标字体未验收。见 `docs/reports/2026-11-24-s1.41-pet-animal-context-menu.md`。
 
-17. ~~**D10 全站无障碍审计（第三刀）**~~ ✅ 已完成（2026-11-26，S1.42）：六个表单校验失败改表单内 `role="alert"` + `aria-invalid`/`aria-describedby` + 焦点首字段；`TrendingSlider` 改真实链接、hover/focus 暂停、`prefers-reduced-motion` 不自动播放、按钮名称与 `disabled`；`PostDetail` 作者头像/昵称改 `RouterLink`；9 个三语 key。App 231 tests（32 文件）+ `vue-tsc -b` 0 + build 0。见 `docs/reports/2026-11-26-s1.42-a11y-forms-slider.md`。**剩余**：对比度扫描、NVDA/VoiceOver 真机验收（需工具/真机）。
+17. ~~**D10 全站无障碍审计（第三刀）**~~ ✅ 已完成（2026-11-26，S1.42）：六个表单校验失败改表单内 `role="alert"` + `aria-invalid`/`aria-describedby` + 焦点首字段；`TrendingSlider` 改真实链接、hover/focus 暂停、`prefers-reduced-motion` 不自动播放、按钮名称与 `disabled`；`PostDetail` 作者头像/昵称改 `RouterLink`；9 个三语 key。四个表单补 11 例独立 spec（空提交/焦点/清除/密码不一致）。App 242 tests（36 文件）+ `vue-tsc -b` 0 + build 0。见 `docs/reports/2026-11-26-s1.42-a11y-forms-slider.md`。**剩余**：对比度扫描、NVDA/VoiceOver 真机验收（需工具/真机）。

@@ -93,7 +93,7 @@ const submitForm = async () => {
           <span class="material-symbols-outlined text-emerald-700" aria-hidden="true">arrow_back</span>
         </button>
         <span class="font-title-sm text-on-surface">{{ t('reminder.addReminder') }}</span>
-        <button @click="submitForm" :disabled="loading" class="active:scale-95 transition-transform px-4 py-2 bg-primary text-white rounded-full font-label-bold text-label-bold disabled:opacity-50">
+        <button type="button" @click="submitForm" :disabled="loading" class="active:scale-95 transition-transform px-4 py-2 bg-primary text-white rounded-full font-label-bold text-label-bold disabled:opacity-50">
           {{ loading ? t('pet.saving') : t('common.save') }}
         </button>
       </div>

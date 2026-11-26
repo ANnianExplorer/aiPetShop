@@ -100,6 +100,7 @@ const handleSubmit = async () => {
       </section>
 
       <button
+        type="button"
         @click="handleSubmit"
         :disabled="loading"
         class="w-full py-3.5 bg-primary text-on-primary rounded-xl font-label-bold text-label-bold active:scale-95 transition-transform shadow-md disabled:opacity-50"

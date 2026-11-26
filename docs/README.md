@@ -137,7 +137,7 @@
 | [reports/2026-11-23-s1.39-a11y-nav-settings.md](reports/2026-11-23-s1.39-a11y-nav-settings.md) | S1.39 导航/提示/设置页无障碍（D10 第一刀） | 导航改 5 个原生按钮 + `aria-current`；Toast `role=status` / 错误 `alert`；设置页 `switch` 与 `dialog` 焦点闭环；全局焦点环 + `prefers-reduced-motion`；App **191 tests**（22 文件）+ `vue-tsc -b` 0 + build 0；真实读屏与对比度未验收 |
 | [reports/2026-11-24-s1.40-a11y-titles-cards.md](reports/2026-11-24-s1.40-a11y-titles-cards.md) | S1.40 路由标题与卡片键盘语义（D10 第二刀） | 31 个具名路由 `document.title` + 切语言联动；社区/记录卡片改 `RouterLink` + 可读名称；图片 `alt` 与图标按钮名称补齐；App **207 tests**（25 文件）+ `vue-tsc -b` 0 + build 0；对比度与真实读屏未验收 |
 | [reports/2026-11-24-s1.41-pet-animal-context-menu.md](reports/2026-11-24-s1.41-pet-animal-context-menu.md) | S1.41 桌宠动物形象与右键动作菜单 | 三只 200×240 SVG（猫/柴犬/兔）按类型切换，PetStudio 自定义图优先；右键/长按/键盘打开 8 项动作菜单，睡眠禁用动作、视口夹取；App **215 tests**（26 文件）+ `vue-tsc -b` 0 + build 0；真实触屏未验收 |
-| [reports/2026-11-26-s1.42-a11y-forms-slider.md](reports/2026-11-26-s1.42-a11y-forms-slider.md) | S1.42 表单错误播报与热点卡片键盘化（D10 第三刀） | 6 表单内联 `role="alert"` + `aria-invalid`/`aria-describedby` + 焦点；TrendingSlider 链接化/暂停/减弱动效/按钮名；PostDetail 作者链接；9 个三语 key；App **231 tests**（32 文件）+ `vue-tsc -b` 0 + build 0；对比度与真实读屏未验收 |
+| [reports/2026-11-26-s1.42-a11y-forms-slider.md](reports/2026-11-26-s1.42-a11y-forms-slider.md) | S1.42 表单错误播报与热点卡片键盘化（D10 第三刀） | 6 表单内联 `role="alert"` + `aria-invalid`/`aria-describedby` + 焦点；TrendingSlider 链接化/暂停/减弱动效/按钮名；PostDetail 作者链接；9 个三语 key；App **242 tests**（36 文件）+ `vue-tsc -b` 0 + build 0；对比度与真实读屏未验收 |
 
 ## 3. 新增文档怎么起头
 
