@@ -23,6 +23,7 @@ from app.core.metrics import (
 )
 from app.llm.fake import ScriptedModel
 from app.storage.memory import InMemoryRepository
+from app.tasks import TOPIC_AUDIT_TOOL, InProcessTaskQueue
 
 
 @pytest.fixture(autouse=True)
@@ -78,3 +79,30 @@ async def test_metrics_endpoint_renders_prometheus_text(client: httpx.AsyncClien
     assert "pet_agent_http_request_duration_seconds_count" in body
     # 不含用户内容：指标里不该出现会话/消息正文
     assert "你好" not in body
+
+
+async def test_metrics_include_dlq_depth_gauge() -> None:
+    """死信深度要能被 Prometheus 抓走；坏消息也计入（与告警同一口径）。"""
+    queue = InProcessTaskQueue(topic=TOPIC_AUDIT_TOOL, max_attempts=1)
+    await queue.publish(TOPIC_AUDIT_TOOL, key="k", payload={})
+    message = await queue.receive(TOPIC_AUDIT_TOOL, timeout_s=0.05)
+    assert message is not None
+    await queue.nack(message, error="boom")
+
+    app = create_app(
+        make_settings(task_backend="memory"),
+        model=ScriptedModel(),
+        repo=InMemoryRepository(),
+        http_client=make_http(),
+        task_queue=queue,
+    )
+    async with httpx.AsyncClient(
+        transport=httpx.ASGITransport(app=app), base_url="http://agent"
+    ) as http:
+        response = await http.get("/metrics")
+
+    assert response.status_code == 200
+    body = response.text
+    assert "# TYPE pet_agent_dlq_depth gauge" in body
+    assert f'pet_agent_dlq_depth{{topic="{TOPIC_AUDIT_TOOL}"}} 1' in body
+    assert 'pet_agent_dlq_depth{topic="agent.memory.observe"} 0' in body

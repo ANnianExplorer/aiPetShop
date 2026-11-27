@@ -43,7 +43,7 @@ App / 管理端 ──SSE──>  api/          传输层：鉴权、请求校�
 | `app/memory/` | `extract`/`ops`/`service` | 事实抽取（规则）、ADD/UPDATE/NOOP 算子、写入与召回 |
 | `app/tasks/` | `base`/`inprocess`/`redis`/`consumers`/`worker` | 旁路任务队列：记忆抽取与审计出请求路径；队列满退回同步 |
 | `app/rag/` | `models`/`chunker`/`embedder`/`ocr`/`media`/`parsers`/`service` | 文档问答：解析→切分→嵌入→检索；缺 `tesseract`/`ffmpeg` 时明确降级并给原因 |
-| `tests/` | 契约级单测 | 245 项（含真机契约），不依赖网络/密钥 |
+| `tests/` | 契约级单测 | 335 项（含真机契约），不依赖网络/密钥 |
 | `evals/` | 评测用例 + 阈值 runner | 69 条用例（routing 15 / safety 6 / memory 48），不过阈值就退出码非 0 |
 
 ## 快速开始
@@ -61,7 +61,7 @@ copy .env.example .env          # 填 PET_AGENT_LLM_API_KEY
 ```bash
 curl http://localhost:8099/healthz    # 进程活着
 curl http://localhost:8099/readyz     # 能接流量（存储+模型都 ok 才是 200）
-.venv\Scripts\python -m pytest        # 245 项：不带 DSN 为 244 passed + 1 skipped（跳过的是 MySQL 契约变体）
+.venv\Scripts\python -m pytest        # 335 项：不带 DSN 为 334 passed + 1 skipped（跳过的是 MySQL 契约变体）
 .venv\Scripts\python -m evals.run     # routing/safety/memory 三套件，硬阈值
 .venv\Scripts\ruff.exe check .        # 静态检查
 ```
@@ -123,6 +123,7 @@ mysql -u root -p < backend/sql/v2.12-agent-idempotency.sql  # 幂等键（S1.8 P
 | `PET_AGENT_TASK_DLQ_REDRIVE_INTERVAL_S` | `0` | 死信自动重投周期；`0` = 关闭（需要显式运维决策） |
 | `PET_AGENT_TASK_DLQ_MAX_REDRIVES` | `3` | 同一条消息最多被自动重投几次 |
 | `PET_AGENT_TASK_DLQ_REDRIVE_LIMIT` | `5` | 每轮每 topic 最多重投几条 |
+| `PET_AGENT_TASK_DLQ_ALERT_THRESHOLD` | `1` | 死信数达到该值时打 WARNING；`0` = 关闭（依赖巡检，`SWEEP_INTERVAL_S<=0` 时也不告警） |
 
 ## 接口
 
@@ -137,7 +138,7 @@ mysql -u root -p < backend/sql/v2.12-agent-idempotency.sql  # 幂等键（S1.8 P
 | GET | `/agent/memory/me` | 我这个账号（可带 `pet_id`）记住的事实：`{id,key,label,value,confidence,update_time}` |
 | DELETE | `/agent/memory/me?key=&pet_id=` | 删除我的一条事实（物理删除）；不存在 404 |
 | GET | `/agent/memory/me/export?pet_id=` | 导出我的全部事实：`{version,exported_at,pet_id,facts}` |
-| GET | `/metrics` | Prometheus 文本：HTTP 请求数/耗时、run、工具调用、token、队列深度（无鉴权、无用户内容） |
+| GET | `/metrics` | Prometheus 文本：HTTP 请求数/耗时、run、工具调用、token、队列深度、死信深度与告警计数（无鉴权、无用户内容） |
 | GET | `/agent/usage/me?days=7` | 用量聚合：`runs / prompt_tokens / completion_tokens / total_tokens / avg_latency_ms` |
 | GET | `/agent/admin/sessions?page=&page_size=&user_id=&q=` | **管理员**：全部会话（按最后活跃时间倒序，带 `message_count`） |
 | GET | `/agent/admin/sessions/{id}` | **管理员**：会话详情 = 消息 + 每轮 run + 每步 step |
@@ -190,7 +191,7 @@ event: error   data: {code, message, retryable}
 ## 测试与评测
 
 - `ruff check .` → 静态检查（配置在 `pyproject.toml`，CI 第一道门）。
-- `pytest` → 245 项（设 `PET_AGENT_TEST_MYSQL_DSN` 时含真机 MySQL 契约；不带 DSN 为 244 通过 + 1 跳过）：路由、网关六道防线、存储契约（内存/MySQL 同一套断言）、图（L1/L2/hop 上限/坏参数）、提示词版本（冻结哈希、安全措辞、run meta 与日志带 `prompt_version`）、压测量尺（分位数/判定阈值/Prometheus 文本解析/档位汇总）、API（SSE 事件序列、续传三种方式等价、越权、失败收敛、429 与配额头、记忆注入与用量聚合）、配额（分钟/日窗口、用户隔离、Redis fail-open、`Retry-After`）、事件存储（两实现同契约：序号、游标、裁剪、坏数据跳过）、记忆（抽取规则、ADD/UPDATE/NOOP、隔离、低置信度过滤、导出与删除）、会话列表（本人隔离、最后活跃排序、分页 total）、文档 RAG（切分/嵌入确定性/多编码解析/PDF 分页/OCR 缺失降级/去重与软删复活/检索隔离/删除后不可检索）、可观测（request_id/日志字段/readyz 降级/指标模板与不含用户内容）、管理端（403/401、列表筛选、详情含 steps、审计不含正文、伪造 header 无效、删记忆审计、三层图谱、他人画像与审计）、画像（确定性构建、斤换 kg、低置信度忽略、疫苗过期进 careGaps、版本递增与裁剪、事实更新后 stale）、幂等（同 key 只执行一次、并发唯一键、非法 key 422）、熔断（三态迁移、half_open 单探测、401 不误熔断、readyz 联动）、队列（启动补偿、死信重放、可见性超时巡检）。
+- `pytest` → 335 项（设 `PET_AGENT_TEST_MYSQL_DSN` 时含真机 MySQL 契约；不带 DSN 为 334 通过 + 1 跳过）：路由、网关六道防线、存储契约（内存/MySQL 同一套断言）、图（L1/L2/hop 上限/坏参数）、提示词版本（冻结哈希、安全措辞、run meta 与日志带 `prompt_version`）、压测量尺（分位数/判定阈值/Prometheus 文本解析/档位汇总）、API（SSE 事件序列、续传三种方式等价、越权、失败收敛、429 与配额头、记忆注入与用量聚合）、配额（分钟/日窗口、用户隔离、Redis fail-open、`Retry-After`）、事件存储（两实现同契约：序号、游标、裁剪、坏数据跳过）、记忆（抽取规则、ADD/UPDATE/NOOP、隔离、低置信度过滤、导出与删除）、会话列表（本人隔离、最后活跃排序、分页 total）、文档 RAG（切分/嵌入确定性/多编码解析/PDF 分页/OCR 缺失降级/去重与软删复活/检索隔离/删除后不可检索）、可观测（request_id/日志字段/readyz 降级/指标模板与不含用户内容）、管理端（403/401、列表筛选、详情含 steps、审计不含正文、伪造 header 无效、删记忆审计、三层图谱、他人画像与审计）、画像（确定性构建、斤换 kg、低置信度忽略、疫苗过期进 careGaps、版本递增与裁剪、事实更新后 stale）、幂等（同 key 只执行一次、并发唯一键、非法 key 422）、熔断（三态迁移、half_open 单探测、401 不误熔断、readyz 联动）、队列（启动补偿、死信重放、可见性超时巡检、越阈值告警/回落后复位/0 关闭/坏 payload 计数）。
 - `python -m evals.run` → 三套件、阈值硬卡：`routing ≥ 95%`、`safety = 100%`、`memory ≥ 90%`（现 48/48）。
   用例在 `evals/cases.jsonl`，加一行就是加一条回归；`memory` 支持 `text`（抽取全等）/`observe`（服务层）/`turns`（落库完整性）三种形状；报告落 `evals/reports/latest.json`。
   用例在 `evals/cases.jsonl`，加一行就是加一条回归；报告落 `evals/reports/latest.json`。

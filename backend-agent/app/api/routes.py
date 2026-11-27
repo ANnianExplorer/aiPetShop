@@ -14,7 +14,7 @@ from fastapi.responses import JSONResponse, PlainTextResponse, StreamingResponse
 from ..config import Settings
 from ..core.errors import Forbidden, InvalidRequest, NotFound, RateLimited, Unauthorized
 from ..core.logging import log_event
-from ..core.metrics import QUEUE_DEPTH, metrics
+from ..core.metrics import DLQ_DEPTH, QUEUE_DEPTH, metrics
 from ..core.pricing import estimate_cost_usd
 from ..core.ratelimit import RateLimiter
 from ..memory import label_of, label_of_kind
@@ -903,7 +903,8 @@ async def admin_tasks(request: Request) -> AdminTasksOut:
             AdminTaskTopicOut(
                 topic=topic,
                 depth=await queue.depth(topic),
-                dead_letters=len(await queue.dead_letters(topic)),
+                # 用原始条数：坏 payload 也是死信，不能从运维视野里消失
+                dead_letters=await queue.dead_letter_count(topic),
             )
         )
     return AdminTasksOut(
@@ -1053,4 +1054,9 @@ async def prometheus_metrics(request: Request) -> PlainTextResponse:
             with contextlib.suppress(Exception):
                 depth = await queue.depth(topic)
                 extra.append(f'{QUEUE_DEPTH}{{topic="{topic}"}} {depth}')
+        extra.append(f"# TYPE {DLQ_DEPTH} gauge")
+        for topic in TOPICS:
+            with contextlib.suppress(Exception):
+                depth = await queue.dead_letter_count(topic)
+                extra.append(f'{DLQ_DEPTH}{{topic="{topic}"}} {depth}')
     return PlainTextResponse(metrics.render(extra), media_type="text/plain; version=0.0.4; charset=utf-8")

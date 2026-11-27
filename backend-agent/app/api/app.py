@@ -173,6 +173,7 @@ def create_app(
             dlq_redrive_interval_s=settings.task_dlq_redrive_interval_s,
             dlq_max_redrives=settings.task_dlq_max_redrives,
             dlq_redrive_limit=settings.task_dlq_redrive_limit,
+            dlq_alert_threshold=settings.task_dlq_alert_threshold,
         )
         if tasks
         else None

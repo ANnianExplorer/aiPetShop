@@ -27,7 +27,7 @@
 | 文档 | 内容 |
 | --- | --- |
 | [pet-agent-architecture.md](pet-agent-architecture.md) | Pet-Agent 总体方案：五条原则、分层架构、六大能力、12 张表、开源选型、四阶段路线图、成本与风险、§10 harness 选型、§11 GitHub 调研、§12 S1 落地、§13 Web 接入 |
-| [BACKLOG.md](BACKLOG.md) | 未完成事项清单：P0 3 条 / P1 8 条 / P2 10 条 / P3 9 条 / 原项目卫生债 0 条（E1–E8、E13 已修），当前剩 7 条（P1 1 + P2 1 + P3 5），每条带现状、卡点、验收标准与估算 |
+| [BACKLOG.md](BACKLOG.md) | 未完成事项清单：P0 3 条 / P1 8 条 / P2 10 条 / P3 9 条 / 原项目卫生债 0 条（E1–E8、E13 已修），当前剩 6 条（P1 1 + P2 1 + P3 4），每条带现状、卡点、验收标准与估算 |
 
 ### SDD
 
@@ -39,7 +39,7 @@
 
 | 文档 | 版本 | 内容 |
 | --- | --- | --- |
-| [spec/agent-runtime-api.md](spec/agent-runtime-api.md) | v1.18 | `/healthz`、`/readyz`、`/metrics`、`POST /agent/chat`、事件续传、消息回读、会话列表、文档问答（上传/能力矩阵/删除）、记忆（含删除/导出）与用量、宠物画像、管理端只读与队列运维接口、任务退避重试与多副本语义的请求/响应/事件/错误码/不变量 |
+| [spec/agent-runtime-api.md](spec/agent-runtime-api.md) | v1.19 | `/healthz`、`/readyz`、`/metrics`、`POST /agent/chat`、事件续传、消息回读、会话列表、文档问答（上传/能力矩阵/删除）、记忆（含删除/导出）与用量、宠物画像、管理端只读与队列运维接口、任务退避重试/死信告警与多副本语义的请求/响应/事件/错误码/不变量 |
 | [spec/web-chat-ui.md](spec/web-chat-ui.md) | v1.2 | 对话页状态机、交互、持久化键、错误码→三语文案映射、布局约束、i18n 键、非目标 |
 
 ### ADR
@@ -91,6 +91,7 @@
 | [plans/s1.40-a11y-titles-cards.md](plans/s1.40-a11y-titles-cards.md) | S1.40 路由标题与卡片键盘语义：31 路由 `document.title` + 语言联动 + 社区/生活记录卡片 `RouterLink` 与图片 `alt`（D10 第二刀） | 已完成 |
 | [plans/s1.41-pet-animal-context-menu.md](plans/s1.41-pet-animal-context-menu.md) | S1.41 桌宠动物形象与右键动作菜单：按宠物类型选猫/狗/兔 + 8 项动作菜单 + 键盘/视口边界 | 已完成 |
 | [plans/s1.42-a11y-forms-slider.md](plans/s1.42-a11y-forms-slider.md) | S1.42 表单错误播报与热点卡片键盘化：6 表单内联 `role="alert"` + `aria-invalid`/焦点；TrendingSlider 与详情页作者键盘可达（D10 第三刀） | 已完成 |
+| [plans/s1.43-dlq-alert.md](plans/s1.43-dlq-alert.md) | S1.43 死信告警：越阈值打 WARNING + Prometheus gauge/counter，计数含坏 payload（B4 收尾） | 已完成 |
 
 ### REPORT
 
@@ -138,6 +139,7 @@
 | [reports/2026-11-24-s1.40-a11y-titles-cards.md](reports/2026-11-24-s1.40-a11y-titles-cards.md) | S1.40 路由标题与卡片键盘语义（D10 第二刀） | 31 个具名路由 `document.title` + 切语言联动；社区/记录卡片改 `RouterLink` + 可读名称；图片 `alt` 与图标按钮名称补齐；App **207 tests**（25 文件）+ `vue-tsc -b` 0 + build 0；对比度与真实读屏未验收 |
 | [reports/2026-11-24-s1.41-pet-animal-context-menu.md](reports/2026-11-24-s1.41-pet-animal-context-menu.md) | S1.41 桌宠动物形象与右键动作菜单 | 三只 200×240 SVG（猫/柴犬/兔）按类型切换，PetStudio 自定义图优先；右键/长按/键盘打开 8 项动作菜单，睡眠禁用动作、视口夹取；App **215 tests**（26 文件）+ `vue-tsc -b` 0 + build 0；真实触屏未验收 |
 | [reports/2026-11-26-s1.42-a11y-forms-slider.md](reports/2026-11-26-s1.42-a11y-forms-slider.md) | S1.42 表单错误播报与热点卡片键盘化（D10 第三刀） | 6 表单内联 `role="alert"` + `aria-invalid`/`aria-describedby` + 焦点；TrendingSlider 链接化/暂停/减弱动效/按钮名；PostDetail 作者链接；9 个三语 key；App **242 tests**（36 文件）+ `vue-tsc -b` 0 + build 0；对比度与真实读屏未验收 |
+| [reports/2026-11-27-s1.43-dlq-alert.md](reports/2026-11-27-s1.43-dlq-alert.md) | S1.43 死信告警（B4 收尾） | 死信计数含坏 payload、边沿 WARNING、`pet_agent_dlq_depth` gauge 与 `pet_agent_dlq_alerts_total`；backend **334 passed + 1 skipped**、ruff 全绿；坏 payload 仍需人工清理 |
 
 ## 3. 新增文档怎么起头
 

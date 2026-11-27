@@ -8,10 +8,12 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 import time
 
 import pytest
 
+from app.core.metrics import DLQ_ALERTS, metrics
 from app.memory import MemoryService
 from app.storage.memory import InMemoryRepository
 from app.tasks import (
@@ -307,6 +309,31 @@ def test_redis_payload_is_json_roundtrip() -> None:
     assert parsed.payload == {"a": [1, 2]}
 
 
+async def test_dead_letter_count_matches_list(queue) -> None:
+    """计数接口必须与列表长度一致；告警与管理端都以它为准。"""
+    for index in range(3):
+        await queue.publish("t", key=f"k{index}", payload={})
+        for _ in range(2):  # max_attempts=2：第 2 次 nack 进死信
+            message = await queue.receive("t", timeout_s=0.05)
+            assert message is not None
+            await queue.nack(message, error="boom")
+            await queue.retry_due(["t"], now=time.time() + 3600)
+    assert await queue.dead_letter_count("t") == 3
+    assert await queue.dead_letter_count("t") == len(await queue.dead_letters("t"))
+
+
+async def test_redis_dead_letter_count_includes_corrupt_payload() -> None:
+    """坏 payload 解析不出来，但它仍然占着死信位，告警必须看见。"""
+    client = FakeRedis()
+    queue = RedisTaskQueue(client, max_attempts=2)
+    valid = TaskMessage(id="1", topic="t", key="k", payload={}).to_json()
+    await client.lpush("pet:task:t:dlq", "{not-json")
+    await client.lpush("pet:task:t:dlq", json.dumps(valid, ensure_ascii=False))
+
+    assert len(await queue.dead_letters("t")) == 1  # 列表只能展示可解析的
+    assert await queue.dead_letter_count("t") == 2  # 计数不能漏掉坏消息
+
+
 async def test_recover_returns_inflight_messages(queue) -> None:
     """启动补偿：进程崩溃时卡在「在途」的消息必须能回到待消费队列。"""
     await queue.publish("t", key="k", payload={})
@@ -455,3 +482,140 @@ async def test_redrive_dead_letters_respects_max_redrives(queue) -> None:
             replayed = nxt
     assert len(await queue.dead_letters("t")) == 1
     assert await queue.redrive_dead_letters(["t"], limit_per_topic=5, max_redrives=1) == 0
+
+
+# --- B4 死信阈值告警 ---------------------------------------------------------
+
+
+def _dlq_alert_records(
+    caplog: pytest.LogCaptureFixture, message: str
+) -> list[logging.LogRecord]:
+    return [
+        record
+        for record in caplog.records
+        if record.name == "agent.task" and record.getMessage() == message
+    ]
+
+
+async def test_worker_alerts_once_when_dlq_threshold_crossed(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """边沿触发：首次越阈值告警一次，持续超阈值不刷屏，回落后再升会重新告警。"""
+    metrics.reset()
+    topic = TOPIC_AUDIT_TOOL
+    queue = InProcessTaskQueue(topic=topic, max_attempts=1)
+
+    async def always_fail(_: TaskMessage) -> None:
+        raise RuntimeError("永久失败")
+
+    worker = TaskWorker(
+        queue,
+        {topic: always_fail},
+        topics=[topic],
+        sweep_interval_s=0.01,
+        dlq_alert_threshold=1,
+    )
+    caplog.set_level(logging.INFO, logger="agent.task")
+    await worker.start()
+    try:
+        await queue.publish(topic, key="k1", payload={})
+        await _wait_until(
+            lambda: len(_dlq_alert_records(caplog, "task dlq threshold exceeded")) == 1
+        )
+        raised = _dlq_alert_records(caplog, "task dlq threshold exceeded")[0]
+        assert raised.levelno == logging.WARNING
+        assert raised.ctx == {"topic": topic, "dead_letters": 1, "threshold": 1}
+        assert metrics.counter_value(DLQ_ALERTS, {"topic": topic}) == 1
+
+        # 继续堆死信：仍然只应有一条 WARNING
+        await queue.publish(topic, key="k2", payload={})
+        await _wait_until(lambda: len(queue._dlq.get(topic, [])) == 2)
+        await asyncio.sleep(0.05)
+        assert len(_dlq_alert_records(caplog, "task dlq threshold exceeded")) == 1
+
+        # 模拟运维清空死信：回落日志出现，告警状态复位
+        queue._dlq[topic].clear()
+        await _wait_until(
+            lambda: len(_dlq_alert_records(caplog, "task dlq below threshold")) == 1
+        )
+        recovered = _dlq_alert_records(caplog, "task dlq below threshold")[0]
+        assert recovered.levelno == logging.INFO
+        assert recovered.ctx["dead_letters"] == 0
+        assert recovered.ctx["threshold"] == 1
+
+        # 再坏一次：必须重新告警
+        await queue.publish(topic, key="k3", payload={})
+        await _wait_until(
+            lambda: len(_dlq_alert_records(caplog, "task dlq threshold exceeded")) == 2
+        )
+    finally:
+        await worker.stop()
+
+    assert metrics.counter_value(DLQ_ALERTS, {"topic": topic}) == 2
+
+
+async def test_worker_dlq_alert_disabled_when_threshold_zero(
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    topic = TOPIC_AUDIT_TOOL
+    queue = InProcessTaskQueue(topic=topic, max_attempts=1)
+
+    async def always_fail(_: TaskMessage) -> None:
+        raise RuntimeError("永久失败")
+
+    worker = TaskWorker(
+        queue,
+        {topic: always_fail},
+        topics=[topic],
+        sweep_interval_s=0.01,
+        dlq_alert_threshold=0,
+    )
+    caplog.set_level(logging.INFO, logger="agent.task")
+    await worker.start()
+    try:
+        await queue.publish(topic, key="k", payload={})
+        await _wait_until(lambda: len(queue._dlq.get(topic, [])) == 1)
+        await asyncio.sleep(0.05)  # 给巡检几轮机会，确认它确实不打日志
+    finally:
+        await worker.stop()
+
+    assert _dlq_alert_records(caplog, "task dlq threshold exceeded") == []
+    assert _dlq_alert_records(caplog, "task dlq below threshold") == []
+
+
+async def test_worker_dlq_alert_is_per_topic(caplog: pytest.LogCaptureFixture) -> None:
+    """一个 topic 复位不能把另一个 topic 的告警状态也清掉。"""
+    topics = [TOPIC_MEMORY_OBSERVE, TOPIC_AUDIT_TOOL]
+    queue = InProcessTaskQueue(topic=topics[0], max_attempts=1)
+
+    async def always_fail(_: TaskMessage) -> None:
+        raise RuntimeError("永久失败")
+
+    worker = TaskWorker(
+        queue,
+        {topic: always_fail for topic in topics},
+        topics=topics,
+        sweep_interval_s=0.01,
+        dlq_alert_threshold=1,
+    )
+    caplog.set_level(logging.INFO, logger="agent.task")
+    await worker.start()
+    try:
+        for topic in topics:
+            await queue.publish(topic, key="k", payload={})
+        await _wait_until(
+            lambda: len(_dlq_alert_records(caplog, "task dlq threshold exceeded")) == 2
+        )
+        alerted = _dlq_alert_records(caplog, "task dlq threshold exceeded")
+        assert {record.ctx["topic"] for record in alerted} == set(topics)
+
+        queue._dlq[topics[0]].clear()
+        await _wait_until(
+            lambda: len(_dlq_alert_records(caplog, "task dlq below threshold")) == 1
+        )
+        await asyncio.sleep(0.05)
+        # 只复位了第一个 topic；第二个仍在阈值上，不能被重新告警
+        assert len(_dlq_alert_records(caplog, "task dlq threshold exceeded")) == 2
+        assert _dlq_alert_records(caplog, "task dlq below threshold")[0].ctx["topic"] == topics[0]
+    finally:
+        await worker.stop()

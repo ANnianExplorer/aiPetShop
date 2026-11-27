@@ -94,6 +94,9 @@ class InProcessTaskQueue:
         """与 Redis 实现保持同一签名（异步），否则调用方要为两种后端写两套代码。"""
         return list(self._dlq.get(topic, ()))
 
+    async def dead_letter_count(self, topic: str) -> int:
+        return len(self._dlq.get(topic, ()))
+
     async def recover(self, topics: Sequence[str] | None = None) -> int:
         """内存队列没有「在途」状态：消息要么在队列里，要么已经被处理。"""
         return 0

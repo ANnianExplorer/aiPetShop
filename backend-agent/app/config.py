@@ -109,6 +109,10 @@ class Settings(BaseSettings):
     task_dlq_redrive_interval_s: float = Field(default=0.0, ge=0)
     task_dlq_max_redrives: int = Field(default=3, ge=0, le=10)
     task_dlq_redrive_limit: int = Field(default=5, ge=1, le=100)
+    # 死信告警阈值（条）：某 topic 的死信数 >= 阈值时打 WARN 并计数；0 = 关闭。
+    # 默认 1——死信本身即异常，不该等人工翻管理端才发现。告警依赖巡检，
+    # task_sweep_interval_s <= 0 时不会触发。
+    task_dlq_alert_threshold: int = Field(default=1, ge=0)
 
     # ---- 文档问答（RAG）----
     # hash：本地哈希嵌入（确定性、零网络）；openai：走兼容 /embeddings 的接口

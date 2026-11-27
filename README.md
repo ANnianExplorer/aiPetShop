@@ -138,7 +138,7 @@ PetLumina 是一个面向宠物主人的智能生活管理与社区互动平台�
 | **长期记忆** | `memory_fact`（事实，带置信度）+ 规则抽取 + 三态算子（ADD/UPDATE/NOOP） | 记"名字/过敏/体重"这类低风险事实，不猜 |
 | **旁路任务** | `TaskQueue`（内存 / Redis 两实现）+ 死信重放 + 启动补偿 | 记忆抽取与审计写库移出响应路径，崩溃不丢 |
 | **韧性** | 用户级配额（429 + `Retry-After`）、用户维度幂等键、LLM/后端双熔断 | 重试不重复执行、不重复计费 |
-| **可观测** | 单行 JSON 日志 + `x-request-id` + `/readyz` 四检 + `/metrics`（HTTP/run/工具/token/队列深度 6 组指标） | 一条请求从 `run started` 到 `run finished` 能串起来；告警可直接抓 `/metrics` |
+| **可观测** | 单行 JSON 日志 + `x-request-id` + `/readyz` 四检 + `/metrics`（HTTP/run/工具/token/队列深度/死信深度 8 组指标） | 一条请求从 `run started` 到 `run finished` 能串起来；死信越阈值可直接在 `/metrics` 告警 |
 | **契约** | SSE 五事件（route/tool/delta/done/error）+ `id:` 游标续传 | 断网重连不重放已计费内容 |
 | **文档问答（RAG）** | `doc_file`/`doc_chunk` + 解析（文本/PDF/OCR/视频抽帧）+ 切分/嵌入 + `search_docs` 工具 | 上传疫苗本/体检报告后，回答带 `citation.kind=doc` 可回跳；缺 OCR/ffmpeg 时明确降级并给原因 |
 | **宠物画像** | `profile_snapshot` 版本化快照 + 确定性 builder（只读 `confidence≥0.7` 的事实） | 每次事实更新后重算新版本，可 diff；`stale` 显式提示，不静默展示旧值 |
@@ -213,7 +213,7 @@ PetLumina 是一个面向宠物主人的智能生活管理与社区互动平台�
 | aiomysql | 0.3 | 会话 / 消息 / 运行 / 记忆落库 |
 | redis-py | 8.1（RESP2） | 事件存储、限流、旁路任务队列 |
 | ruff | 0.17 | lint 门禁 |
-| pytest + pytest-asyncio | 9.2 / 1.4 | 328 项契约测试（含真机 MySQL 契约；不带 DSN 为 327 通过 + 1 跳过） |
+| pytest + pytest-asyncio | 9.2 / 1.4 | 335 项契约测试（含真机 MySQL 契约；不带 DSN 为 334 通过 + 1 跳过） |
 
 ## 快速开始
 
@@ -407,7 +407,7 @@ ai-PetShop/
 │   │   ├── llm/                     # ChatModel 协议 / OpenAI 兼容实现 / 脚本化桩
 │   │   ├── core/                    # 错误模型 / ID 生成 / 日志 / 熔断 / 限流 / Redis 客户端
 │   │   └── domain/                  # 领域模型 / 事件 / 意图路由
-│   ├── tests/                       # 328 项契约级测试 + 本地桩（Java / LLM）
+│   ├── tests/                       # 335 项契约级测试 + 本地桩（Java / LLM）
 │   ├── evals/                       # 69 条评测用例（routing 15 / safety 6 / memory 48）+ 三套阈值门禁
 │   ├── scripts/                     # 9 个真进程冒烟脚本（含多副本）
 │   ├── Dockerfile                   # 多阶段构建 + 非 root
@@ -437,7 +437,7 @@ Agent 侧的验收是"可复现命令"，不是口头结论：
 cd backend-agent
 # 可选：设置 DSN 后 tests/test_repository_contract.py 会额外跑一组 MySQL 契约变体
 $env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:yourpwd@127.0.0.1:3306/petlumina"
-.venv\Scripts\python -m pytest            # 未设 DSN 时 327 passed + 1 skipped（跳过的就是 MySQL 变体）
+.venv\Scripts\python -m pytest            # 未设 DSN 时 334 passed + 1 skipped（跳过的就是 MySQL 变体）
 .venv\Scripts\python -m evals.run         # routing 15/15、safety 6/6、memory 48/48
 .venv\Scripts\python -m scripts.e2e_smoke          # 10/10（SSE / 续传 / 越权）
 .venv\Scripts\python -m scripts.reconnect_smoke    # 5/5（掐线后 run 仍跑完、follow 续上不重不漏）
@@ -496,8 +496,9 @@ cd backend && mvn test                            # 后端单测 27 例（仪表
 - 路由标题与卡片键盘语义（S1.40，D10 第二刀）：31 个具名路由统一设置 `document.title`（`页面名 · PetLumina`），切中/英/日语言时按当前路由即时重算；社区帖子与生活记录卡片由 `div @click` 改为真正的 `RouterLink`，可 Tab 聚焦、Enter 进入，链接名称含作者与摘要；列表/详情图片补 `alt`（头像装饰性置空），纯图标按钮补 `aria-label`（点赞/评论带数量），装饰图标 `aria-hidden`；新增 16 例 DOM 与路由标题测试
 - 桌宠动物形象与右键动作菜单（S1.41）：默认形象从绿发人形换成按宠物类型选择的橘猫 / 柴犬 / 奶油兔（200×240 透明 SVG，PetStudio 自定义精灵图仍优先）；右键或长按在宠物上方打开 8 项动作菜单（吃白饭/跳舞/转圈/伸懒腰/摸摸头/睡觉或叫醒/聊天/收起），睡眠时禁用动作，支持 Enter/ContextMenu/Shift+F10 打开、Escape 与点外部关闭，菜单固定定位并夹在视口内；新增 8 例测试
 - 表单错误播报与热点卡片键盘化（S1.42，D10 第三刀）：Login/SignUp/AddPet/AddReminder/EditProfile/AccountSecurity 六个表单校验失败改为表单内 `role="alert"` 错误区，输入补 `aria-invalid` / `aria-describedby`，焦点落到首个缺失字段，同一条错误重复提交会重新播报；`TrendingSlider` 标题与区域用 `aria-labelledby` 关联，「查看全部」与话题卡片改 `RouterLink`，自动播放在 hover/focus 暂停、`prefers-reduced-motion` 下不自动播放，左右按钮补名称与 `disabled`；`PostDetail` 作者头像/昵称改 `RouterLink` 进入主页；新增 9 个三语 key 与 27 例测试
-- 文档体系：9 条 ADR、2 份 SPEC、1 份 SDD、31 份 PLAN、42 份 REPORT（见 `docs/README.md`）
-- 验收：327 passed + 1 skipped（未开 DSN）、69 条评测（routing 15 / safety 6 / memory 48）、9 个真进程冒烟（10/9/6/8/8/10/11/8 + `reconnect_smoke` 5/5）+ 真实模型冒烟 13/13（L1 P50 929 ms / P95 1064 ms）、App 242 tests + `vue-tsc` 0 + build 0、浏览器 e2e 3/3、`ruff` 全绿
+- 死信告警（S1.43，B4 收尾）：死信计数改用 `LLEN`/内存长度并包含无法解析的坏 payload；worker 每轮巡检按 `TASK_DLQ_ALERT_THRESHOLD`（默认 1，0 关闭）边沿告警，越线打 WARNING `task dlq threshold exceeded`，回落后 INFO 并复位；`/metrics` 新增 `pet_agent_dlq_depth{topic}` gauge 与 `pet_agent_dlq_alerts_total{topic}`；新增 7 例测试
+- 文档体系：9 条 ADR、2 份 SPEC、1 份 SDD、32 份 PLAN、43 份 REPORT（见 `docs/README.md`）
+- 验收：334 passed + 1 skipped（未开 DSN）、69 条评测（routing 15 / safety 6 / memory 48）、9 个真进程冒烟（10/9/6/8/8/10/11/8 + `reconnect_smoke` 5/5）+ 真实模型冒烟 13/13（L1 P50 929 ms / P95 1064 ms）、App 242 tests + `vue-tsc` 0 + build 0、浏览器 e2e 3/3、`ruff` 全绿
 
 ### v2.7 (2026-06-03)
 

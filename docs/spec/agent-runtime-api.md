@@ -1,7 +1,7 @@
-# 规格：Agent Runtime HTTP/SSE 契约 v1.18
+# 规格：Agent Runtime HTTP/SSE 契约 v1.19
 
 - 状态：Frozen（实现已按此验收；破坏性变更需升 v2）
-- 日期：2026-11-21（v1.18 管理端按模型分账；v1.17 情景往事/错误码三语化；v1.16 提示词版本化；v1.15 记忆评测；v1.14 引用回跳；v1.13 断线续传；v1.12 退避重试；v1.11 宠物画像与 I33–I36；v1.10 管理端队列/记忆/图谱与 I30–I32；v1.9 记忆删除导出与 `/metrics`；v1.8 文档问答与 I23–I26；v1.7 App 会话列表与 I22；v1.6 队列运维接口；v1.5 记忆最终一致；v1.4 幂等与熔断；v1.3 管理端）
+- 日期：2026-11-27（v1.19 死信告警；v1.18 管理端按模型分账；v1.17 情景往事/错误码三语化；v1.16 提示词版本化；v1.15 记忆评测；v1.14 引用回跳；v1.13 断线续传；v1.12 退避重试；v1.11 宠物画像与 I33–I36；v1.10 管理端队列/记忆/图谱与 I30–I32；v1.9 记忆删除导出与 `/metrics`；v1.8 文档问答与 I23–I26；v1.7 App 会话列表与 I22；v1.6 队列运维接口；v1.5 记忆最终一致；v1.4 幂等与熔断；v1.3 管理端）
 - 实现：`backend-agent/app/api/`
 - 关联：[SDD](../sdd/pet-agent-sdd.md) · [ADR-0003](../adr/0003-sse-event-contract.md)
 
@@ -385,11 +385,19 @@ meta        { factWatermark, builtAt }
 4. **过期标记而非静默旧值**：`stale=true` 表示「事实比画像新」，前端必须显式提示；判定用 `meta.factWatermark` 与 `memory_fact` 的最大 `update_time` 比较。
 5. **因果顺序**：重算挂在记忆消费之后（同一个 consumer），不允许与记忆写入并发——否则会产出 `fact_count=0` 的空画像。
 
-## 6.10 任务重试与多副本语义（S1.19 / BACKLOG B4·B2）
+## 6.10 任务重试、死信告警与多副本语义（S1.19 / S1.43 / BACKLOG B4·B2）
 
 **重试（B4）**：`nack` 后消息先进**退避队列**（Redis `{prefix}:{topic}:retry` ZSET，score = 到期时刻），
 `backoff = min(base * 2^(attempt-1), cap)`（默认 `base=5s`、`cap=600s`），巡检到期后搬回主队列并 `attempt+1`；
 超过 `max_attempts` 进死信。**`depth(topic)` 只统计主队列**，不含退避与死信——看积压不要漏看这两个数。
+
+**死信告警（S1.43）**：`dead_letter_count(topic)` 返回原始死信条数（Redis `LLEN`，含无法解析的坏 payload；管理端 `dead_letters` 字段同源）。worker 每轮巡检按 topic 比较 `task_dlq_alert_threshold`，边沿触发：
+
+1. 首次 `count >= threshold`：打 `WARNING task dlq threshold exceeded`（字段 `topic`/`dead_letters`/`threshold`），并给 `pet_agent_dlq_alerts_total{topic}` 加 1；
+2. 回落到 `count < threshold`：打 `INFO task dlq below threshold` 并复位，下一次再越线会重新告警；
+3. `/metrics` 同时暴露 `pet_agent_dlq_depth{topic}` gauge（每轮巡检刷新）。
+
+阈值默认 1（有死信就告警），设为 0 关闭；告警依赖巡检，`task_sweep_interval_s=0` 时不会产生告警。多副本各自维护边沿状态，Prometheus 侧用 `max by (topic)` 聚合即可（同值重复告警由 Alertmanager 去重/抑制）。
 
 | 配置 | 默认 | 语义 |
 | --- | --- | --- |
@@ -398,12 +406,14 @@ meta        { factWatermark, builtAt }
 | `TASK_DLQ_REDRIVE_INTERVAL_S` | 0 | 死信自动重投周期；**0 = 关闭** |
 | `TASK_DLQ_MAX_REDRIVES` | 3 | 同一条消息最多被自动重投几次（`redrives` 字段） |
 | `TASK_DLQ_REDRIVE_LIMIT` | 5 | 每轮每 topic 最多重投几条 |
+| `TASK_DLQ_ALERT_THRESHOLD` | 1 | 死信数达到该值时告警；**0 = 关闭**（依赖巡检） |
 
 约定：
 
 1. **重投也有上限**：`redrives` 达到上限的留在死信等人处理，不做"无限自动重试"；
 2. **自动重投默认关闭**：打开是显式运维决策，必须在变更单里写清下游修好了什么；
-3. **at-least-once**：重复投递由消费端幂等兜底（审计按事件 id `INSERT IGNORE`、记忆按唯一键 upsert）。
+3. **at-least-once**：重复投递由消费端幂等兜底（审计按事件 id `INSERT IGNORE`、记忆按唯一键 upsert）；
+4. **告警是信号不是清理**：坏 payload 无法被 admin replay 解析，计数会一直保留到人工清理；这正是需要告警的原因。
 
 **多副本（B2）**：两个副本共享 MySQL + Redis 时
 
@@ -469,6 +479,7 @@ meta        { factWatermark, builtAt }
 | I45 | 回忆往事必须带发生日期与来源消息 id，且只注入类型命中的情景；问句/否定/习惯不写入 | `test_api.py::test_conversation_recalls_episode_with_source_message_id`、`test_memory_episodes.py::test_episode_lines_recall_matching_event_only` |
 | I46 | `error.code` 是稳定契约：App 对已知 code 用 `agentError.*` 本地化，未知 code 才展示服务端 message；`retry_after_s` 向上取整 | `agentError.spec.ts`、`ChatView.error.spec.ts` |
 | I47 | `by_model` 与顶层用量同口径：各行 runs/token 之和等于总量，空模型归 `unknown`；未配置单价时 `cost_usd=null`（不按 0 计） | `test_admin.py::test_admin_usage_overview`、`test_admin.py::test_admin_usage_by_model_cost` |
+| I48 | 死信计数含无法解析的坏 payload；跨阈值只告警一次、回落后再越线重新告警；`/metrics` 暴露每 topic 死信深度 | `test_task_queue.py::test_redis_dead_letter_count_includes_corrupt_payload`、`test_worker_alerts_once_when_dlq_threshold_crossed`、`test_metrics.py::test_metrics_include_dlq_depth_gauge` |
 
 ## 8. 验收用例（可执行）
 
@@ -476,7 +487,7 @@ meta        { factWatermark, builtAt }
 cd backend-agent
 # 含真机仓储契约测试（需要 DSN，否则跳过 mysql 变体）
 $env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:<本机口令>@127.0.0.1:3306/petlumina"
-.\.venv\Scripts\python -m pytest              # 327 passed + 1 skipped（未开 DSN；开 DSN 另跑 MySQL 契约变体）
+.\.venv\Scripts\python -m pytest              # 334 passed + 1 skipped（未开 DSN；开 DSN 另跑 MySQL 契约变体）
 .\.venv\Scripts\python -m evals.run           # routing 15/15, safety 6/6, memory 48/48
 .\.venv\Scripts\python -m scripts.e2e_smoke       # 10/10
 .\.venv\Scripts\python -m scripts.p1_smoke        # 9/9（配额/用量/记忆）
@@ -513,3 +524,4 @@ $env:PET_AGENT_TEST_MYSQL_DSN = "mysql://root:<本机口令>@127.0.0.1:3306/petl
 | v1.17 | 2026-11-21 | **无接口变更**：把 4.3 已有字段固化为客户端展示契约（4.3.1 错误码→三语文案、未知 code 回退、`retry_after_s` 向上取整）并增 I46；验收 283 passed + 1 skipped、App 176 tests（BACKLOG D8 / S1.36） |
 | v1.17 | 2026-11-19 | 增 6.1.1 情景往事（`GET/DELETE /agent/memory/me/episodes`）、导出升 v2 并含 `episodes`、I44–I45；验收 283 passed + 1 skipped（未开 DSN）（BACKLOG C1 / S1.34） |
 | v1.18 | 2026-11-21 | 6.3 `/agent/admin/usage` 增 `by_model`（模型、runs、prompt/completion/total、`cost_usd`）；单价由 `PET_AGENT_MODEL_PRICES` 配置，未配置为 `null`；增 I47；验收 290 passed + 1 skipped、管理端 `vue-tsc` 0 + build 0（BACKLOG D4 / S1.37） |
+| v1.19 | 2026-11-27 | 6.10 增死信告警：`dead_letter_count` 含坏 payload、`TASK_DLQ_ALERT_THRESHOLD`（默认 1，0 关闭）、边沿 WARNING/INFO、`pet_agent_dlq_depth` gauge 与 `pet_agent_dlq_alerts_total`；增 I48；验收 334 passed + 1 skipped（未开 DSN）、ruff 全绿（BACKLOG B4 收尾 / S1.43） |

@@ -106,6 +106,14 @@ class TaskQueue(Protocol):
     async def dead_letters(self, topic: str) -> list[TaskMessage]:
         """死信列表（验收/排障用），两种后端同签名。"""
 
+    async def dead_letter_count(self, topic: str) -> int:
+        """死信条数（运维/告警用），必须包含无法解析的坏消息。
+
+        `dead_letters()` 会把坏 payload 跳过以免展示层崩溃；但告警不能跟着漏，
+        否则会变成「页面显示 0 条、实际卡着一条永远重放不了的消息」。
+        Redis 实现用 `LLEN`（O(1)），内存实现用列表长度。
+        """
+
     async def recover(self, topics: Sequence[str] | None = None) -> int:
         """把崩溃时卡在「在途」里的消息搬回待消费队列，返回条数。
 

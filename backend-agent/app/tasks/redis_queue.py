@@ -142,6 +142,10 @@ class RedisTaskQueue:
                 out.append(TaskMessage.from_json(json.loads(raw)))
         return out
 
+    async def dead_letter_count(self, topic: str) -> int:
+        """LLEN 统计原始条数：坏 payload 也算死信，告警不能漏。"""
+        return int(await self._redis.llen(self._dlq_key(topic)))
+
     async def recover_inflight(self, topic: str) -> int:
         """把 processing 里残留的消息搬回主列表（进程崩溃后的补偿）。返回条数。"""
         moved = 0
